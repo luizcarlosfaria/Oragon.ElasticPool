@@ -17,8 +17,9 @@ namespace Oragon.AdaptivePool.RabbitMQ.IntegrationTests.Fixtures;
 /// </remarks>
 public sealed class LowChannelMaxFixture : IAsyncLifetime
 {
+    // Use the same pinned image tag as RabbitMqContainerFixture for reproducibility (IN-03).
     public RabbitMqContainer Container { get; } =
-        new RabbitMqBuilder("rabbitmq:4-management")
+        new RabbitMqBuilder(RabbitMqContainerFixture.ImageTag)
             .WithEnvironment("RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS", "-rabbit channel_max 10")
             .Build();
 
