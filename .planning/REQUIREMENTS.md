@@ -28,8 +28,8 @@ Requirements for initial release (v1.0). Each maps to roadmap phases.
 
 ### ELASTIC — Adaptive Sizing
 
-- [ ] **ELASTIC-01**: Crescimento sob pressão por **combinação de sinais** configurável: tamanho da fila de waiters, utilização sustentada (% em janela temporal), tempo médio de espera no `Acquire` — respeitando `MaxSize`
-- [ ] **ELASTIC-02**: Encolhimento automático: itens ociosos além de `IdleTimeout` são descartados pelo background sweeper, com histerese (cooldown desde último `grow`) para evitar thrashing, nunca abaixo de `MinSize`
+- [x] **ELASTIC-01**: Crescimento sob pressão por **combinação de sinais** configurável: tamanho da fila de waiters, utilização sustentada (% em janela temporal), tempo médio de espera no `Acquire` — respeitando `MaxSize`
+- [x] **ELASTIC-02**: Encolhimento automático: itens ociosos além de `IdleTimeout` são descartados pelo background sweeper, com histerese (cooldown desde último `grow`) para evitar thrashing, nunca abaixo de `MinSize`
 
 ### FAIL — Failure Policy
 
@@ -39,8 +39,8 @@ Requirements for initial release (v1.0). Each maps to roadmap phases.
 ### TELEM — Observability
 
 - [x] **TELEM-01**: `Meter` nomeado `"Oragon.AdaptivePool"` obtido via `IMeterFactory`, expondo gauges (`pool.size`, `pool.available`, `pool.in_use`, `pool.waiting`) e counters (`pool.acquire.count`, `pool.acquire.duration`, `pool.factory.failures`, `pool.grow.count`, `pool.shrink.count`, `pool.health.failures`); tags com cardinalidade limitada (`pool.name`)
-- [ ] **TELEM-02**: `ActivitySource` nomeado `"Oragon.AdaptivePool"` com spans em `Acquire`, `Release`, `HealthCheck`, `Grow`, `Shrink`; uso de `HasListeners()` para evitar custo quando ninguém escuta
-- [ ] **TELEM-03**: Logging via `ILogger<T>` usando `[LoggerMessage]` source-generated (allocation-free) para transições de estado, falhas de factory, evictions, decisões de política
+- [x] **TELEM-02**: `ActivitySource` nomeado `"Oragon.AdaptivePool"` com spans em `Acquire`, `Release`, `HealthCheck`, `Grow`, `Shrink`; uso de `HasListeners()` para evitar custo quando ninguém escuta
+- [x] **TELEM-03**: Logging via `ILogger<T>` usando `[LoggerMessage]` source-generated (allocation-free) para transições de estado, falhas de factory, evictions, decisões de política
 
 ### DI — Dependency Injection
 
@@ -118,13 +118,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | HOOK-05 | Phase 1 | Complete |
 | BOUND-01 | Phase 1 | Complete |
 | BOUND-02 | Phase 1 | Complete |
-| ELASTIC-01 | Phase 2 | Pending |
-| ELASTIC-02 | Phase 2 | Pending |
+| ELASTIC-01 | Phase 2 | Complete |
+| ELASTIC-02 | Phase 2 | Complete |
 | FAIL-01 | Phase 1 | Complete |
 | FAIL-02 | Phase 1 | Complete |
 | TELEM-01 | Phase 1 | Complete |
-| TELEM-02 | Phase 2 | Pending |
-| TELEM-03 | Phase 2 | Pending |
+| TELEM-02 | Phase 2 | Complete |
+| TELEM-03 | Phase 2 | Complete |
 | DI-01 | Phase 1 | Complete |
 | QUAL-01 | Phase 1 | Complete |
 | QUAL-02 | Phase 1 | Complete |

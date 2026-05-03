@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Release
-status: verifying
+status: executing
 stopped_at: End of Plan 03 (commits 58c0916, 481fec1, c7b6191). Self-check PASSED. 70 unit tests + 1 stress test green on net8/9/10; 92.8 % line coverage on Core.
-last_updated: "2026-05-03T14:52:14.181Z"
+last_updated: "2026-05-03T15:05:30.049Z"
 last_activity: 2026-05-03
 progress:
   total_phases: 4
@@ -27,10 +27,10 @@ progress:
 ## Current Position
 
 **Phase:** 2 - Elasticity & Health (IN PROGRESS)
-**Plan:** 1 of 3 (Plan 01 complete: components + builder + engine wiring)
-**Status:** Plan 01 complete — Plan 02 next
-**Last Activity:** 2026-05-02
-**Progress:** [███▏······] 33% (Phase 2)
+**Plan:** 2 of 3 (Plan 01 complete: components + builder + engine wiring)
+**Status:** Ready to execute
+**Last Activity:** 2026-05-03
+**Progress:** [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -47,6 +47,7 @@ progress:
 | 1 | 02 | 14m22s | 3 | 22 | 3 |
 | 1 | 03 | ~22m   | 3 | 21 | 3 |
 | 2 | 01 | ~7m    | 3 | 11 | 3 |
+| Phase 02-elasticity-health P02 | ~6m | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -78,6 +79,9 @@ These cannot be changed without breaking API:
 - [Phase 1 Plan 01]: Repository scaffolding green-baseline (CPM, SourceLink deterministic, PublicApiAnalyzers wired, xUnit v3+MTP test/stress projects, multi-TFM CI workflow)
 - [Phase 1 Plan 02]: 12 public types + sealed AdaptivePool<T> engine (Channel direct-handoff waiter, Interlocked counter rollback, dual IDisposable+IAsyncDisposable drain, eager warm-up via ReadyAsync(), IMeterFactory telemetry with Meter fallback, source-gen [LoggerMessage] logging) + DI extension `services.AddAdaptivePool<T>(name, configure)` with named-options + keyed singleton + non-keyed default-name fallback. PublicAPI.Unshipped.txt now has 75 declarations; full solution build green on net8/9/10.
 - [Phase 1 Plan 03]: 70 unit tests across 13 files + 1 stress test (`MaxSize=1` 256-thread × 40-iter ping-pong, ~300 ms runtime) + CI coverage gate at 90 % line coverage on `Oragon.AdaptivePool.Core` (achieved 92.8 %). Coverage gate uses coverlet.console wrapped over `dotnet <testdll>` (MTP runner does not honor `dotnet test --collect:"XPlat Code Coverage"` — Plan-sanctioned alternative path). xUnit1051 NoWarn at test-csproj level. Stress project remains EXCLUDED from CI default per CONTEXT.md.
+- [Phase ?]: Pass waiters+1 (caller as if parked) to PressureSampler.Evaluate to preserve Phase 1 grow-on-demand with default GrowOnWaiterCount=1
+- [Phase ?]: WaitBehavior.Throw fires when pressure says no-grow even below MaxSize; intentional Phase 2 elastic contract change
+- [Phase ?]: Sweep span uses HasListeners() guard explicitly; per-item HealthCheck spans use cheap StartActivity null-return path
 
 ### Open Todos
 
@@ -97,9 +101,9 @@ These cannot be changed without breaking API:
 
 ## Session Continuity
 
-**Last session:** 2026-05-03 — completed Phase 1 Plan 03 (Tests + Stress + Coverage Gate). Phase 1 closed.
+**Last session:** 2026-05-03T15:05:03.028Z
 **Stopped at:** End of Plan 03 (commits 58c0916, 481fec1, c7b6191). Self-check PASSED. 70 unit tests + 1 stress test green on net8/9/10; 92.8 % line coverage on Core.
-**Resume file:** `.planning/phases/01-core-skeleton-fixed-size-pool/03-SUMMARY.md`
+**Resume file:** None
 **Next action:** Plan Phase 2 (Elasticity + Sweeper) — see Open Todos.
 
 **Files in `.planning/`:**
