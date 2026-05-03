@@ -55,5 +55,7 @@
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.4" />
     <!-- Phase 3: RabbitMQ adapter dependency. Pin to 7.2.1 per RESEARCH.md. -->
     <PackageVersion Include="RabbitMQ.Client" Version="7.2.1" />
+    <!-- Phase 3 Plan 03: Testcontainers.RabbitMq for integration tests. Pin 4.11.0 per RESEARCH Pattern 4. -->
+    <PackageVersion Include="Testcontainers.RabbitMq" Version="4.11.0" />
   </ItemGroup>
 </Project>
