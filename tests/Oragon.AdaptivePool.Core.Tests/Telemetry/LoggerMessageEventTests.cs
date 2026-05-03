@@ -128,7 +128,17 @@ public class LoggerMessageEventTests
             await SweepDeterminism.PrimeAsync(pool);
 
             for (int i = 0; i < 3; i++)
+            {
                 await SweepDeterminism.AdvanceAndAwaitTickAsync(pool, fake, TimeSpan.FromSeconds(30));
+                // CR-03: unhealthy items are evicted eagerly per tick; re-prime so the next
+                // tick observes failures (otherwise totalChecked=0 → no backoff progression).
+                if (i < 2)
+                {
+                    var entries = new List<IPoolItem<Resource>>();
+                    for (int n = 0; n < 3; n++) entries.Add(await pool.AcquireAsync());
+                    foreach (var e in entries) await e.DisposeAsync();
+                }
+            }
 
             logs.ByEventId(1009).Should().NotBeEmpty();
         }
@@ -223,7 +233,16 @@ public class LoggerMessageEventTests
 
             // Cause SweepStarted/Completed + CheckUnhealthy on a single tick
             for (int i = 0; i < 3; i++)
+            {
                 await SweepDeterminism.AdvanceAndAwaitTickAsync(pool, fake, TimeSpan.FromSeconds(30));
+                // CR-03: re-prime idle so subsequent ticks observe failures.
+                if (i < 2)
+                {
+                    var ent = new List<IPoolItem<Resource>>();
+                    for (int n = 0; n < 3; n++) ent.Add(await pool.AcquireAsync());
+                    foreach (var e in ent) await e.DisposeAsync();
+                }
+            }
 
             logs.ByEventId(1005).First().Level.Should().Be(LogLevel.Information);
             logs.ByEventId(1007).First().Level.Should().Be(LogLevel.Debug);

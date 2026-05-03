@@ -51,11 +51,20 @@ public class SweepBackoffIntegrationTests
             await pool.ReadyAsync();
             await SweepDeterminism.PrimeAsync(pool);
 
-            // Tick 1: 3/3 unhealthy → consecutive=1 (no bump)
+            // CR-03 changed semantics: unhealthy items are evicted IMMEDIATELY (not deferred to
+            // shrink pass). After tick 1, the warmup items are gone. To keep the failure-window
+            // pump primed, we re-acquire (grows fresh items via Factory) BEFORE each tick.
+
+            // Tick 1: 3/3 unhealthy → consecutive=1 (no bump). Pool is then empty.
             await SweepDeterminism.AdvanceAndAwaitTickAsync(pool, fake, TimeSpan.FromSeconds(30));
-            // Tick 2: 3/3 unhealthy → consecutive=2 (no bump)
+            // Re-populate idle so tick 2 has items to check.
+            await PrimeIdleAsync(pool, count: 3);
+
+            // Tick 2: 3/3 unhealthy → consecutive=2 (no bump).
             await SweepDeterminism.AdvanceAndAwaitTickAsync(pool, fake, TimeSpan.FromSeconds(30));
-            // Tick 3: 3/3 unhealthy → consecutive=3 → interval doubles to 60s
+            await PrimeIdleAsync(pool, count: 3);
+
+            // Tick 3: 3/3 unhealthy → consecutive=3 → interval doubles to 60s.
             await SweepDeterminism.AdvanceAndAwaitTickAsync(pool, fake, TimeSpan.FromSeconds(30));
 
             pool.BackoffState.CurrentInterval.Should().Be(TimeSpan.FromSeconds(60));
@@ -66,6 +75,19 @@ public class SweepBackoffIntegrationTests
             await pool.DisposeAsync();
             sp.Dispose();
         }
+    }
+
+    /// <summary>
+    /// Helper: acquire+dispose <paramref name="count"/> items in sequence to populate the
+    /// idle queue. Each acquire grows the pool via Factory if the pool is below capacity.
+    /// CR-03 fix evicts unhealthy items eagerly, so repeat-failure-window tests must
+    /// re-prime idle between ticks.
+    /// </summary>
+    private static async Task PrimeIdleAsync(AdaptivePool<Resource> pool, int count)
+    {
+        var items = new List<IPoolItem<Resource>>(count);
+        for (int i = 0; i < count; i++) items.Add(await pool.AcquireAsync());
+        foreach (var item in items) await item.DisposeAsync();
     }
 
     [Fact(Timeout = 30_000)]
@@ -81,7 +103,11 @@ public class SweepBackoffIntegrationTests
             await SweepDeterminism.PrimeAsync(pool);
 
             for (int i = 0; i < 3; i++)
+            {
                 await SweepDeterminism.AdvanceAndAwaitTickAsync(pool, fake, TimeSpan.FromSeconds(30));
+                // CR-03: unhealthy items are evicted eagerly; re-prime so the next tick has items.
+                if (i < 2) await PrimeIdleAsync(pool, count: 3);
+            }
             pool.BackoffState.CurrentInterval.Should().BeGreaterThan(TimeSpan.FromSeconds(30));
 
             // Switch to healthy. The sweep loop reads CurrentInterval as its new period —
@@ -140,6 +166,8 @@ public class SweepBackoffIntegrationTests
             {
                 var period = pool.BackoffState.CurrentInterval;
                 await SweepDeterminism.AdvanceAndAwaitTickAsync(pool, fake, period);
+                // CR-03: re-prime idle so the next tick observes failures (eviction is eager).
+                if (tick < 9) await PrimeIdleAsync(pool, count: 3);
             }
 
             pool.BackoffState.CurrentInterval.Should().Be(TimeSpan.FromSeconds(120),
@@ -166,7 +194,11 @@ public class SweepBackoffIntegrationTests
             await SweepDeterminism.PrimeAsync(pool);
 
             for (int i = 0; i < 3; i++)
+            {
                 await SweepDeterminism.AdvanceAndAwaitTickAsync(pool, fake, TimeSpan.FromSeconds(30));
+                // CR-03: unhealthy items are evicted eagerly; re-prime between ticks.
+                if (i < 2) await PrimeIdleAsync(pool, count: 3);
+            }
 
             // EventId 1009 fires on the bump tick.
             capturedLogs.ByEventId(1009).Should().NotBeEmpty(

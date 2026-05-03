@@ -117,13 +117,20 @@ internal sealed class BackgroundSweeper<T> : IAsyncDisposable where T : notnull
                     _pool.Log.CheckUnhealthy(_options.PoolName, thrown?.GetType().Name ?? "Unhealthy");
                     try
                     {
-                        await _pool.Options.FailurePolicy.HandleAsync(entry.Item, FailureKind.AfterUseUnhealthy, thrown, ct).ConfigureAwait(false);
+                        // WR-05 fix: this is a Check-hook (background sweep) verdict, not an
+                        // AfterUse hook verdict. A custom IItemFailurePolicy that branches on
+                        // FailureKind needs to distinguish these to apply correct remediation.
+                        await _pool.Options.FailurePolicy.HandleAsync(entry.Item, FailureKind.CheckUnhealthy, thrown, ct).ConfigureAwait(false);
                     }
                     catch { /* policy failure — keep sweeping */ }
-                    // ConcurrentQueue<T> can't remove a specific element. Mark the entry stale via
-                    // LastReturnedAt = MinValue so the shrink pass evicts it on this tick (or the
-                    // next, whichever wins the cooldown gate first). DecrementTotal is NOT called
-                    // here — the shrink pass owns the dequeue+decrement to keep _total balanced.
+                    // CR-03 fix: register the entry in PendingDiscard so EVERY dequeue path
+                    // (Acquire, AcquireAsync, etc.) skips it immediately — independent of the
+                    // shrink cooldown gate. Cooldown only governs SIZE-based shrink; broken
+                    // items must NEVER be served to consumers regardless of cooldown state.
+                    // The eviction pass below removes the entry from the queue eagerly.
+                    _pool.PendingDiscard.TryAdd(entry, 0);
+                    // Keep LastReturnedAt = MinValue as a backwards-compat signal (some unit
+                    // tests still rely on observing a stale timestamp on unhealthy entries).
                     entry.LastReturnedAt = DateTimeOffset.MinValue;
                     hcSpan?.SetTag(PoolMeterNames.OutcomeTag, "unhealthy");
                 }
@@ -140,7 +147,41 @@ internal sealed class BackgroundSweeper<T> : IAsyncDisposable where T : notnull
             }
         }
 
-        // ---- (2) Shrink pass ----
+        // ---- (2a) Unhealthy eviction pass (CR-03) ----
+        // Drain pending-discard entries from the queue head. Bypasses the shrink cooldown gate
+        // and the MinSize floor — broken items must NEVER be served regardless of pool size.
+        // Note: TryDequeueIdle (used by Acquire) already skips and discards pending-discard
+        // entries lazily; this pass eagerly removes them from the head so they don't block
+        // legitimate items that are queued behind them. Items not at the head will be drained
+        // either by the next Acquire or by subsequent sweep ticks as the queue rotates.
+        if (!_pool.PendingDiscard.IsEmpty)
+        {
+            // Bounded by current idle count to avoid spinning if a sibling thread races.
+            int maxScan = _pool.Idle.Count;
+            for (int i = 0; i < maxScan; i++)
+            {
+                if (!_pool.Idle.TryPeek(out var head)) break;
+                if (!_pool.PendingDiscard.ContainsKey(head)) break; // healthy item at head — stop
+                if (!_pool.Idle.TryDequeue(out var evict)) break;
+                if (_pool.PendingDiscard.TryRemove(evict, out _))
+                {
+                    _pool.DecrementTotal();
+                    if (_options.Release is { } release)
+                    {
+                        try { await release(evict.Item, ct).ConfigureAwait(false); } catch { /* swallow */ }
+                    }
+                }
+                else
+                {
+                    // Concurrent acquirer already discarded this entry (raced through TryDequeueIdle).
+                    // The dequeued entry is healthy or already-handled by another path — re-enqueue it.
+                    _pool.Idle.Enqueue(evict);
+                    break;
+                }
+            }
+        }
+
+        // ---- (2b) Shrink pass ----
         // Cooldown gate: SinceLastGrowTicks must have reached ShrinkCooldownWindows before any
         // shrink is considered. Floor: never go below MinSize. Gentle decay: at most 1 item/tick.
         if (_pool.SinceLastGrowTicks >= _options.ShrinkCooldownWindows

@@ -87,6 +87,45 @@ public class BackgroundSweepTests
     }
 
     [Fact(Timeout = 30_000)]
+    public async Task Sweep_CheckUnhealthyItem_NotServedOnNextAcquire_CR03Regression()
+    {
+        // CR-03 regression: when the Check hook reports Unhealthy, the entry MUST NOT be
+        // returned by a subsequent AcquireAsync — independently of the shrink cooldown gate.
+        // The previous implementation only marked LastReturnedAt = MinValue and deferred
+        // eviction to the cooldown-gated shrink pass, leaving broken items acquirable for up
+        // to ShrinkCooldownWindows ticks (default: 3 → up to 90s with default sweep interval).
+        //
+        // Test: pool has 1 idle item; Check hook reports Unhealthy on that specific instance;
+        // run ONE sweep tick (cooldown=3 — would have deferred eviction); then AcquireAsync
+        // MUST NOT return the broken instance. With the fix, AcquireAsync grows a fresh one.
+        var fake = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        Resource? brokenInstance = null;
+        await using var pool = BuildPool(fake,
+            check: (r, ct) =>
+            {
+                if (brokenInstance is null) brokenInstance = r;
+                return ValueTask.FromResult(r == brokenInstance ? PoolState.Unhealthy : PoolState.Healthy);
+            },
+            min: 0, max: 5, initial: 1);
+        await pool.ReadyAsync();
+        await SweepDeterminism.PrimeAsync(pool);
+        pool.Available.Should().Be(1);
+
+        // ONE tick. The default ShrinkCooldownWindows=3 means the shrink pass would NOT have
+        // evicted yet under the old (buggy) behavior. CR-03 fix evicts unhealthy items
+        // independently of cooldown.
+        await SweepDeterminism.AdvanceAndAwaitTickAsync(pool, fake, TimeSpan.FromSeconds(30));
+
+        // Acquire — must NOT return brokenInstance.
+        await using var acquired = await pool.AcquireAsync();
+        acquired.Value.Should().NotBeNull();
+        acquired.Value.Should().NotBeSameAs(brokenInstance,
+            "CR-03: AcquireAsync must NEVER return an instance the Check hook flagged Unhealthy, " +
+            "regardless of ShrinkCooldownWindows. The old code deferred eviction to the cooldown-gated " +
+            "shrink pass, leaving broken items acquirable for up to ~90s.");
+    }
+
+    [Fact(Timeout = 30_000)]
     public async Task Sweep_RunsAtConfiguredInterval()
     {
         var fake = new FakeTimeProvider(DateTimeOffset.UtcNow);

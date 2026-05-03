@@ -18,6 +18,12 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
     private readonly IServiceProvider _services;
     private readonly TimeProvider _time;
     private readonly ConcurrentQueue<PoolEntry<T>> _idle = new();
+    // CR-03 fix: discard set for entries the sweep loop has flagged Unhealthy. Checked on every
+    // path that dequeues from _idle so consumers never receive an entry the engine has already
+    // judged broken — independently of the shrink cooldown gate, which only governs SIZE-based
+    // eviction. ConcurrentDictionary used as a thread-safe HashSet (the value byte is unused).
+    // PoolEntry<T> is a sealed class with default reference equality — sufficient for set semantics.
+    private readonly ConcurrentDictionary<PoolEntry<T>, byte> _pendingDiscard = new();
     // Direct-handoff waiter queue per RESEARCH Pitfall 1.
     private readonly Channel<TaskCompletionSource<PoolEntry<T>>> _waiters;
     private readonly CancellationTokenSource _lifetimeCts;
@@ -75,6 +81,8 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
     internal int CurrentTotal => Volatile.Read(ref _total);
     internal int WaitersCount => Volatile.Read(ref _waitersCount);
     internal ConcurrentQueue<PoolEntry<T>> Idle => _idle;
+    /// <summary>CR-03: sweeper marks Check-Unhealthy entries here so dequeue paths skip them.</summary>
+    internal ConcurrentDictionary<PoolEntry<T>, byte> PendingDiscard => _pendingDiscard;
     internal Channel<TaskCompletionSource<PoolEntry<T>>> Waiters => _waiters;
     internal AdaptivePoolOptions<T> Options => _options;
     internal PressureSampler<T> Pressure => _pressure;
@@ -88,6 +96,29 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
     internal ILogger Log => _log;
     /// <summary>Sweeper-only helper: decrements the live-item counter by one (shrink pass owns dequeue+decrement).</summary>
     internal void DecrementTotal() => Interlocked.Decrement(ref _total);
+
+    /// <summary>
+    /// CR-03 fix: dequeue from idle, transparently skipping entries the sweep has flagged as
+    /// pending-discard. For each pending-discard hit: remove from the discard set, decrement
+    /// _total, fire-and-forget Release, and retry. Returns true if a healthy entry was acquired.
+    /// </summary>
+    internal bool TryDequeueIdle(out PoolEntry<T> entry)
+    {
+        while (_idle.TryDequeue(out var candidate))
+        {
+            if (_pendingDiscard.TryRemove(candidate, out _))
+            {
+                // Sweeper flagged this as Unhealthy; never serve it to a consumer.
+                Interlocked.Decrement(ref _total);
+                TryReleaseFireAndForget(candidate);
+                continue;
+            }
+            entry = candidate;
+            return true;
+        }
+        entry = null!;
+        return false;
+    }
 
     public Task ReadyAsync() => WarmupTask;
 
@@ -134,7 +165,7 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
         // so the discard+replace path runs identically; if that path needs to wait/grow it will
         // throw (sync NEVER blocks per CONTEXT.md + RESEARCH OQ3) — except inside the bounded
         // BeforeUse-Unhealthy retry loop where it grows on-demand without waiting.
-        while (_idle.TryDequeue(out var entry))
+        while (TryDequeueIdle(out var entry))
         {
             if (_options.BeforeUse is { } beforeUse)
             {
@@ -208,8 +239,8 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _lifetimeCts.Token);
         var ct = linked.Token;
 
-        // Fast path: free item available.
-        if (_idle.TryDequeue(out var entry))
+        // Fast path: free item available. TryDequeueIdle skips pending-discard entries (CR-03).
+        if (TryDequeueIdle(out var entry))
         {
             return await PrepareForUseAsync(entry, ct, cancellationToken, retryCount).ConfigureAwait(false);
         }

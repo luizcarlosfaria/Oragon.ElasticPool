@@ -4,6 +4,7 @@ Oragon.AdaptivePool.Core.Abstractions.FailureDecision.Discard = 0 -> Oragon.Adap
 Oragon.AdaptivePool.Core.Abstractions.FailureKind
 Oragon.AdaptivePool.Core.Abstractions.FailureKind.AfterUseUnhealthy = 2 -> Oragon.AdaptivePool.Core.Abstractions.FailureKind
 Oragon.AdaptivePool.Core.Abstractions.FailureKind.BeforeUseUnhealthy = 1 -> Oragon.AdaptivePool.Core.Abstractions.FailureKind
+Oragon.AdaptivePool.Core.Abstractions.FailureKind.CheckUnhealthy = 3 -> Oragon.AdaptivePool.Core.Abstractions.FailureKind
 Oragon.AdaptivePool.Core.Abstractions.FailureKind.FactoryThrew = 0 -> Oragon.AdaptivePool.Core.Abstractions.FailureKind
 Oragon.AdaptivePool.Core.Abstractions.IAdaptivePool<T>
 Oragon.AdaptivePool.Core.Abstractions.IAdaptivePool<T>.Acquire() -> Oragon.AdaptivePool.Core.Abstractions.IPoolItem<T>!
