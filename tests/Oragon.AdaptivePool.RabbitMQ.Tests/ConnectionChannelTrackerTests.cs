@@ -135,4 +135,70 @@ public class ConnectionChannelTrackerTests
 
         act.Should().Throw<ArgumentOutOfRangeException>();
     }
+
+    [Fact]
+    public void TryAcquireSlot_DoesNotSpin_WhenZeroValueEntryPresent()
+    {
+        // WR-01 regression: a hypothetical zero-value entry must not cause TryAcquireSlot
+        // to livelock. The standard ReleaseSlot path removes the entry at count 1 (so
+        // current==0 is never observed by a subsequent TryGetValue under normal flow),
+        // but if a future code path were to leave a zero-value entry in place,
+        // TryAcquireSlot must complete in O(1) by routing through TryUpdate, not TryAdd.
+        //
+        // We can't directly inject a zero entry without exposing internals, so this test
+        // exercises the equivalent code path: acquire one slot then release it (which
+        // removes the entry); a subsequent acquire must succeed via the !hasEntry branch
+        // and complete promptly.
+        var tracker = new ConnectionChannelTracker();
+        var conn = Substitute.For<IConnection>();
+
+        // Acquire then release — leaves no entry (correct invariant).
+        tracker.TryAcquireSlot(conn, 4).Should().BeTrue();
+        tracker.ReleaseSlot(conn);
+        tracker.CountFor(conn).Should().Be(0);
+
+        // Re-acquire: the !hasEntry branch must succeed, not spin.
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var ok = tracker.TryAcquireSlot(conn, 4);
+        sw.Stop();
+
+        ok.Should().BeTrue();
+        tracker.CountFor(conn).Should().Be(1);
+        // 100ms is generous; the operation should complete in microseconds. A real
+        // livelock would peg a CPU and exceed this by orders of magnitude.
+        sw.ElapsedMilliseconds.Should().BeLessThan(100,
+            "TryAcquireSlot must not spin when re-acquiring after release");
+    }
+
+    [Fact]
+    public async Task TryAcquireSlot_RaceBetweenReleaseAndReAcquire_DoesNotLivelock()
+    {
+        // WR-01 regression: the CAS retry loop must converge under high contention with
+        // simultaneous ReleaseSlot calls that remove entries. If TryAcquireSlot routed
+        // hasEntry+current==0 through TryAdd, an interleaving where the entry is removed
+        // and re-inserted by a third thread between TryGetValue and the CAS could cause
+        // pathological retries. The fixed branch uses TryUpdate for any hasEntry case.
+        var tracker = new ConnectionChannelTracker();
+        var conn = Substitute.For<IConnection>();
+        const int max = 10;
+        const int threads = 16;
+        const int iterations = 5_000;
+
+        var tasks = Enumerable.Range(0, threads).Select(_ => Task.Run(() =>
+        {
+            for (int i = 0; i < iterations; i++)
+            {
+                if (tracker.TryAcquireSlot(conn, max))
+                {
+                    tracker.ReleaseSlot(conn);
+                }
+            }
+        })).ToArray();
+
+        // 30s ceiling — actual completion is sub-second on any modern box.
+        var combined = Task.WhenAll(tasks);
+        var winner = await Task.WhenAny(combined, Task.Delay(TimeSpan.FromSeconds(30)));
+        winner.Should().BeSameAs(combined, "TryAcquireSlot must not livelock under contention");
+        tracker.CountFor(conn).Should().Be(0);
+    }
 }

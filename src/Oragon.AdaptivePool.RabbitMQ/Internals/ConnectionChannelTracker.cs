@@ -37,15 +37,22 @@ internal sealed class ConnectionChannelTracker
             var hasEntry = _counts.TryGetValue(connection, out var current);
             if (hasEntry && current >= max) return false;
             var next = current + 1;
-            if (!hasEntry || current == 0)
+            if (!hasEntry)
             {
+                // No entry yet → insert with value 1.
                 if (_counts.TryAdd(connection, next)) return true;
-                // Another thread inserted/updated between our read and TryAdd — re-read.
+                // Another thread inserted between our read and TryAdd — re-read.
             }
             else
             {
+                // Entry exists with value `current` → CAS-update to current+1.
+                // WR-01 fix: handle current==0 via TryUpdate, not TryAdd. Under the
+                // current invariant (entries are removed at count 1) this branch is
+                // unreachable for current==0, but routing it through TryUpdate makes
+                // the CAS direction unambiguous and removes the latent livelock that
+                // would occur if a future ReleaseSlot ever stored 0 in-place.
                 if (_counts.TryUpdate(connection, next, current)) return true;
-                // Lost the CAS race — re-read.
+                // Lost CAS — re-read.
             }
         }
     }
