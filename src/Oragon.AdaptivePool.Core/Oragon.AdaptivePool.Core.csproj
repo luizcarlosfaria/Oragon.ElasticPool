@@ -24,5 +24,8 @@
     <InternalsVisibleTo Include="Oragon.AdaptivePool.Core.Tests" />
     <!-- Phase 2 Plan 03: anchor stress test needs AdaptivePool<T>.Sweeper.TickCompleted probe. -->
     <InternalsVisibleTo Include="Oragon.AdaptivePool.Core.Stress" />
+    <!-- Phase 2 Plan 03: benchmark project measures internal [LoggerMessage] entries for
+         the ROADMAP success criterion 5 allocation-free baseline. -->
+    <InternalsVisibleTo Include="Oragon.AdaptivePool.Core.Benchmarks" />
   </ItemGroup>
 </Project>

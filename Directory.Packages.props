@@ -47,5 +47,11 @@
     <!-- CR-03 regression test only — Core does NOT reference Hosting. -->
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.6" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+    <!--
+      Plan 03 Task 5: Benchmark project for [LoggerMessage] allocation-free verification
+      (ROADMAP success criterion 5). 0.15.4 is the most recent stable as of Plan 03 execution.
+      Pinned only for the Benchmarks project; not added to CI workflow (manual-run only).
+    -->
+    <PackageVersion Include="BenchmarkDotNet" Version="0.15.4" />
   </ItemGroup>
 </Project>

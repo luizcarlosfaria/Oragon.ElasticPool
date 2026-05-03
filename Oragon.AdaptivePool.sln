@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Oragon.AdaptivePool.Core.Te
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Oragon.AdaptivePool.Core.Stress", "tests\Oragon.AdaptivePool.Core.Stress\Oragon.AdaptivePool.Core.Stress.csproj", "{86B5E714-6EDB-4370-959C-1F5D91741F0C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Oragon.AdaptivePool.Core.Benchmarks", "tests\Oragon.AdaptivePool.Core.Benchmarks\Oragon.AdaptivePool.Core.Benchmarks.csproj", "{493A445A-0FF5-4731-9A54-01620E786B60}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -59,6 +61,18 @@ Global
 		{86B5E714-6EDB-4370-959C-1F5D91741F0C}.Release|x64.Build.0 = Release|Any CPU
 		{86B5E714-6EDB-4370-959C-1F5D91741F0C}.Release|x86.ActiveCfg = Release|Any CPU
 		{86B5E714-6EDB-4370-959C-1F5D91741F0C}.Release|x86.Build.0 = Release|Any CPU
+		{493A445A-0FF5-4731-9A54-01620E786B60}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{493A445A-0FF5-4731-9A54-01620E786B60}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{493A445A-0FF5-4731-9A54-01620E786B60}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{493A445A-0FF5-4731-9A54-01620E786B60}.Debug|x64.Build.0 = Debug|Any CPU
+		{493A445A-0FF5-4731-9A54-01620E786B60}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{493A445A-0FF5-4731-9A54-01620E786B60}.Debug|x86.Build.0 = Debug|Any CPU
+		{493A445A-0FF5-4731-9A54-01620E786B60}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{493A445A-0FF5-4731-9A54-01620E786B60}.Release|Any CPU.Build.0 = Release|Any CPU
+		{493A445A-0FF5-4731-9A54-01620E786B60}.Release|x64.ActiveCfg = Release|Any CPU
+		{493A445A-0FF5-4731-9A54-01620E786B60}.Release|x64.Build.0 = Release|Any CPU
+		{493A445A-0FF5-4731-9A54-01620E786B60}.Release|x86.ActiveCfg = Release|Any CPU
+		{493A445A-0FF5-4731-9A54-01620E786B60}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -67,5 +81,6 @@ Global
 		{F8DF2D93-C2AC-429E-BC4E-6745DD83D242} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{3740A012-FD6B-4862-B2A0-81C9FA126A2C} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{86B5E714-6EDB-4370-959C-1F5D91741F0C} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{493A445A-0FF5-4731-9A54-01620E786B60} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 EndGlobal
