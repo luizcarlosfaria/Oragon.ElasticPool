@@ -9,6 +9,18 @@ Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveConnectionPoolBuilder.MaxSize.get -
 Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveConnectionPoolBuilder.MinSize.get -> int
 Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveConnectionPoolBuilder.WithBounds(int min, int max, int initial) -> Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveConnectionPoolBuilder!
 Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveConnectionPoolBuilder.WithIdleTimeout(System.TimeSpan t) -> Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveConnectionPoolBuilder!
+Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveChannelPoolBuilder
+Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveChannelPoolBuilder.AdaptiveChannelPoolBuilder() -> void
+Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveChannelPoolBuilder.ChannelOptions.get -> RabbitMQ.Client.CreateChannelOptions!
+Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveChannelPoolBuilder.IdleTimeout.get -> System.TimeSpan
+Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveChannelPoolBuilder.InitialSize.get -> int
+Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveChannelPoolBuilder.MaxChannelsPerConnection.get -> int
+Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveChannelPoolBuilder.MaxSize.get -> int
+Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveChannelPoolBuilder.MinSize.get -> int
+Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveChannelPoolBuilder.WithBounds(int min, int max, int initial) -> Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveChannelPoolBuilder!
+Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveChannelPoolBuilder.WithChannelOptions(RabbitMQ.Client.CreateChannelOptions! options) -> Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveChannelPoolBuilder!
+Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveChannelPoolBuilder.WithIdleTimeout(System.TimeSpan t) -> Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveChannelPoolBuilder!
+Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveChannelPoolBuilder.WithMaxChannelsPerConnection(int n) -> Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveChannelPoolBuilder!
 Oragon.AdaptivePool.RabbitMQ.Options.AdaptiveConnectionPoolOptions
 Oragon.AdaptivePool.RabbitMQ.Options.AdaptiveConnectionPoolOptions.AdaptiveConnectionPoolOptions() -> void
 Oragon.AdaptivePool.RabbitMQ.Options.AdaptiveConnectionPoolOptions.HostName.get -> string?
