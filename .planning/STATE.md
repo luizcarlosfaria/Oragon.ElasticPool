@@ -2,8 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Release
-status: Phase 1 complete — awaiting Phase 2 plan creation
-last_updated: "2026-05-03T04:30:00.000Z"
+status: verifying
+stopped_at: End of Plan 03 (commits 58c0916, 481fec1, c7b6191). Self-check PASSED. 70 unit tests + 1 stress test green on net8/9/10; 92.8 % line coverage on Core.
+last_updated: "2026-05-03T14:52:14.181Z"
+last_activity: 2026-05-03
 progress:
   total_phases: 4
   completed_phases: 1
@@ -20,15 +22,15 @@ progress:
 
 **Core Value:** Pool genérico .NET que entrega simultaneamente elasticidade real (min/max com crescimento e encolhimento automáticos), auto-cura (detecta e substitui objetos quebrados sem o cliente saber) e DX fluente (builder limpo, async-first, DI-first) — os três pilares juntos são o produto e nenhum pode ser sacrificado.
 
-**Current Focus:** Phase 1 (Core Skeleton — Fixed-Size Pool) **COMPLETE**. All 3 plans (scaffolding, public API + engine, tests + stress + coverage) shipped green. Ready for Phase 2 (Elasticity + Sweeper).
+**Current Focus:** Phase 2 (Elasticity & Health) **IN PROGRESS**. Plan 01 (components + builder extensions scaffold) shipped green: 5 internal sealed components wired into AdaptivePool<T>, 8 new options properties, 7 new builder fluent methods, PingPongStressTest still passes on all 3 TFMs. Plan 02 (engine grow/shrink + telemetry) is next.
 
 ## Current Position
 
-**Phase:** 1 - Core Skeleton — Fixed-Size Pool (COMPLETE)
-**Plan:** 3 of 3 (final plan landed)
-**Status:** Phase 1 closed — every Phase 1 success criterion has at least one passing test; coverage gate at 92.8 %; stress test green
-**Last Activity:** 2026-05-03
-**Progress:** [██████████] 100%
+**Phase:** 2 - Elasticity & Health (IN PROGRESS)
+**Plan:** 1 of 3 (Plan 01 complete: components + builder + engine wiring)
+**Status:** Plan 01 complete — Plan 02 next
+**Last Activity:** 2026-05-02
+**Progress:** [███▏······] 33% (Phase 2)
 
 ## Performance Metrics
 
@@ -44,6 +46,7 @@ progress:
 | 1 | 01 | 10m37s | 3 | 14 | 3 |
 | 1 | 02 | 14m22s | 3 | 22 | 3 |
 | 1 | 03 | ~22m   | 3 | 21 | 3 |
+| 2 | 01 | ~7m    | 3 | 11 | 3 |
 
 ## Accumulated Context
 
