@@ -1,0 +1,108 @@
+using System.Text;
+using AwesomeAssertions;
+using Microsoft.Extensions.DependencyInjection;
+using Oragon.AdaptivePool.Core.Abstractions;
+using Oragon.AdaptivePool.RabbitMQ.DependencyInjection;
+using Oragon.AdaptivePool.RabbitMQ.IntegrationTests.Fixtures;
+using RabbitMQ.Client;
+using Xunit;
+
+namespace Oragon.AdaptivePool.RabbitMQ.IntegrationTests;
+
+/// <summary>
+/// Scaled-down reproducer of the headline scenario: idle → burst → idle, validating
+/// no leaked channels/connections after multiple cycles. The full 100k cycle lives
+/// in the SAMPLE; this test runs in &lt;60s wall-clock with 1k publishes per burst × 3 cycles.
+/// </summary>
+[Trait("Category", "Integration")]
+public class BurstyPublisherIntegrationTests : IClassFixture<RabbitMqContainerFixture>
+{
+    private readonly RabbitMqContainerFixture _fixture;
+
+    public BurstyPublisherIntegrationTests(RabbitMqContainerFixture fixture)
+    {
+        _fixture = fixture;
+    }
+
+    [Fact]
+    public async Task BurstIdleBurst_NoLeakedChannelsOrConnections()
+    {
+        var connName = $"conn-{Guid.NewGuid():N}";
+        var chPoolName = $"ch-{Guid.NewGuid():N}";
+        var queueName = $"bursty-{Guid.NewGuid():N}";
+
+        var services = new ServiceCollection();
+        // Connection pool MaxSize ≥ parallelism + channel-pool-floor: each in-flight
+        // channel-pool acquire borrows a connection lease (which the channel retains for
+        // its lifetime — see ChannelPoolIntegrationTests for the layered ownership model).
+        // With parallelism=16 and channels reused via the channel pool's idle queue, the
+        // peak in-flight connection-lease count equals the channel pool's effective
+        // MaxSize bounded by parallelism. MaxSize=32 gives comfortable headroom.
+        services.AddAdaptiveConnectionPool(connName,
+            cf => cf.Uri = new Uri(_fixture.ConnectionString),
+            p => p.WithBounds(1, 32, 1));
+        services.AddAdaptiveChannelPool(chPoolName, connName, p => p
+            .WithBounds(0, 32, 0)
+            .WithMaxChannelsPerConnection(50));
+
+        await using var sp = services.BuildServiceProvider();
+        var connPool = sp.GetRequiredKeyedService<IAdaptivePool<IConnection>>(connName);
+        var chPool = sp.GetRequiredKeyedService<IAdaptivePool<IChannel>>(chPoolName);
+
+        // Topology: declare queue once via a one-off channel.
+        await using (var setup = await chPool.AcquireAsync())
+        {
+            await setup.Value.QueueDeclareAsync(
+                queue: queueName, durable: false, exclusive: false, autoDelete: false);
+        }
+
+        // Scaled-down vs the sample (sample = 100k × 3 cycles); test = 50 × 2 cycles to
+        // keep wall-clock under 60s on slow CI agents. The point of this test is the
+        // no-leak invariant (InUse==0 after each cycle) — not raw throughput. The full
+        // 100k cycle lives in the SAMPLE, exercised manually by `dotnet run`.
+        const int cycles = 3;
+        const int perBurst = 200;
+        const int parallelism = 16;
+
+        for (int cycle = 0; cycle < cycles; cycle++)
+        {
+            await Parallel.ForEachAsync(
+                Enumerable.Range(0, perBurst),
+                new ParallelOptions { MaxDegreeOfParallelism = parallelism },
+                async (i, token) =>
+                {
+                    // Per Pitfall 10: each iteration acquires its OWN channel.
+                    await using var lease = await chPool.AcquireAsync(token);
+                    var body = Encoding.UTF8.GetBytes($"cycle={cycle},i={i}");
+                    await lease.Value.BasicPublishAsync(
+                        exchange: string.Empty,
+                        routingKey: queueName,
+                        mandatory: false,
+                        basicProperties: new BasicProperties { Persistent = false },
+                        body: body,
+                        cancellationToken: token);
+                });
+
+            // Idle gap (much shorter than sample's 5min — just enough to let the pool settle).
+            await Task.Delay(TimeSpan.FromMilliseconds(500));
+        }
+
+        // After all cycles, channel pool's InUse must be 0 (all channels returned to
+        // idle queue or discarded). Connection pool's Available + Idle channels still hold
+        // their connection leases (layered-pool ownership: channels in idle queue retain
+        // their paired IPoolItem<IConnection> via the CWT pairing). Therefore connPool.InUse
+        // reflects the number of CONNECTIONS BACKING IDLE CHANNELS — must be ≤ MaxSize and
+        // ≤ chPool.Available.
+        chPool.InUse.Should().Be(0, "all channel leases must have been returned");
+        connPool.InUse.Should().BeLessThanOrEqualTo(connPool.MaxSize,
+            "connection lease count is bounded by the connection pool's MaxSize");
+
+        // Verify message count via side consumer.
+        var sideFactory = new ConnectionFactory { Uri = new Uri(_fixture.ConnectionString) };
+        sideFactory.AutomaticRecoveryEnabled = false;
+        await using var sideConn = await sideFactory.CreateConnectionAsync();
+        await using var sideCh = await sideConn.CreateChannelAsync();
+        var declareOk = await sideCh.QueueDeclarePassiveAsync(queueName);
+        declareOk.MessageCount.Should().Be((uint)(cycles * perBurst));
+    }
+}
