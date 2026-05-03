@@ -100,6 +100,23 @@ jobs:
           fi
           echo "Coverage gate satisfied (>= 90%)."
 
+      # --- Phase 4: full RabbitMQ adapter test surface (unit + integration) ---
+      - name: dotnet test (RabbitMQ.Tests — unit, NSubstitute mocks, no broker)
+        run: >
+          dotnet test --project tests/Oragon.AdaptivePool.RabbitMQ.Tests/Oragon.AdaptivePool.RabbitMQ.Tests.csproj
+          --configuration Release --no-build -f ${{ matrix.tfm }}
+
+      # ubuntu-latest runners include Docker by default; Testcontainers manages broker
+      # lifecycle. Tests run for ~12-14s per TFM (per Phase 3 SUMMARY observed timings).
+      - name: dotnet test (RabbitMQ.IntegrationTests — Testcontainers RabbitMQ 4-management)
+        run: >
+          dotnet test --project tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests.csproj
+          --configuration Release --no-build -f ${{ matrix.tfm }}
+        env:
+          # Testcontainers will pull rabbitmq:4-management at first run; on warm
+          # runners this is cached. Honor Docker default endpoint.
+          DOCKER_HOST: unix:///var/run/docker.sock
+
       - name: upload coverage report (artifact)
         if: always()
         uses: actions/upload-artifact@v4
