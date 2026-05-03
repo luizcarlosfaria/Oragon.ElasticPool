@@ -5,6 +5,7 @@ using Microsoft.Extensions.Diagnostics.Metrics.Testing;
 using Microsoft.Extensions.Time.Testing;
 using Oragon.AdaptivePool.Core.Abstractions;
 using Oragon.AdaptivePool.Core.Builder;
+using Oragon.AdaptivePool.Core.DependencyInjection;
 using Oragon.AdaptivePool.Core.Internals;
 using Oragon.AdaptivePool.Core.Tests.TestSupport;
 using Xunit;
@@ -13,28 +14,32 @@ namespace Oragon.AdaptivePool.Core.Tests.Pool;
 
 public class HystereticShrinkTests
 {
-    private static (AdaptivePool<Resource> pool, ServiceProvider sp) Build(
+    private static (AdaptivePool<Resource> pool, ServiceProvider sp, string poolName) Build(
         FakeTimeProvider fake,
         Action<AdaptivePoolBuilder<Resource>> configure,
         Func<Resource, CancellationToken, ValueTask>? release = null)
     {
+        var poolName = $"shrink-{Guid.NewGuid():N}";
         var services = new ServiceCollection();
         services.AddMetrics();
         services.AddLogging();
+        services.AddAdaptivePool<Resource>(poolName, b =>
+        {
+            b.Factory((s, ct) => ValueTask.FromResult(new Resource()))
+             .WithTimeProvider(fake);
+            if (release is not null) b.Release((r, ct) => release(r, ct));
+            configure(b);
+        });
         var sp = services.BuildServiceProvider();
-        var builder = AdaptiveObjectPoolFactory.Build<Resource>(sp)
-            .Factory((s, ct) => ValueTask.FromResult(new Resource()))
-            .WithTimeProvider(fake);
-        if (release is not null) builder = builder.Release((r, ct) => release(r, ct));
-        configure(builder);
-        return ((AdaptivePool<Resource>)builder.Build(), sp);
+        var pool = (AdaptivePool<Resource>)sp.GetRequiredKeyedService<IAdaptivePool<Resource>>(poolName);
+        return (pool, sp, poolName);
     }
 
     [Fact(Timeout = 30_000)]
     public async Task Shrink_DoesNotFire_DuringCooldownWindows()
     {
         var fake = new FakeTimeProvider(DateTimeOffset.UtcNow);
-        var (pool, sp) = Build(fake, b => b
+        var (pool, sp, poolName) = Build(fake, b => b
             .WithBounds(minSize: 1, maxSize: 10, initialSize: 5)
             .IdleTimeout(TimeSpan.FromSeconds(10))
             .ShrinkCooldownWindows(3)
@@ -81,7 +86,7 @@ public class HystereticShrinkTests
     public async Task Shrink_NeverGoesBelowMinSize()
     {
         var fake = new FakeTimeProvider(DateTimeOffset.UtcNow);
-        var (pool, sp) = Build(fake, b => b
+        var (pool, sp, poolName) = Build(fake, b => b
             .WithBounds(minSize: 2, maxSize: 10, initialSize: 5)
             .IdleTimeout(TimeSpan.FromSeconds(10))
             .ShrinkCooldownWindows(0)               // no cooldown — shrink eligible from tick 1
@@ -114,7 +119,7 @@ public class HystereticShrinkTests
     public async Task Shrink_OnlyEvictsItemsPastIdleTimeout()
     {
         var fake = new FakeTimeProvider(DateTimeOffset.UtcNow);
-        var (pool, sp) = Build(fake, b => b
+        var (pool, sp, poolName) = Build(fake, b => b
             .WithBounds(minSize: 1, maxSize: 10, initialSize: 3)
             .IdleTimeout(TimeSpan.FromSeconds(60))
             .ShrinkCooldownWindows(0)
@@ -146,7 +151,7 @@ public class HystereticShrinkTests
     {
         var fake = new FakeTimeProvider(DateTimeOffset.UtcNow);
         var releaseCalls = 0;
-        var (pool, sp) = Build(fake, b => b
+        var (pool, sp, poolName) = Build(fake, b => b
             .WithBounds(minSize: 1, maxSize: 10, initialSize: 3)
             .IdleTimeout(TimeSpan.FromSeconds(10))
             .ShrinkCooldownWindows(0)
@@ -172,7 +177,7 @@ public class HystereticShrinkTests
             pool.Available.Should().Be(2);
 
             shrinkCounter.GetMeasurementSnapshot().Sum(m => m.Value).Should().Be(1);
-            var shrinkSpans = captured.ByName("Pool.Shrink");
+            var shrinkSpans = captured.ByNameAndPool("Pool.Shrink", poolName);
             shrinkSpans.Should().ContainSingle();
             shrinkSpans[0].GetTagItem("pool.size_before").Should().Be(3);
             shrinkSpans[0].GetTagItem("pool.size_after").Should().Be(2);

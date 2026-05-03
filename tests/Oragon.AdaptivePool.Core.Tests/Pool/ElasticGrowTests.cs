@@ -5,6 +5,7 @@ using Microsoft.Extensions.Diagnostics.Metrics.Testing;
 using Microsoft.Extensions.Time.Testing;
 using Oragon.AdaptivePool.Core.Abstractions;
 using Oragon.AdaptivePool.Core.Builder;
+using Oragon.AdaptivePool.Core.DependencyInjection;
 using Oragon.AdaptivePool.Core.Internals;
 using Oragon.AdaptivePool.Core.Tests.TestSupport;
 using Xunit;
@@ -18,25 +19,29 @@ namespace Oragon.AdaptivePool.Core.Tests.Pool;
 /// </summary>
 public class ElasticGrowTests
 {
-    private static (AdaptivePool<Resource> pool, ServiceProvider sp) Build(
+    private static (AdaptivePool<Resource> pool, ServiceProvider sp, string poolName) Build(
         Action<AdaptivePoolBuilder<Resource>> configure,
         FakeTimeProvider? fake = null)
     {
+        var poolName = $"elastic-{Guid.NewGuid():N}";
         var services = new ServiceCollection();
         services.AddMetrics();
         services.AddLogging();
+        services.AddAdaptivePool<Resource>(poolName, b =>
+        {
+            b.Factory((s, ct) => ValueTask.FromResult(new Resource()));
+            if (fake is not null) b.WithTimeProvider(fake);
+            configure(b);
+        });
         var sp = services.BuildServiceProvider();
-        var builder = AdaptiveObjectPoolFactory.Build<Resource>(sp)
-            .Factory((s, ct) => ValueTask.FromResult(new Resource()));
-        if (fake is not null) builder = builder.WithTimeProvider(fake);
-        configure(builder);
-        return ((AdaptivePool<Resource>)builder.Build(), sp);
+        var pool = (AdaptivePool<Resource>)sp.GetRequiredKeyedService<IAdaptivePool<Resource>>(poolName);
+        return (pool, sp, poolName);
     }
 
     [Fact(Timeout = 15_000)]
     public async Task Grow_OnWaiterSignalOnly_RaisesPoolSize()
     {
-        var (pool, sp) = Build(b => b
+        var (pool, sp, poolName) = Build(b => b
             .WithBounds(minSize: 0, maxSize: 10, initialSize: 0)
             .GrowOnWaiterCount(1)
             .GrowOnUtilizationPercent(1.0) // saturate-only — never trips below 100%
@@ -72,7 +77,7 @@ public class ElasticGrowTests
     [Fact(Timeout = 15_000)]
     public async Task Grow_OnP95SignalOnly_RaisesPoolSize()
     {
-        var (pool, sp) = Build(b => b
+        var (pool, sp, poolName) = Build(b => b
             .WithBounds(minSize: 1, maxSize: 10, initialSize: 1) // at least 1 idle so the next path doesn't go via waiter
             .GrowOnWaiterCount(10)                       // == MaxSize, effectively unreachable for 1 caller
             .GrowOnUtilizationPercent(1.0)               // unreachable
@@ -118,7 +123,7 @@ public class ElasticGrowTests
         // We've already verified waiter-only and p95-only above. This test exercises BOTH at once
         // and asserts the GrowDecision tag flags reflect the OR (no short-circuit).
         var fake = new FakeTimeProvider(DateTimeOffset.UtcNow);
-        var (pool, sp) = Build(b => b
+        var (pool, sp, poolName) = Build(b => b
             .WithBounds(minSize: 0, maxSize: 10, initialSize: 0)
             .GrowOnWaiterCount(1)
             .GrowOnUtilizationPercent(1.0)
@@ -137,7 +142,7 @@ public class ElasticGrowTests
             var item = await pool.AcquireAsync();
 
             // The first slow-path entry must trip BOTH byWaiters and byP95.
-            var growSpan = captured.ByName("Pool.Grow").Single();
+            var growSpan = captured.ByNameAndPool("Pool.Grow", poolName).Single();
             growSpan.GetTagItem("grow.tripped_by_waiters").Should().Be(true);
             growSpan.GetTagItem("grow.tripped_by_p95").Should().Be(true);
 
@@ -153,7 +158,7 @@ public class ElasticGrowTests
     [Fact(Timeout = 15_000)]
     public async Task Grow_RespectsMaxSize_DoesNotExceedTotal()
     {
-        var (pool, sp) = Build(b => b
+        var (pool, sp, poolName) = Build(b => b
             .WithBounds(minSize: 0, maxSize: 5, initialSize: 0)
             .GrowOnWaiterCount(1));
         try
@@ -192,7 +197,7 @@ public class ElasticGrowTests
     [Fact(Timeout = 15_000)]
     public async Task Grow_RecordsCounterAndSpan()
     {
-        var (pool, sp) = Build(b => b
+        var (pool, sp, poolName) = Build(b => b
             .WithBounds(minSize: 0, maxSize: 5, initialSize: 0)
             .GrowOnWaiterCount(1));
         try
@@ -205,7 +210,7 @@ public class ElasticGrowTests
             await using var item = await pool.AcquireAsync();
 
             growCounter.GetMeasurementSnapshot().Sum(m => m.Value).Should().Be(1, "exactly one grow");
-            var growSpans = captured.ByName("Pool.Grow");
+            var growSpans = captured.ByNameAndPool("Pool.Grow", poolName);
             growSpans.Should().ContainSingle();
             var span = growSpans[0];
             span.GetTagItem("pool.size_after").Should().Be(1);

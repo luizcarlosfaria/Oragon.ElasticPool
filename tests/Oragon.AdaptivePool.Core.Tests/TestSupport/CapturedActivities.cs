@@ -47,6 +47,21 @@ public sealed class CapturedActivities : IDisposable
         }
     }
 
+    /// <summary>
+    /// Returns all stopped activities matching the operation name AND the <c>pool.name</c> tag.
+    /// Required for xUnit v3 parallel test runs where a single ActivitySource is shared across
+    /// concurrent tests — without filtering, spans from sibling tests bleed into the capture.
+    /// </summary>
+    public IReadOnlyList<Activity> ByNameAndPool(string operationName, string poolName)
+    {
+        lock (_lock)
+        {
+            return _stopped.Where(a =>
+                a.OperationName == operationName
+                && (string?)a.GetTagItem("pool.name") == poolName).ToArray();
+        }
+    }
+
     /// <summary>Returns the single stopped activity matching the operation name (throws if not exactly one).</summary>
     public Activity Single(string operationName) => ByName(operationName).Single();
 
