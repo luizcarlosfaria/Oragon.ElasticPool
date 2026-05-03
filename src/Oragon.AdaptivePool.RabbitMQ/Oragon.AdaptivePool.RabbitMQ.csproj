@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net10.0;net9.0;net8.0</TargetFrameworks>
+    <IsPackable>true</IsPackable>
+    <PackageId>Oragon.AdaptivePool.RabbitMQ</PackageId>
+    <Description>RabbitMQ.Client v7+ IConnection/IChannel adapter for Oragon.AdaptivePool — layered, lifecycle-managed pools with built-in observability.</Description>
+    <PackageTags>pool;objectpool;adaptive;elastic;rabbitmq;async;observability;opentelemetry</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="RabbitMQ.Client" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="all" />
+    <PackageReference Include="MinVer" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Oragon.AdaptivePool.Core\Oragon.AdaptivePool.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <AdditionalFiles Include="PublicAPI.Shipped.txt" />
+    <AdditionalFiles Include="PublicAPI.Unshipped.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Plan 03 will need internals access for ConnectionFactoryResolver and AdapterDiagnosticsLog tests. -->
+    <InternalsVisibleTo Include="Oragon.AdaptivePool.RabbitMQ.Tests" />
+    <InternalsVisibleTo Include="Oragon.AdaptivePool.RabbitMQ.IntegrationTests" />
+  </ItemGroup>
+</Project>
