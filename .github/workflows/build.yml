@@ -1,0 +1,48 @@
+name: build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  DOTNET_NOLOGO: 'true'
+  DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 'true'
+
+jobs:
+  build:
+    name: build-${{ matrix.os }}-${{ matrix.tfm }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest ]
+        tfm: [ net8.0, net9.0, net10.0 ]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup .NET (8.0.x, 9.0.x, 10.0.x)
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
+
+      - name: dotnet restore
+        run: dotnet restore Oragon.AdaptivePool.sln
+
+      - name: dotnet build (Release, ${{ matrix.tfm }})
+        run: dotnet build Oragon.AdaptivePool.sln -c Release --no-restore -f ${{ matrix.tfm }}
+        # Note: Directory.Build.props sets TreatWarningsAsErrors=true. CI sets CI=true,
+        # which activates ContinuousIntegrationBuild and DeterministicSourcePaths.
+
+      # Note: --project syntax is required by .NET 10 SDK when global.json selects
+      # Microsoft.Testing.Platform as the test runner. The Stress project is
+      # intentionally NOT invoked here per CONTEXT.md (dedicated nightly job in Phase 4).
+      - name: dotnet test (Core.Tests only — Stress is intentionally excluded per CONTEXT.md)
+        run: >
+          dotnet test --project tests/Oragon.AdaptivePool.Core.Tests/Oragon.AdaptivePool.Core.Tests.csproj
+          -c Release --no-build -f ${{ matrix.tfm }}
