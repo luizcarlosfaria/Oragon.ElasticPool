@@ -3,10 +3,12 @@
     <TargetFrameworks>net10.0;net9.0;net8.0</TargetFrameworks>
     <IsPackable>true</IsPackable>
     <PackageId>Oragon.AdaptivePool.Core</PackageId>
-    <Description>Generic, elastic in-process object pool for .NET with health auto-healing and built-in observability.</Description>
-    <PackageTags>pool;objectpool;adaptive;elastic;async;observability;opentelemetry</PackageTags>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Description>Generic, elastic, self-healing in-process object pool for .NET 8/9/10. Composite-signal grow under pressure, hysteretic shrink, 5-stage lifecycle hooks (Factory/BeforeUse/Check/AfterUse/Release), pluggable failure policy, built-in OpenTelemetry (Meter + ActivitySource). Async-first, DI-first.</Description>
+    <PackageTags>pool;objectpool;adaptive;elastic;self-healing;async;async-first;dependency-injection;opentelemetry;observability;resilience;dotnet</PackageTags>
   </PropertyGroup>
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />

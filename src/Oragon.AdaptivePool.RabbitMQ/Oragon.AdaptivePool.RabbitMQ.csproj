@@ -3,10 +3,12 @@
     <TargetFrameworks>net10.0;net9.0;net8.0</TargetFrameworks>
     <IsPackable>true</IsPackable>
     <PackageId>Oragon.AdaptivePool.RabbitMQ</PackageId>
-    <Description>RabbitMQ.Client v7+ IConnection/IChannel adapter for Oragon.AdaptivePool — layered, lifecycle-managed pools with built-in observability.</Description>
-    <PackageTags>pool;objectpool;adaptive;elastic;rabbitmq;async;observability;opentelemetry</PackageTags>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Description>RabbitMQ.Client v7+ adapter for Oragon.AdaptivePool — layered IConnection + IChannel pools with IsOpen-based health checks, AutomaticRecoveryEnabled override, and built-in OpenTelemetry. Async-first.</Description>
+    <PackageTags>rabbitmq;rabbitmq-client;pool;objectpool;adaptive;elastic;connection-pool;channel-pool;async-first;opentelemetry;dotnet</PackageTags>
   </PropertyGroup>
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="RabbitMQ.Client" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
