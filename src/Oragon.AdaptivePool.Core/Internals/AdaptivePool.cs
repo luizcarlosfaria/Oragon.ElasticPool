@@ -233,6 +233,16 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
                     {
                         try { await release(entry.Item, CancellationToken.None).ConfigureAwait(false); } catch { /* swallow */ }
                     }
+                    // CR-01 fix: if a waiter is parked, the slot we just freed must wake them.
+                    // Without this, MaxSize=1 + AfterUse=Unhealthy deadlocks (waiter never observes the free slot).
+                    // Strategy: fire a background grow-and-handoff. We try to reserve a slot under MaxSize,
+                    // build a replacement, and hand it off to the parked waiter via TryHandoff. If no waiter
+                    // is parked by the time we have the entry, enqueue it to idle. We use the lifetime token
+                    // so we abort on pool dispose.
+                    if (Volatile.Read(ref _lifecycle) == (int)PoolLifecycle.Open && _waiters.Reader.TryPeek(out _))
+                    {
+                        _ = Task.Run(() => GrowAndHandoffAsync(_lifetimeCts.Token));
+                    }
                     return;
                 }
             }
@@ -257,6 +267,53 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
             // Waiter was canceled — drop it, try next.
         }
         return false;
+    }
+
+    // CR-01 helper: invoked after an AfterUse-Unhealthy discard to wake any parked waiter.
+    // Reserves a slot under MaxSize, builds a replacement via Factory, and hands off to a waiter
+    // (or enqueues to idle if no waiter is present). Errors are swallowed; the parked waiter's
+    // own CancellationToken protects it from indefinite hang if growth fails.
+    private async Task GrowAndHandoffAsync(CancellationToken ct)
+    {
+        try
+        {
+            int currentTotal = Volatile.Read(ref _total);
+            if (currentTotal >= _options.MaxSize) return;
+            if (Interlocked.CompareExchange(ref _total, currentTotal + 1, currentTotal) != currentTotal)
+                return; // CAS lost — another path will handle growth.
+
+            T newItem;
+            try
+            {
+                newItem = await _options.Factory(_services, ct).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Interlocked.Decrement(ref _total);
+                if (ex is not OperationCanceledException)
+                {
+                    _telemetry.OnFactoryFailure();
+                    _log.FactoryFailed(_options.PoolName, ex);
+                }
+                return;
+            }
+
+            var entry = new PoolEntry<T>(newItem, _time.GetUtcNow());
+            if (TryHandoff(entry)) return;
+
+            // No waiter consumed it — return to idle (it'll be served on next acquire).
+            if (Volatile.Read(ref _lifecycle) == (int)PoolLifecycle.Open)
+            {
+                _idle.Enqueue(entry);
+            }
+            else
+            {
+                // Pool was disposed mid-growth — best-effort release.
+                Interlocked.Decrement(ref _total);
+                TryReleaseFireAndForget(entry);
+            }
+        }
+        catch { /* defensive — never let a background task escape */ }
     }
 
     private void TryReleaseFireAndForget(PoolEntry<T> entry)

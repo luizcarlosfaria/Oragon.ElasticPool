@@ -125,6 +125,43 @@ public class AfterUseAndExceptionTests
     }
 
     [Fact]
+    public async Task AfterUseUnhealthy_WithParkedWaiter_AtMaxSizeOne_WakesWaiterViaReplacement()
+    {
+        // CR-01 regression: with MaxSize=1 and AfterUse=Unhealthy, returning the only checked-out
+        // item must NOT leave a parked waiter blocked forever. The pool must grow a replacement
+        // and hand it off to the waiter.
+        var sp = new ServiceCollection().BuildServiceProvider();
+        await using var pool = AdaptiveObjectPoolFactory.Build<Resource>(sp)
+            .Factory((s, ct) => ValueTask.FromResult(new Resource()))
+            .AfterUse((r, ct) => ValueTask.FromResult(PoolState.Unhealthy))
+            .WithBounds(0, 1, 1)
+            .Build();
+
+        await pool.ReadyAsync();
+
+        // First acquire — consumes the only slot.
+        var first = await pool.AcquireAsync();
+
+        // Second caller parks as a waiter (MaxSize already reached).
+        using var waiterCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var secondTask = pool.AcquireAsync(waiterCts.Token).AsTask();
+
+        // Confirm the second caller is genuinely parked (not yet completed).
+        await Task.Delay(50);
+        secondTask.IsCompleted.Should().BeFalse("second caller must be parked while MaxSize=1 is saturated");
+
+        // Return first item — AfterUse marks Unhealthy, _total decrements, slot frees.
+        // Without CR-01 fix: waiter hangs forever. With fix: pool grows a replacement and hands off.
+        await first.DisposeAsync();
+
+        // Waiter must complete within the timeout.
+        var second = await secondTask;
+        second.Should().NotBeNull();
+        second.Value.Should().NotBeNull();
+        await second.DisposeAsync();
+    }
+
+    [Fact]
     public async Task DisposeWhilePoolHasInFlightItem_TryReleaseFireAndForget_DoesNotThrow()
     {
         var sp = new ServiceCollection().AddLogging().BuildServiceProvider();
