@@ -76,9 +76,9 @@
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Core Skeleton — Fixed-Size Pool | 3/3 | Complete | 2026-05-03 |
-| 2. Elasticity & Health | 2/3 | In Progress|  |
-| 3. RabbitMQ Adapter | 3/3 | Complete   | 2026-05-03 |
-| 4. Polish & v1.0 Release | 0/0 | Not started | - |
+| 2. Elasticity & Health | 3/3 | Complete | 2026-05-03 |
+| 3. RabbitMQ Adapter | 3/3 | Complete | 2026-05-03 |
+| 4. Polish & v1.0 Release | 2/2 | Complete | 2026-05-03 |
 
 ## Coverage
 
