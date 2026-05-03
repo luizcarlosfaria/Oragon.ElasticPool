@@ -1,8 +1,10 @@
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Oragon.AdaptivePool.Core.Abstractions;
 using Oragon.AdaptivePool.RabbitMQ.DependencyInjection;
+using Oragon.AdaptivePool.RabbitMQ.Tests.TestSupport;
 using RabbitMQ.Client;
 using Xunit;
 
@@ -272,6 +274,61 @@ public class ChannelPoolUnitTests
         await factory.Received(2).CreateConnectionAsync(Arg.Any<CancellationToken>());
         await conn1.Received(1).CreateChannelAsync(Arg.Any<CreateChannelOptions?>(), Arg.Any<CancellationToken>());
         await conn2.Received(1).CreateChannelAsync(Arg.Any<CreateChannelOptions?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Release_ChannelDisposeAsyncThrows_StillReleasesConnectionLease()
+    {
+        // CR-01 regression: previously, an exception from IChannel.DisposeAsync inside the
+        // Release hook silently leaked the tracker slot, the pairing entry, AND the
+        // connection lease (Core call sites swallow Release-hook exceptions). The fix
+        // wraps DisposeAsync in try/catch so the cleanup below ALWAYS runs.
+        //
+        // Verify: after a forced DisposeAsync throw, the connection pool's InUse drops
+        // back to 0 (the lease was returned), and EventId 2003 is logged.
+        var connName = CName();
+        var chPoolName = ChName();
+        var captured = new CapturedLogEntries();
+
+        var ch = Substitute.For<IChannel>();
+        ch.IsOpen.Returns(true);
+        ch.DisposeAsync().Returns(_ => ValueTask.FromException(
+            new IOException("simulated DisposeAsync failure")));
+
+        var conn = Substitute.For<IConnection>();
+        conn.IsOpen.Returns(true);
+        conn.CreateChannelAsync(Arg.Any<CreateChannelOptions?>(), Arg.Any<CancellationToken>())
+            .Returns(_ => ch);
+
+        var factory = Substitute.For<IConnectionFactory>();
+        factory.CreateConnectionAsync(Arg.Any<CancellationToken>()).Returns(_ => conn);
+
+        var services = new ServiceCollection();
+        services.AddLogging(b => b.AddProvider(captured).SetMinimumLevel(LogLevel.Trace));
+        services.AddKeyedSingleton<IConnectionFactory>(connName, (_, _) => factory);
+        services.AddAdaptiveConnectionPool(connName, null, p => p.WithBounds(0, 2, 0));
+        services.AddAdaptiveChannelPool(chPoolName, connName, p => p.WithBounds(0, 2, 0));
+
+        var sp = services.BuildServiceProvider();
+        var chPool = sp.GetRequiredKeyedService<IAdaptivePool<IChannel>>(chPoolName);
+        var connPool = sp.GetRequiredKeyedService<IAdaptivePool<IConnection>>(connName);
+
+        var lease = await chPool.AcquireAsync();
+        connPool.InUse.Should().Be(1);
+        await lease.DisposeAsync(); // returns to idle queue — Release NOT yet invoked
+
+        // Drain the channel pool — Release runs on every idle item; DisposeAsync throws
+        // but cleanup must still run.
+        await sp.DisposeAsync();
+
+        // CR-01 invariant: tracker slot and connection lease were released even though
+        // ch.DisposeAsync threw. Connection pool's InUse must end at 0.
+        connPool.InUse.Should().Be(0,
+            "tracker.ReleaseSlot + connLease.DisposeAsync must run even when ch.DisposeAsync throws");
+
+        // EventId 2003 must have been emitted at Warning level.
+        captured.ByEventId(2003).Should().NotBeEmpty(
+            "EventId 2003 must surface IChannel.DisposeAsync failures");
     }
 
     [Fact]

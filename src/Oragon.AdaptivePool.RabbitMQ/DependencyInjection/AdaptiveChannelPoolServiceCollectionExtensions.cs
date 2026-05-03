@@ -1,4 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Oragon.AdaptivePool.Core.Abstractions;
 using Oragon.AdaptivePool.Core.DependencyInjection;
 using Oragon.AdaptivePool.RabbitMQ.Builder;
@@ -80,10 +82,24 @@ public static class AdaptiveChannelPoolServiceCollectionExtensions
         var pairing = new ChannelLeasePairing();
         var tracker = new ConnectionChannelTracker();
 
+        // Logger is resolved on the first Factory call (which receives sp) and cached for
+        // subsequent Release calls (which do not). Volatile read on a reference type is
+        // safe — worst case is a redundant resolve from a second concurrent Factory call.
+        ILogger? cachedLogger = null;
+
         services.AddAdaptivePool<IChannel>(name, builder =>
         {
             builder
-                .Factory((sp, ct) => CreateChannelWithSpreadAsync(sp, connectionPoolName, chBuilder, pairing, tracker, ct))
+                .Factory((sp, ct) =>
+                {
+                    if (cachedLogger is null)
+                    {
+                        cachedLogger = sp.GetService<ILoggerFactory>()
+                                          ?.CreateLogger("Oragon.AdaptivePool.RabbitMQ")
+                                       ?? (ILogger)NullLogger.Instance;
+                    }
+                    return CreateChannelWithSpreadAsync(sp, connectionPoolName, chBuilder, pairing, tracker, ct);
+                })
                 .BeforeUse((ch, _) =>
                 {
                     if (!ch.IsOpen)
@@ -96,6 +112,11 @@ public static class AdaptiveChannelPoolServiceCollectionExtensions
                     ValueTask.FromResult(ch.IsOpen ? PoolState.Healthy : PoolState.Unhealthy))
                 .Release(async (ch, ct) =>
                 {
+                    // Release runs after at least one Factory call (an item must exist to be
+                    // released). cachedLogger is therefore initialised; fall back to NullLogger
+                    // defensively to keep this hook non-throwing.
+                    var logger = cachedLogger ?? NullLogger.Instance;
+
                     try
                     {
                         await ch.CloseAsync(ct).ConfigureAwait(false);
@@ -104,7 +125,20 @@ public static class AdaptiveChannelPoolServiceCollectionExtensions
                     {
                         // Swallow close errors — channel is being discarded regardless.
                     }
-                    await ch.DisposeAsync().ConfigureAwait(false);
+
+                    // CR-01: DisposeAsync was unguarded — a throw silently leaked the
+                    // tracker slot, the pairing entry, AND the connection lease (because
+                    // Core's Release call sites swallow all hook exceptions, no diagnostic
+                    // ever fired). Guard it so the tracker/pairing/lease cleanup below
+                    // ALWAYS runs.
+                    try
+                    {
+                        await ch.DisposeAsync().ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.ChannelDisposeFailed(name, ex);
+                    }
 
                     if (pairing.TryGet(ch, out var connLease) && connLease is not null)
                     {
@@ -112,7 +146,23 @@ public static class AdaptiveChannelPoolServiceCollectionExtensions
                         // does not see the connection as still-saturated.
                         tracker.ReleaseSlot(connLease.Value);
                         pairing.TryRemove(ch);
-                        await connLease.DisposeAsync().ConfigureAwait(false);
+                        try
+                        {
+                            await connLease.DisposeAsync().ConfigureAwait(false);
+                        }
+                        catch
+                        {
+                            // Don't mask earlier exceptions — the lease's own dispose path
+                            // already logs via Core's diagnostics.
+                        }
+                    }
+                    else
+                    {
+                        // IN-01: pairing missing on Release — invariant violation. The
+                        // tracker slot for the underlying connection cannot be decremented
+                        // and the connection lease (if any) is leaked. Should never happen
+                        // under normal flow; if it does, log Debug for operator visibility.
+                        logger.UnpairedChannelRelease(name);
                     }
                 })
                 .WithBounds(chBuilder.MinSize, chBuilder.MaxSize, chBuilder.InitialSize)

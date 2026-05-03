@@ -69,6 +69,10 @@ public static class AdaptiveConnectionPoolServiceCollectionExtensions
         var poolBuilder = new AdaptiveConnectionPoolBuilder();
         configurePool(poolBuilder);
 
+        // CR-01 mirror: cache a logger from the first Factory call so the Release hook
+        // can surface DisposeAsync failures even though it doesn't receive an IServiceProvider.
+        ILogger? cachedLogger = null;
+
         services.AddAdaptivePool<IConnection>(name, builder =>
         {
             builder
@@ -78,6 +82,7 @@ public static class AdaptiveConnectionPoolServiceCollectionExtensions
                     var loggerFactory = sp.GetService<ILoggerFactory>();
                     var logger = loggerFactory?.CreateLogger("Oragon.AdaptivePool.RabbitMQ")
                                  ?? (ILogger)NullLogger.Instance;
+                    cachedLogger ??= logger;
                     ConnectionFactoryResolver.ForceAutomaticRecoveryDisabled(factory, logger, name);
                     return await factory.CreateConnectionAsync(ct).ConfigureAwait(false);
                 })
@@ -94,7 +99,19 @@ public static class AdaptiveConnectionPoolServiceCollectionExtensions
                         // RESEARCH Pitfall A: swallow close errors; the pool already considers
                         // the item discarded. The DisposeAsync below releases unmanaged state.
                     }
-                    await conn.DisposeAsync().ConfigureAwait(false);
+                    // CR-01 (lower-impact mirror): guard DisposeAsync so a throw cannot
+                    // escape the Release hook. No tracker/pairing to corrupt here, but a
+                    // raised exception is still wrapped + swallowed by Core's call sites
+                    // with zero observability — log via EventId 2004 for parity.
+                    try
+                    {
+                        await conn.DisposeAsync().ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        var disposeLogger = cachedLogger ?? NullLogger.Instance;
+                        disposeLogger.ConnectionDisposeFailed(name, ex);
+                    }
                 })
                 .WithBounds(poolBuilder.MinSize, poolBuilder.MaxSize, poolBuilder.InitialSize)
                 .IdleTimeout(poolBuilder.IdleTimeout);
