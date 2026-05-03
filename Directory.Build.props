@@ -12,10 +12,27 @@
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
     <Deterministic>true</Deterministic>
     <DeterministicSourcePaths Condition="'$(CI)' == 'true'">true</DeterministicSourcePaths>
-    <Authors>Oragon</Authors>
-    <Company>Oragon</Company>
-    <Copyright>Copyright © Oragon</Copyright>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/oragon/Oragon.AdaptivePool</RepositoryUrl>
+
+    <!-- Phase 4 Plan 01: package metadata defaults applied repo-wide.
+         Per-csproj overrides PackageId/Description/PackageTags. -->
+    <PackageProjectUrl>https://github.com/oragon/Oragon.AdaptivePool</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <Authors>Luiz Carlos Faria</Authors>
+    <Company>Oragon</Company>
+    <Copyright>Copyright © 2026 Luiz Carlos Faria and contributors</Copyright>
   </PropertyGroup>
+
+  <!-- Phase 4 Plan 01: pack the repo-root icon into every packable project automatically.
+       The per-project README is added per-csproj (different file per package). -->
+  <ItemGroup Condition="'$(IsPackable)' == 'true'">
+    <None Include="$(MSBuildThisFileDirectory)icon.png"
+          Pack="true"
+          PackagePath="\"
+          Visible="false" />
+  </ItemGroup>
 </Project>
