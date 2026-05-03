@@ -87,6 +87,7 @@ public class ConnectionFactoryResolverTests
     }
 
     [Fact]
+    [Obsolete("Tests obsolete API for back-compat coverage")]
     public void ForceAutomaticRecoveryDisabled_LogsWarning_AndOverridesToFalse_WhenTrue()
     {
         var captured = new CapturedLogEntries();
@@ -102,6 +103,7 @@ public class ConnectionFactoryResolverTests
     }
 
     [Fact]
+    [Obsolete("Tests obsolete API for back-compat coverage")]
     public void ForceAutomaticRecoveryDisabled_NoOp_WhenAlreadyFalse()
     {
         var captured = new CapturedLogEntries();
@@ -116,6 +118,7 @@ public class ConnectionFactoryResolverTests
     }
 
     [Fact]
+    [Obsolete("Tests obsolete API for back-compat coverage")]
     public void ForceAutomaticRecoveryDisabled_NoLog_WhenInterfaceOnly_NotConcreteFactory()
     {
         // The override only applies when the resolved factory is the concrete ConnectionFactory.
@@ -128,6 +131,96 @@ public class ConnectionFactoryResolverTests
 
         ConnectionFactoryResolver.ForceAutomaticRecoveryDisabled(fakeFactory, logger, "p1");
 
+        captured.ByEventId(2001).Should().BeEmpty();
+    }
+
+    // === WR-02: ApplyAutomaticRecoveryOverride (returns clone, does not mutate) ===
+
+    [Fact]
+    public void ApplyAutomaticRecoveryOverride_ReturnsClone_WithRecoveryDisabled_PreservesOriginal()
+    {
+        var captured = new CapturedLogEntries();
+        using var lf = LoggerFactory.Create(b => b.AddProvider(captured).SetMinimumLevel(LogLevel.Trace));
+        var logger = lf.CreateLogger("test");
+        var original = new ConnectionFactory
+        {
+            AutomaticRecoveryEnabled = true,
+            HostName = "rabbit-host",
+            Port = 5673,
+            UserName = "u",
+            Password = "p",
+            VirtualHost = "/v",
+            RequestedHeartbeat = TimeSpan.FromSeconds(45),
+        };
+
+        var result = ConnectionFactoryResolver.ApplyAutomaticRecoveryOverride(original, logger, "p1");
+
+        // The clone has recovery disabled.
+        result.Should().BeOfType<ConnectionFactory>();
+        var clone = (ConnectionFactory)result;
+        clone.AutomaticRecoveryEnabled.Should().BeFalse();
+        // Configuration was copied to the clone.
+        clone.HostName.Should().Be("rabbit-host");
+        clone.Port.Should().Be(5673);
+        clone.UserName.Should().Be("u");
+        clone.Password.Should().Be("p");
+        clone.VirtualHost.Should().Be("/v");
+        clone.RequestedHeartbeat.Should().Be(TimeSpan.FromSeconds(45));
+        // CRITICAL invariant — the shared singleton was NOT mutated.
+        original.AutomaticRecoveryEnabled.Should().BeTrue(
+            "WR-02: the shared registered ConnectionFactory must NOT be mutated by the override");
+        clone.Should().NotBeSameAs(original);
+        captured.ByEventId(2001).Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void ApplyAutomaticRecoveryOverride_AlreadyDisabled_ReturnsSame_NoLog()
+    {
+        var captured = new CapturedLogEntries();
+        using var lf = LoggerFactory.Create(b => b.AddProvider(captured).SetMinimumLevel(LogLevel.Trace));
+        var logger = lf.CreateLogger("test");
+        var cf = new ConnectionFactory { AutomaticRecoveryEnabled = false };
+
+        var result = ConnectionFactoryResolver.ApplyAutomaticRecoveryOverride(cf, logger, "p1");
+
+        result.Should().BeSameAs(cf, "no clone needed when already configured correctly");
+        captured.ByEventId(2001).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ApplyAutomaticRecoveryOverride_LogsOnEveryAcquire_NotJustFirst()
+    {
+        // WR-02: with the mutation-based fix, the warning fired only on the first acquire
+        // because subsequent calls saw AutomaticRecoveryEnabled=false. With the clone-based
+        // fix, the shared factory is never mutated, so EVERY override emits the warning —
+        // keeping the misconfiguration visible until the consumer fixes it.
+        var captured = new CapturedLogEntries();
+        using var lf = LoggerFactory.Create(b => b.AddProvider(captured).SetMinimumLevel(LogLevel.Trace));
+        var logger = lf.CreateLogger("test");
+        var cf = new ConnectionFactory { AutomaticRecoveryEnabled = true };
+
+        for (int i = 0; i < 5; i++)
+        {
+            ConnectionFactoryResolver.ApplyAutomaticRecoveryOverride(cf, logger, "p1");
+        }
+
+        cf.AutomaticRecoveryEnabled.Should().BeTrue("shared instance not mutated");
+        captured.ByEventId(2001).Should().HaveCount(5,
+            "every override must log so a misconfigured factory keeps producing diagnostic output");
+    }
+
+    [Fact]
+    public void ApplyAutomaticRecoveryOverride_ReturnsInputUnchanged_WhenNotConcreteFactory()
+    {
+        // For a custom IConnectionFactory we have no contract to override; return as-is.
+        var captured = new CapturedLogEntries();
+        using var lf = LoggerFactory.Create(b => b.AddProvider(captured).SetMinimumLevel(LogLevel.Trace));
+        var logger = lf.CreateLogger("test");
+        var fakeFactory = Substitute.For<IConnectionFactory>();
+
+        var result = ConnectionFactoryResolver.ApplyAutomaticRecoveryOverride(fakeFactory, logger, "p1");
+
+        result.Should().BeSameAs(fakeFactory);
         captured.ByEventId(2001).Should().BeEmpty();
     }
 

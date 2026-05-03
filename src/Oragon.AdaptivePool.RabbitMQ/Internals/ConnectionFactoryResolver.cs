@@ -1,3 +1,4 @@
+using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -69,11 +70,80 @@ internal static class ConnectionFactoryResolver
     }
 
     /// <summary>
-    /// Forces <see cref="ConnectionFactory.AutomaticRecoveryEnabled"/> to <c>false</c> when the
-    /// resolved factory is a concrete <see cref="ConnectionFactory"/> with recovery enabled,
-    /// emitting EventId=2001 Warning log. The pool owns connection lifecycle, so client-side
-    /// auto-recovery would race the pool's own discard/replace path (RESEARCH Pitfall A).
+    /// Returns an <see cref="IConnectionFactory"/> safe for connection creation with
+    /// <see cref="ConnectionFactory.AutomaticRecoveryEnabled"/> forced to <c>false</c>.
     /// </summary>
+    /// <remarks>
+    /// <para>WR-02 fix: when the resolved factory is a concrete <see cref="ConnectionFactory"/>
+    /// with recovery enabled, we no longer mutate the shared singleton in-place — instead
+    /// we return a per-acquire clone with all writable public properties copied and only
+    /// <c>AutomaticRecoveryEnabled</c> overridden. This preserves any other code path
+    /// holding a reference to the same registered factory (side connections, multi-pool
+    /// scenarios, test helpers). EventId=2001 Warning is emitted on EVERY acquire that
+    /// overrides (not just the first), so the issue stays observable and the consumer
+    /// is encouraged to set <c>AutomaticRecoveryEnabled = false</c> in their factory
+    /// configuration up front.</para>
+    /// <para>Mode 2 (closure) creates a fresh ConnectionFactory per Resolve call so this
+    /// path is unnecessary there; the override still applies to keep behaviour uniform.</para>
+    /// <para>For non-<see cref="ConnectionFactory"/> implementations (a custom
+    /// <see cref="IConnectionFactory"/>) this method is a no-op — the consumer owns the
+    /// recovery semantics and we have no contract to override them.</para>
+    /// </remarks>
+    public static IConnectionFactory ApplyAutomaticRecoveryOverride(IConnectionFactory factory, ILogger logger, string poolName)
+    {
+        ArgumentNullException.ThrowIfNull(factory);
+        ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(poolName);
+
+        if (factory is not ConnectionFactory cf)
+        {
+            // Custom IConnectionFactory implementation — cannot inspect or override.
+            return factory;
+        }
+
+        if (!cf.AutomaticRecoveryEnabled)
+        {
+            // Already configured correctly — no clone, no log.
+            return cf;
+        }
+
+        // EventId 2001 fires on every override (per WR-02), not just the first acquire,
+        // so a misconfigured factory keeps producing diagnostic output until corrected.
+        logger.AutomaticRecoveryOverridden(poolName);
+
+        // Reflection-based clone: copy every writable instance property. Robust against
+        // future ConnectionFactory additions (we cannot enumerate hardcoded fields without
+        // risking silent loss of new configuration on RabbitMQ.Client upgrades).
+        var clone = new ConnectionFactory();
+        foreach (var prop in typeof(ConnectionFactory)
+                                 .GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            if (!prop.CanRead || !prop.CanWrite) continue;
+            // Skip indexers.
+            if (prop.GetIndexParameters().Length > 0) continue;
+            try
+            {
+                var value = prop.GetValue(cf);
+                prop.SetValue(clone, value);
+            }
+            catch
+            {
+                // Property may throw on get/set under certain configurations (e.g. Uri
+                // with no HostName). Best-effort copy: skip and continue.
+            }
+        }
+        clone.AutomaticRecoveryEnabled = false;
+        return clone;
+    }
+
+    /// <summary>
+    /// Legacy API kept for source compatibility. Prefer
+    /// <see cref="ApplyAutomaticRecoveryOverride"/> which returns a clone instead of
+    /// mutating the shared instance (WR-02). This method now delegates to the clone path
+    /// AND mirrors the recovery flag onto the input for callers that still expect the
+    /// observable side effect — but production code should use the new API.
+    /// </summary>
+    [Obsolete("Use ApplyAutomaticRecoveryOverride which returns a clone (WR-02). This method mutates the shared factory.")]
     public static void ForceAutomaticRecoveryDisabled(IConnectionFactory factory, ILogger logger, string poolName)
     {
         ArgumentNullException.ThrowIfNull(factory);

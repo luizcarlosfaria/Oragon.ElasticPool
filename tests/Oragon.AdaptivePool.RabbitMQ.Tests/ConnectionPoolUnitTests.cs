@@ -148,19 +148,16 @@ public class ConnectionPoolUnitTests
     [Fact]
     public async Task AutomaticRecoveryOverride_LogsWarning_OnFirstAcquire()
     {
-        // Use the closure mode so a real ConnectionFactory flows through; we sub IConnection
-        // by overriding the factory via keyed registration AFTER the closure ran. Actually,
-        // simpler: use closure mode but then the resolver returns a real ConnectionFactory
-        // which would try to open a real socket. Instead: register a keyed ConnectionFactory
-        // (concrete) so ForceAutomaticRecoveryDisabled detects AutomaticRecoveryEnabled=true
-        // and overrides it, AND sub the CreateConnectionAsync via... wait — the resolver
-        // returns the keyed factory directly. ConnectionFactory.CreateConnectionAsync would
-        // actually open a socket. So we must intercept differently.
+        // WR-02: the override no longer MUTATES the shared singleton — it returns a clone
+        // with AutomaticRecoveryEnabled=false for the connection-creation call only. The
+        // shared registered factory keeps its original AutomaticRecoveryEnabled=true so
+        // any side-channel code holding a reference is unaffected. EventId 2001 fires on
+        // EVERY acquire that overrides (not just the first).
         //
-        // Approach: register concrete ConnectionFactory as keyed IConnectionFactory; the
-        // factory hook calls CreateConnectionAsync which fails (no broker) — but the
-        // Warning EventId 2001 is emitted BEFORE CreateConnectionAsync (per resolver code).
-        // We accept the connect failure, just assert the log entry was captured.
+        // We register a concrete ConnectionFactory pointing at port 1 (no broker); the
+        // resolver returns it from the keyed singleton mode, the override clones it
+        // before calling CreateConnectionAsync, and the connection attempt fails — but
+        // the EventId 2001 Warning must already be in the captured log.
         var name = Name();
         var captured = new CapturedLogEntries();
 
@@ -179,8 +176,6 @@ public class ConnectionPoolUnitTests
         await using var sp = services.BuildServiceProvider();
         var pool = sp.GetRequiredKeyedService<IAdaptivePool<IConnection>>(name);
 
-        // Acquire will fail (no broker on port 1) but the override + log run synchronously
-        // BEFORE CreateConnectionAsync is awaited.
         try
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
@@ -191,7 +186,11 @@ public class ConnectionPoolUnitTests
             // expected — the broker connection fails
         }
 
-        captured.ByEventId(2001).Should().NotBeEmpty("Warning EventId=2001 must be emitted when AutomaticRecoveryEnabled=true is overridden");
-        concreteFactory.AutomaticRecoveryEnabled.Should().BeFalse("override forces it to false at every acquire");
+        captured.ByEventId(2001).Should().NotBeEmpty(
+            "Warning EventId=2001 must be emitted when AutomaticRecoveryEnabled=true is overridden");
+
+        // WR-02 invariant: shared factory MUST NOT be mutated.
+        concreteFactory.AutomaticRecoveryEnabled.Should().BeTrue(
+            "shared singleton factory must not be mutated; override applies to a per-acquire clone (WR-02)");
     }
 }

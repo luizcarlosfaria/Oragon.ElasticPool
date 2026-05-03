@@ -83,8 +83,10 @@ public static class AdaptiveConnectionPoolServiceCollectionExtensions
                     var logger = loggerFactory?.CreateLogger("Oragon.AdaptivePool.RabbitMQ")
                                  ?? (ILogger)NullLogger.Instance;
                     cachedLogger ??= logger;
-                    ConnectionFactoryResolver.ForceAutomaticRecoveryDisabled(factory, logger, name);
-                    return await factory.CreateConnectionAsync(ct).ConfigureAwait(false);
+                    // WR-02: returns a clone (not the shared instance) when override fires,
+                    // so the consumer's factory is never mutated.
+                    var safeFactory = ConnectionFactoryResolver.ApplyAutomaticRecoveryOverride(factory, logger, name);
+                    return await safeFactory.CreateConnectionAsync(ct).ConfigureAwait(false);
                 })
                 .BeforeUse((conn, _) => ValueTask.FromResult(conn.IsOpen ? PoolState.Healthy : PoolState.Unhealthy))
                 .Check((conn, _) => ValueTask.FromResult(conn.IsOpen ? PoolState.Healthy : PoolState.Unhealthy))
