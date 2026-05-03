@@ -1,5 +1,7 @@
+using System.Collections.Concurrent;
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using NSubstitute;
 using Oragon.AdaptivePool.Core.Abstractions;
 using Oragon.AdaptivePool.RabbitMQ.DependencyInjection;
 using Oragon.AdaptivePool.RabbitMQ.IntegrationTests.Fixtures;
@@ -35,10 +37,45 @@ public class ChannelSpreadIntegrationTests : IClassFixture<LowChannelMaxFixture>
         // connection pool therefore must accommodate the desired concurrent-channel count.
         // The eager-spread tracker still validates that the channel pool, under broker
         // channel_max=10 enforcement, distributes channel-creation calls across distinct
-        // IConnection refs — observable via Tracker count + connection pool growth.
+        // IConnection refs — observable via the spy IConnectionFactory below (WR-04).
+        //
+        // WR-04 fix: previously this test asserted `connPool.InUse + connPool.Available
+        // >= 5` which is trivially satisfied by InUse=50 alone (one lease per channel,
+        // even if all sat on the same IConnection). The reviewer flagged that this does
+        // not directly prove distinct-connection spread — proof was indirect (broker
+        // would error if a single connection exceeded channel_max=10). We now register
+        // a spy IConnectionFactory keyed by `connName` that wraps the real
+        // ConnectionFactory and records every IConnection produced; the assertion then
+        // counts DISTINCT connections actually used.
+        // The real ConnectionFactory (sealed in v7.x — cannot subclass) does the
+        // actual broker handshake. The spy IConnectionFactory delegates to it but
+        // records every distinct IConnection produced so the test can assert on
+        // direct spread instead of indirect broker enforcement.
+        //
+        // Because the spy is a substitute for IConnectionFactory (not a
+        // ConnectionFactory), the WR-02 override path is skipped: the resolver's
+        // `factory is ConnectionFactory` check fails on the substitute and it is
+        // returned as-is. The spy's CreateConnectionAsync fires for every connection.
+        var realFactory = new ConnectionFactory
+        {
+            Uri = new Uri(_fixture.ConnectionString),
+            AutomaticRecoveryEnabled = false,
+        };
+        var seenConnections = new ConcurrentDictionary<IConnection, byte>();
+        var spy = Substitute.For<IConnectionFactory>();
+        spy.CreateConnectionAsync(Arg.Any<CancellationToken>())
+            .Returns(async ci =>
+            {
+                var ct = ci.Arg<CancellationToken>();
+                var conn = await realFactory.CreateConnectionAsync(ct).ConfigureAwait(false);
+                seenConnections.TryAdd(conn, 0);
+                return conn;
+            });
+
         var services = new ServiceCollection();
+        services.AddKeyedSingleton<IConnectionFactory>(connName, (_, _) => spy);
         services.AddAdaptiveConnectionPool(connName,
-            cf => cf.Uri = new Uri(_fixture.ConnectionString),
+            configureFactory: null,
             p => p.WithBounds(0, 64, 0));
         services.AddAdaptiveChannelPool(chPoolName, connName, p => p
             .WithBounds(0, 64, 0)
@@ -46,7 +83,6 @@ public class ChannelSpreadIntegrationTests : IClassFixture<LowChannelMaxFixture>
 
         await using var sp = services.BuildServiceProvider();
         var chPool = sp.GetRequiredKeyedService<IAdaptivePool<IChannel>>(chPoolName);
-        var connPool = sp.GetRequiredKeyedService<IAdaptivePool<IConnection>>(connName);
 
         // Acquire 50 channels — must spread across multiple connections (broker enforces
         // channel_max=10, so a single connection refusing a 11th channel would error if
@@ -64,14 +100,20 @@ public class ChannelSpreadIntegrationTests : IClassFixture<LowChannelMaxFixture>
             // proving the pool spread channels across enough distinct IConnection refs.
             leases.Should().AllSatisfy(l => l.Value.IsOpen.Should().BeTrue());
 
-            // Connection pool must have grown to at least ceil(50/10)=5 distinct connections.
-            var totalConnections = connPool.InUse + connPool.Available;
-            totalConnections.Should().BeGreaterThanOrEqualTo(5,
-                $"50 channels with broker channel_max=10 must spread to ≥5 connections (observed InUse={connPool.InUse}, Available={connPool.Available})");
+            // WR-04: count DISTINCT IConnection instances that the spy factory
+            // produced. With 50 channels and channel_max=10 the channel pool MUST
+            // have created at least ceil(50/10) = 5 distinct connections — otherwise
+            // the broker would have rejected channel creation on an over-saturated
+            // connection (which is the indirect proof previously relied on).
+            var distinctConnections = seenConnections.Count;
+            distinctConnections.Should().BeGreaterThanOrEqualTo(5,
+                $"50 channels with channel_max=10 must spread across >=5 distinct IConnection " +
+                $"instances (observed {distinctConnections})");
         }
         finally
         {
             foreach (var l in leases) await l.DisposeAsync();
         }
     }
+
 }
