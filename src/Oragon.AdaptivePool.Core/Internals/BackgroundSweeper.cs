@@ -147,13 +147,19 @@ internal sealed class BackgroundSweeper<T> : IAsyncDisposable where T : notnull
             && _pool.CurrentTotal > _options.MinSize)
         {
             var now = _options.TimeProvider.GetUtcNow();
-            if (_pool.Idle.TryPeek(out var head))
+            if (_pool.Idle.TryPeek(out var head)
+                && head.LastReturnedAt + _options.IdleTimeout <= now)
             {
-                if (head.LastReturnedAt + _options.IdleTimeout <= now)
+                // CR-01 fix: ConcurrentQueue<T> has no atomic conditional dequeue. Between TryPeek
+                // and TryDequeue, a consumer can acquire the head and a different (freshly-returned)
+                // entry can move to the head. We MUST validate the dequeued item independently.
+                // IR-01 fix: snapshot pool.size_before BEFORE TryDequeue so a concurrent grow
+                // cannot inflate the tag value reported in the Pool.Shrink span.
+                var oldTotal = _pool.CurrentTotal;
+                if (_pool.Idle.TryDequeue(out var evict))
                 {
-                    if (_pool.Idle.TryDequeue(out var evict))
+                    if (evict.LastReturnedAt + _options.IdleTimeout <= now)
                     {
-                        var oldTotal = _pool.CurrentTotal;
                         _pool.DecrementTotal();
                         var newTotal = _pool.CurrentTotal;
                         using var shrinkSpan = _pool.Telemetry.StartShrinkSpan(_options.PoolName, oldTotal, newTotal);
@@ -165,6 +171,13 @@ internal sealed class BackgroundSweeper<T> : IAsyncDisposable where T : notnull
                         _pool.Log.Shrunk(_options.PoolName, oldTotal, newTotal);
                         shrinkSpan?.SetTag(PoolMeterNames.OutcomeTag, "shrunk");
                         shrunk = 1;
+                    }
+                    else
+                    {
+                        // Item is fresh (not actually stale) — re-enqueue at tail to preserve it.
+                        // Minor ordering churn at sweep cadence is acceptable; the alternative
+                        // (evicting an item that was just returned) destroys an in-use resource.
+                        _pool.Idle.Enqueue(evict);
                     }
                 }
             }
