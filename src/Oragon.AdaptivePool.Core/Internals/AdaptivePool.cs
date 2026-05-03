@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Threading.Channels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -81,6 +82,12 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
     internal WaitDurationHistogram WaitHistogram => _waitHistogram;
     internal SweepBackoffState BackoffState => _backoffState;
     internal BackgroundSweeper<T> Sweeper => _sweeper;
+
+    // Plan 02 — Telemetry/Log accessors for the BackgroundSweeper shrink/health-check pass.
+    internal TelemetryEmitter Telemetry => _telemetry;
+    internal ILogger Log => _log;
+    /// <summary>Sweeper-only helper: decrements the live-item counter by one (shrink pass owns dequeue+decrement).</summary>
+    internal void DecrementTotal() => Interlocked.Decrement(ref _total);
 
     public Task ReadyAsync() => WarmupTask;
 
@@ -171,7 +178,28 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
     }
 
     public ValueTask<IPoolItem<T>> AcquireAsync(CancellationToken cancellationToken = default)
-        => AcquireAsyncCore(cancellationToken, retryCount: 0);
+    {
+        // Wrap the public path in a Pool.Acquire span. The span is null when no listener is
+        // attached (cheap no-op); outcome tagging happens in the helper.
+        var span = _telemetry.StartAcquireSpan();
+        return AcquireAsyncCoreWithSpan(span, cancellationToken, retryCount: 0);
+    }
+
+    private async ValueTask<IPoolItem<T>> AcquireAsyncCoreWithSpan(Activity? span, CancellationToken ct, int retryCount)
+    {
+        try
+        {
+            var item = await AcquireAsyncCore(ct, retryCount).ConfigureAwait(false);
+            span?.SetTag(PoolMeterNames.OutcomeTag, "ok");
+            return item;
+        }
+        catch (OperationCanceledException)
+        {
+            span?.SetTag(PoolMeterNames.OutcomeTag, "canceled");
+            throw;
+        }
+        finally { span?.Dispose(); }
+    }
 
     private async ValueTask<IPoolItem<T>> AcquireAsyncCore(CancellationToken cancellationToken, int retryCount)
     {
@@ -186,45 +214,31 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
             return await PrepareForUseAsync(entry, ct, cancellationToken, retryCount).ConfigureAwait(false);
         }
 
-        // Try to grow up to MaxSize (Phase 1 = on-demand creation up to MaxSize, no elastic signal).
-        while (true)
+        // Phase 2 composite-signal grow gate. Replace Phase 1's unconditional CAS-grow loop with
+        // a pressure consultation. The caller is counted AS-IF parked (waiters + 1) so the
+        // default `GrowOnWaiterCount = 1` keeps Phase 1's semantics: any thread reaching the
+        // slow path triggers grow. Higher GrowOnWaiterCount values delay grow until a real
+        // queue forms (CONTEXT D-01: tolerance to spikes). MinSize-respecting clause guarantees
+        // cold-start warmup still climbs to MinSize even when pressure says no-grow.
+        var waiters = Volatile.Read(ref _waitersCount) + 1;
+        var decision = _pressure.Evaluate(Volatile.Read(ref _total), waiters);
+
+        if (decision.ShouldGrow || Volatile.Read(ref _total) < _options.MinSize)
         {
-            int currentTotal = Volatile.Read(ref _total);
-            if (currentTotal >= _options.MaxSize) break;
-            if (Interlocked.CompareExchange(ref _total, currentTotal + 1, currentTotal) == currentTotal)
-            {
-                // Reservation succeeded. Build new item OUTSIDE any lock per HOOK-01.
-                T newItem;
-                try
-                {
-                    newItem = await _options.Factory(_services, ct).ConfigureAwait(false);
-                }
-                catch (Exception ex) when (ex is not OperationCanceledException)
-                {
-                    Interlocked.Decrement(ref _total); // counter rollback per PITFALLS Pitfall 3
-                    _telemetry.OnFactoryFailure();
-                    _log.FactoryFailed(_options.PoolName, ex);
-                    await _options.FailurePolicy.HandleAsync(default, FailureKind.FactoryThrew, ex, ct).ConfigureAwait(false);
-                    throw;
-                }
-                catch (OperationCanceledException)
-                {
-                    Interlocked.Decrement(ref _total);
-                    throw;
-                }
-                var freshNow = _time.GetUtcNow();
-                var fresh = new PoolEntry<T>(newItem, freshNow, freshNow);
-                return await PrepareForUseAsync(fresh, ct, cancellationToken, retryCount).ConfigureAwait(false);
-            }
-            // CAS failed → retry (another thread created an item or grew).
+            var grew = await TryGrowAsync(decision, ct, cancellationToken).ConfigureAwait(false);
+            if (grew is not null)
+                return await PrepareForUseAsync(grew, ct, cancellationToken, retryCount).ConfigureAwait(false);
         }
 
-        // Pool is at MaxSize and exhausted.
+        // Pool is exhausted (at MaxSize, or pressure said no-grow). Fork on WaitBehavior:
+        // Throw → PoolExhaustedException synchronously; Wait → park as a direct-handoff waiter.
         if (_options.WhenExhausted == WaitBehavior.Throw)
             throw new PoolExhaustedException(_options.MaxSize);
 
-        // WaitBehavior.Wait — direct-handoff waiter.
+        // WaitBehavior.Wait — direct-handoff waiter. Record wait duration into both the internal
+        // histogram (used by PressureSampler.P95) and the OTel histogram on every parked wait.
         var tcs = new TaskCompletionSource<PoolEntry<T>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var waitStart = _time.GetTimestamp();
         Interlocked.Increment(ref _waitersCount);
         try
         {
@@ -233,6 +247,9 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
         catch
         {
             Interlocked.Decrement(ref _waitersCount);
+            var elapsedOnError = _time.GetElapsedTime(waitStart);
+            _waitHistogram.Record(elapsedOnError);
+            _telemetry.OnAcquireWait(elapsedOnError);
             throw;
         }
 
@@ -259,6 +276,50 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
         finally
         {
             Interlocked.Decrement(ref _waitersCount);
+            var elapsed = _time.GetElapsedTime(waitStart);
+            _waitHistogram.Record(elapsed);
+            _telemetry.OnAcquireWait(elapsed);
+        }
+    }
+
+    /// <summary>
+    /// CAS-reserves a slot under MaxSize, calls Factory outside any lock, resets the cooldown
+    /// counter on success, emits Pool.Grow span/counter/log. Returns null when MaxSize is hit
+    /// or the CAS lost — caller falls through to the wait branch.
+    /// </summary>
+    private async ValueTask<PoolEntry<T>?> TryGrowAsync(GrowDecision decision, CancellationToken ct, CancellationToken callerCt)
+    {
+        int currentTotal = Volatile.Read(ref _total);
+        if (currentTotal >= _options.MaxSize) return null;
+        if (Interlocked.CompareExchange(ref _total, currentTotal + 1, currentTotal) != currentTotal) return null;
+
+        using var span = _telemetry.StartGrowSpan(_options.PoolName, decision);
+        try
+        {
+            var newItem = await _options.Factory(_services, ct).ConfigureAwait(false);
+            var growNow = _time.GetUtcNow();
+            var entry = new PoolEntry<T>(newItem, growNow, growNow);
+            Interlocked.Exchange(ref _sinceLastGrowTicks, 0);
+            _telemetry.OnGrow();
+            _log.Grew(_options.PoolName, currentTotal, currentTotal + 1,
+                decision.TrippedByWaiters, decision.TrippedByUtilization, decision.TrippedByP95);
+            span?.SetTag(PoolMeterNames.OutcomeTag, "grew");
+            return entry;
+        }
+        catch (OperationCanceledException)
+        {
+            Interlocked.Decrement(ref _total);
+            span?.SetTag(PoolMeterNames.OutcomeTag, "canceled");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            Interlocked.Decrement(ref _total);
+            _telemetry.OnFactoryFailure();
+            _log.FactoryFailed(_options.PoolName, ex);
+            span?.SetTag(PoolMeterNames.OutcomeTag, "factory_failed");
+            await _options.FailurePolicy.HandleAsync(default, FailureKind.FactoryThrew, ex, ct).ConfigureAwait(false);
+            throw;
         }
     }
 
@@ -335,6 +396,13 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
 
     // Called from PoolItem.DisposeAsync() — async return path (AfterUse can run async; Phase 1 default no-op).
     internal async ValueTask ReturnAsync(PoolEntry<T> entry)
+    {
+        using var span = _telemetry.StartReleaseSpan();
+        try { await ReturnAsyncCore(entry).ConfigureAwait(false); span?.SetTag(PoolMeterNames.OutcomeTag, "ok"); }
+        catch { span?.SetTag(PoolMeterNames.OutcomeTag, "canceled"); throw; }
+    }
+
+    private async ValueTask ReturnAsyncCore(PoolEntry<T> entry)
     {
         if (_options.AfterUse is { } afterUse)
         {
@@ -416,6 +484,11 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
 
             var growNow = _time.GetUtcNow();
             var entry = new PoolEntry<T>(newItem, growNow, growNow);
+            // Replacement-grow after AfterUse=Unhealthy. Tag all trip-flags false (this is not
+            // a pressure-driven grow). Counter accuracy: every PoolEntry creation goes through
+            // OnGrow / Grew so dashboards see the true grow rate.
+            _telemetry.OnGrow();
+            _log.Grew(_options.PoolName, currentTotal, currentTotal + 1, false, false, false);
             if (TryHandoff(entry)) return;
 
             // No waiter consumed it — return to idle (it'll be served on next acquire).
