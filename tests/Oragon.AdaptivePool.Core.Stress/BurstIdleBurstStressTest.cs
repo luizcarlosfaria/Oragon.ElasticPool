@@ -85,6 +85,15 @@ public class BurstIdleBurstStressTest
             "at least one grow recorded by pool.grow.count");
 
         // === Idle (drive sweep) ===
+        // IR-02 fix: re-prime the sweep loop after the burst before driving fake time. The
+        // 200 concurrent burst tasks and their Task.Yield() calls leave the sweep loop in an
+        // undefined position — possibly mid-tick. If we Advance(60s) immediately, the
+        // PeriodicTimer can queue a 2nd pending tick and the AdvanceAndAwaitTickAsync pattern
+        // below awaits the wrong TCS. The yield + 100ms wall-clock delay parks the sweep loop
+        // back at WaitForNextTickAsync deterministically.
+        await Task.Yield();
+        await Task.Delay(100);
+
         // To shrink: need cooldown elapsed (3 sweep windows since last grow) AND IdleTimeout passed.
         // First mark idle entries past IdleTimeout (60s). Then a series of sweep ticks (each 30s)
         // will count down the cooldown and gentle-decay-shrink one item per tick.
