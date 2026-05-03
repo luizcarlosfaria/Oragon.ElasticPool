@@ -193,4 +193,20 @@ public class ConnectionPoolUnitTests
         concreteFactory.AutomaticRecoveryEnabled.Should().BeTrue(
             "shared singleton factory must not be mutated; override applies to a per-acquire clone (WR-02)");
     }
+
+    [Fact]
+    public void AddAdaptiveConnectionPool_DoubleRegistration_Throws()
+    {
+        // IN-02: silent double-registration produces an inconsistent registration
+        // (first-wins pool singleton, last-wins builder). Throw to fail fast.
+        var name = Name();
+        var services = new ServiceCollection();
+        services.AddKeyedSingleton<IConnectionFactory>(name, (_, _) => FactoryReturning(MakeOpenConn()));
+        services.AddAdaptiveConnectionPool(name, configureFactory: null, p => p.WithBounds(0, 1, 0));
+
+        Action act = () => services.AddAdaptiveConnectionPool(name, configureFactory: null, p => p.WithBounds(0, 2, 0));
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*already registered*");
+    }
 }

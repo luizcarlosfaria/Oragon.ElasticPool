@@ -65,6 +65,21 @@ public static class AdaptiveConnectionPoolServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(name);
         ArgumentNullException.ThrowIfNull(configurePool);
 
+        // IN-02: fail-fast on double-registration. Core's AddAdaptivePool uses
+        // TryAddKeyedSingleton (first-wins) for the pool but additive Configure
+        // (last-wins) for the builder, so a second AddAdaptiveConnectionPool with
+        // the same name silently produces an inconsistent configuration: the
+        // outer DI singleton from the first call but the builder lambda from
+        // the second. Throw before any registration happens to make the bug
+        // loud rather than subtle.
+        if (services.Any(d => d.ServiceType == typeof(IAdaptivePool<IConnection>)
+                              && d.ServiceKey is string k && k == name))
+        {
+            throw new InvalidOperationException(
+                $"An adaptive connection pool named '{name}' is already registered. " +
+                "Call AddAdaptiveConnectionPool exactly once per name.");
+        }
+
         // Build the adapter-side builder once at registration to capture pool-shape settings.
         var poolBuilder = new AdaptiveConnectionPoolBuilder();
         configurePool(poolBuilder);

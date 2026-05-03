@@ -74,6 +74,17 @@ public static class AdaptiveChannelPoolServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(connectionPoolName);
         ArgumentNullException.ThrowIfNull(configurePool);
 
+        // IN-02: fail-fast on double-registration. See sister extension method
+        // AddAdaptiveConnectionPool for rationale (Core's TryAddKeyedSingleton
+        // + additive Configure produces a silently-inconsistent registration).
+        if (services.Any(d => d.ServiceType == typeof(IAdaptivePool<IChannel>)
+                              && d.ServiceKey is string k && k == name))
+        {
+            throw new InvalidOperationException(
+                $"An adaptive channel pool named '{name}' is already registered. " +
+                "Call AddAdaptiveChannelPool exactly once per name.");
+        }
+
         // Build the adapter-side builder once at registration to capture pool-shape settings.
         var chBuilder = new AdaptiveChannelPoolBuilder();
         configurePool(chBuilder);

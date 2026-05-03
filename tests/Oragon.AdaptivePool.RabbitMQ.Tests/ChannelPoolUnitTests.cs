@@ -332,6 +332,28 @@ public class ChannelPoolUnitTests
     }
 
     [Fact]
+    public void AddAdaptiveChannelPool_DoubleRegistration_Throws()
+    {
+        // IN-02: silent double-registration produces an inconsistent registration.
+        // Throw to fail fast.
+        var connName = CName();
+        var chPoolName = ChName();
+        var conn = MakeConn(MakeChannel());
+        var factory = Substitute.For<IConnectionFactory>();
+        factory.CreateConnectionAsync(Arg.Any<CancellationToken>()).Returns(_ => conn);
+
+        var services = new ServiceCollection();
+        services.AddKeyedSingleton<IConnectionFactory>(connName, (_, _) => factory);
+        services.AddAdaptiveConnectionPool(connName, null, p => p.WithBounds(0, 4, 0));
+        services.AddAdaptiveChannelPool(chPoolName, connName, p => p.WithBounds(0, 4, 0));
+
+        Action act = () => services.AddAdaptiveChannelPool(chPoolName, connName, p => p.WithBounds(0, 8, 0));
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*already registered*");
+    }
+
+    [Fact]
     public async Task CreateChannelThrows_ReleasesBorrowedConnectionSlot()
     {
         var connName = CName();
