@@ -9,6 +9,13 @@
     <OutputType>Exe</OutputType>
     <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
     <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+    <!--
+      xUnit1051 (advisory) requires every CT-accepting call inside a test to thread
+      TestContext.Current.CancellationToken through. Our tests own their CTS lifetimes
+      directly (per-acquire timeouts, cancellation matrices); the rule adds noise without
+      benefit at this scope. Suppress only inside the test project — Rule 3 fix during Plan 03.
+    -->
+    <NoWarn>$(NoWarn);xUnit1051</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="xunit.v3" />
@@ -18,6 +25,7 @@
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.Testing" />
     <PackageReference Include="coverlet.collector" PrivateAssets="all" />
   </ItemGroup>

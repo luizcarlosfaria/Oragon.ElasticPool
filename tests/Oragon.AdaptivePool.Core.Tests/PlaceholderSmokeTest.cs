@@ -1,15 +1,37 @@
 using AwesomeAssertions;
+using Microsoft.Extensions.DependencyInjection;
+using Oragon.AdaptivePool.Core.Abstractions;
+using Oragon.AdaptivePool.Core.DependencyInjection;
 using Xunit;
 
 namespace Oragon.AdaptivePool.Core.Tests;
 
-public class PlaceholderSmokeTest
+/// <summary>
+/// Always-on integration smoke covering the full DI + Acquire + Dispose roundtrip.
+/// Replaces Plan 01's trivial placeholder; proves the surface from <see cref="ServiceCollectionExtensions.AddAdaptivePool{T}"/>
+/// down to the engine's idle-queue accounting works end-to-end.
+/// </summary>
+public class PoolSmokeTests
 {
+    private sealed class Resource { }
+
     [Fact]
-    public void Toolchain_IsWired()
+    public async Task DI_Build_Acquire_Dispose_Roundtrip_Works()
     {
-        // Proves: xUnit v3 + MTP + AwesomeAssertions + Core ProjectReference all link.
-        // Will be deleted by Plan 02 once real tests exist.
-        true.Should().BeTrue();
+        var services = new ServiceCollection();
+        services.AddMetrics();
+        services.AddAdaptivePool<Resource>("smoke", b => b
+            .Factory((sp, ct) => ValueTask.FromResult(new Resource()))
+            .WithBounds(minSize: 0, maxSize: 1, initialSize: 0));
+        await using var sp = services.BuildServiceProvider();
+        var pool = sp.GetRequiredKeyedService<IAdaptivePool<Resource>>("smoke");
+
+        await using (var item = await pool.AcquireAsync())
+        {
+            item.Value.Should().NotBeNull();
+            pool.InUse.Should().Be(1);
+        }
+        pool.InUse.Should().Be(0);
+        pool.Available.Should().Be(1);
     }
 }

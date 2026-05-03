@@ -39,6 +39,11 @@
       Documented as Rule 1 deviation in SUMMARY.
     -->
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.Testing" Version="10.5.0" />
+    <!--
+      Plan 03 needed `services.AddMetrics()` (registers IMeterFactory) for telemetry
+      tests to attach a MetricCollector. The extension lives in Microsoft.Extensions.Diagnostics.
+    -->
+    <PackageVersion Include="Microsoft.Extensions.Diagnostics" Version="10.0.6" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
   </ItemGroup>
 </Project>
