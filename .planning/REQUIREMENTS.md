@@ -61,11 +61,11 @@ Requirements for initial release (v1.0). Each maps to roadmap phases.
 
 ### OSS — Open-Source Quality Bar
 
-- [ ] **OSS-01**: CI (GitHub Actions) com matriz de teste nos três TFMs (`net10.0`, `net9.0`, `net8.0`) executando unit + stress + integration (Testcontainers.RabbitMq) tests
+- [x] **OSS-01**: CI (GitHub Actions) com matriz de teste nos três TFMs (`net10.0`, `net9.0`, `net8.0`) executando unit + stress + integration (Testcontainers.RabbitMq) tests
 - [ ] **OSS-02**: README com quickstart, exemplo de telemetria com OpenTelemetry exporters, link para sample bursty publisher, e tabela comparativa vs `Microsoft.Extensions.ObjectPool`
-- [ ] **OSS-03**: Versionamento semântico (SemVer 2.0) automatizado via MinVer (tag-driven), changelog mantido manualmente
-- [ ] **OSS-04**: Pacotes NuGet publicados com symbol packages (`.snupkg`) e SourceLink (debug step-into nas fontes do GitHub)
-- [ ] **OSS-05**: `Microsoft.CodeAnalysis.PublicApiAnalyzers` ativo desde o início com `PublicAPI.Shipped.txt` / `PublicAPI.Unshipped.txt` versionados
+- [x] **OSS-03**: Versionamento semântico (SemVer 2.0) automatizado via MinVer (tag-driven), changelog mantido manualmente
+- [x] **OSS-04**: Pacotes NuGet publicados com symbol packages (`.snupkg`) e SourceLink (debug step-into nas fontes do GitHub)
+- [x] **OSS-05**: `Microsoft.CodeAnalysis.PublicApiAnalyzers` ativo desde o início com `PublicAPI.Shipped.txt` / `PublicAPI.Unshipped.txt` versionados
 
 ## v2 Requirements
 
@@ -133,11 +133,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RMQ-02 | Phase 3 | Complete |
 | RMQ-03 | Phase 3 | Complete |
 | RMQ-04 | Phase 3 | Complete |
-| OSS-01 | Phase 4 | Pending |
+| OSS-01 | Phase 4 | Complete |
 | OSS-02 | Phase 4 | Pending |
-| OSS-03 | Phase 4 | Pending |
-| OSS-04 | Phase 4 | Pending |
-| OSS-05 | Phase 4 | Pending |
+| OSS-03 | Phase 4 | Complete |
+| OSS-04 | Phase 4 | Complete |
+| OSS-05 | Phase 4 | Complete |
 
 **Coverage:**
 - v1 requirements: 30 total

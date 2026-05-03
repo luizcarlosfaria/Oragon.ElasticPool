@@ -24,7 +24,9 @@
   4. Pool exposes `Meter` named `"Oragon.AdaptivePool"` via `IMeterFactory` with at least the basic counters (`pool.acquire.count`, `pool.factory.failures`) and is consumable by an OTel listener
   5. Pool implements both `IDisposable` and `IAsyncDisposable` with drain semantics: stops accepting new `Acquire`, waits for in-flight items, then releases all pooled items via `Release` hook
   6. Eager warm-up to `InitialSize` is awaitable and cancellable; configuration `0 ≤ Min ≤ Initial ≤ Max` is validated at `.Build()` and throws on invalid bounds
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 04-01-PLAN.md — NuGet metadata + per-package READMEs + LICENSE + CHANGELOG + icon (OSS-02, OSS-03, OSS-04 metadata half)
+- [ ] 04-02-PLAN.md — CI evolution (RabbitMQ unit+integration) + release.yml + PublicAPI.Shipped freeze + final acceptance (OSS-01, OSS-03, OSS-04, OSS-05)
 
 ### Phase 2: Elasticity & Health
 **Goal**: Deliver the headline differentiator — composite-signal grow, hysteretic shrink, background health sweep — on top of the proven Phase 1 engine, with full observability and deterministic test coverage via FakeTimeProvider.
@@ -36,7 +38,9 @@
   3. Background sweeper runs `Check` hook on idle items via `PeriodicTimer`; under simulated downstream outage (sweep failures), sweep backs off exponentially (30s → 60s → 120s, capped at 5 min) instead of amplifying load
   4. Stress test (centuries of threads, thousands of acquire/release cycles) covering simultaneous grow/shrink/sweep paths completes without deadlocks, starvation, or counter inconsistency; coverage includes burst → idle → burst lifecycle
   5. ActivitySource `"Oragon.AdaptivePool"` emits spans for `Acquire`, `Release`, `HealthCheck`, `Grow`, `Shrink` using `HasListeners()` guard; `[LoggerMessage]` source-generated `ILogger<T>` entries fire on every state transition, factory failure, eviction, and policy decision (allocation-free verified by benchmark)
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 04-01-PLAN.md — NuGet metadata + per-package READMEs + LICENSE + CHANGELOG + icon (OSS-02, OSS-03, OSS-04 metadata half)
+- [ ] 04-02-PLAN.md — CI evolution (RabbitMQ unit+integration) + release.yml + PublicAPI.Shipped freeze + final acceptance (OSS-01, OSS-03, OSS-04, OSS-05)
 
 ### Phase 3: RabbitMQ Adapter
 **Goal**: Validate that Core's hook/policy abstractions are sufficient for a real, layered, lifecycle-sensitive scenario (RabbitMQ IConnection + IChannel) — surface any Core gaps cheaply before NuGet publish, deliver the motivating bursty-publisher demo.
@@ -63,7 +67,9 @@
   3. Tagging `v1.0.0` on `main` triggers MinVer-driven SemVer 2.0 build producing `Oragon.AdaptivePool.Core.1.0.0.nupkg` + `.snupkg` and `Oragon.AdaptivePool.RabbitMQ.1.0.0.nupkg` + `.snupkg` published to NuGet.org with SourceLink metadata enabling step-into to GitHub source
   4. `Microsoft.CodeAnalysis.PublicApiAnalyzers` is active on both packages with `PublicAPI.Shipped.txt` baselined for v1.0 surface; any future public API change requires explicit `PublicAPI.Unshipped.txt` update or build fails
   5. Consumer following the README quickstart can install both packages from NuGet.org, write a 20-line bursty publisher, and observe pool metrics in Aspire Dashboard or any OTel collector without additional configuration
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 04-01-PLAN.md — NuGet metadata + per-package READMEs + LICENSE + CHANGELOG + icon (OSS-02, OSS-03, OSS-04 metadata half)
+- [ ] 04-02-PLAN.md — CI evolution (RabbitMQ unit+integration) + release.yml + PublicAPI.Shipped freeze + final acceptance (OSS-01, OSS-03, OSS-04, OSS-05)
 
 ## Progress
 

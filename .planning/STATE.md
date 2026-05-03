@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: Release
 status: verifying
 stopped_at: End of Plan 03 (commits 58c0916, 481fec1, c7b6191). Self-check PASSED. 70 unit tests + 1 stress test green on net8/9/10; 92.8 % line coverage on Core.
-last_updated: "2026-05-03T18:57:38.352Z"
+last_updated: "2026-05-03T21:09:43.441Z"
 last_activity: 2026-05-03
 progress:
-  total_phases: 4
+  total_phases: 1
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  total_plans: 2
+  completed_plans: 2
   percent: 100
 ---
 
@@ -30,7 +30,7 @@ progress:
 **Plan:** 3 of 3 (Plan 01 complete: components + builder + engine wiring)
 **Status:** Phase complete — ready for verification
 **Last Activity:** 2026-05-03
-**Progress:** [░░░░░░░░░░] 0%
+**Progress:** [██████████] 100%
 
 ## Performance Metrics
 
@@ -48,6 +48,7 @@ progress:
 | 1 | 03 | ~22m   | 3 | 21 | 3 |
 | 2 | 01 | ~7m    | 3 | 11 | 3 |
 | Phase 02-elasticity-health P02 | ~6m | 3 tasks | 5 files |
+| Phase 04 P02 | 12 minutes | 4 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,10 @@ These cannot be changed without breaking API:
 - [Phase ?]: WaitBehavior.Throw fires when pressure says no-grow even below MaxSize; intentional Phase 2 elastic contract change
 - [Phase ?]: Sweep span uses HasListeners() guard explicitly; per-item HealthCheck spans use cheap StartActivity null-return path
 - [Phase ?]: Plan 03-03: lazy invalidation (Q1) and eager spread (Q2) empirically validated
+- [Phase ?]: release.yml is a separate workflow file (distinct triggers, concurrency, secret blast radius)
+- [Phase ?]: Coverage gate stays Core-only at 90%; RabbitMQ tests run without biasing the bar
+- [Phase ?]: release.yml rejects --skip-duplicate: re-pushing same version must surface loudly
+- [Phase ?]: v1.0 PublicAPI frozen via LC_ALL=C deterministic sort (Core 102 lines, RabbitMQ 39 lines)
 
 ### Open Todos
 
@@ -102,7 +107,7 @@ These cannot be changed without breaking API:
 
 ## Session Continuity
 
-**Last session:** 2026-05-03T18:57:32.692Z
+**Last session:** 2026-05-03T21:09:03.663Z
 **Stopped at:** End of Plan 03 (commits 58c0916, 481fec1, c7b6191). Self-check PASSED. 70 unit tests + 1 stress test green on net8/9/10; 92.8 % line coverage on Core.
 **Resume file:** None
 **Next action:** Plan Phase 2 (Elasticity + Sweeper) — see Open Todos.
