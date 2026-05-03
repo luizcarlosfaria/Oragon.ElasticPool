@@ -20,7 +20,11 @@ internal sealed class BackgroundSweeper<T> : IAsyncDisposable where T : notnull
     // Test-only probe; resets each tick. NOT exposed via PublicAPI — internal-only signal for
     // Plan 03 tests via [InternalsVisibleTo].
     private TaskCompletionSource _tickCompleted = new(TaskCreationOptions.RunContinuationsAsynchronously);
-    internal Task TickCompleted => _tickCompleted.Task;
+    // WR-03 fix: _tickCompleted is updated via Interlocked.Exchange on the sweep thread; readers
+    // (test threads) MUST use Volatile.Read so they observe the freshly-installed TCS rather than
+    // a stale (already-completed) one from a prior tick. Without this fence, ARM64 readers can
+    // see the old TCS, await it, and observe synchronous completion — bypassing the wait.
+    internal Task TickCompleted => Volatile.Read(ref _tickCompleted).Task;
     internal long TickCount; // diagnostic counter; Volatile.Read in tests
 
     public BackgroundSweeper(AdaptivePool<T> pool, Builder.AdaptivePoolOptions<T> options, SweepBackoffState backoff, CancellationToken lifetimeToken)

@@ -135,6 +135,10 @@ internal sealed class TelemetryEmitter : IDisposable
 
     public Activity? StartHealthCheckSpan(string poolName)
     {
+        // WR-04 fix: invoked once per idle item inside the sweep health-check loop (O(n) per tick).
+        // Apply the same HasListeners() guard as StartSweepSpan so when no OTel listener is
+        // attached we short-circuit before paying the StartActivity listener-walk cost.
+        if (!ActivitySource.HasListeners()) return null;
         var a = ActivitySource.StartActivity("Pool.HealthCheck", ActivityKind.Internal);
         a?.SetTag(PoolMeterNames.PoolNameTag, poolName);
         return a;
