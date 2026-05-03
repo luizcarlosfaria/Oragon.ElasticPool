@@ -6,7 +6,7 @@
 
 ## Phases
 
-- [ ] **Phase 1: Core Skeleton — Fixed-Size Pool** - Public API surface, builder, fixed-size engine with hooks, DI, basic telemetry, all unrecoverable design decisions locked in
+- [x] **Phase 1: Core Skeleton — Fixed-Size Pool** - Public API surface, builder, fixed-size engine with hooks, DI, basic telemetry, all unrecoverable design decisions locked in
 - [ ] **Phase 2: Elasticity & Health** - Background sweeper, composite-signal grow, hysteretic shrink, health checks, full Meter/ActivitySource/ILogger telemetry, stress validation
 - [ ] **Phase 3: RabbitMQ Adapter** - Layered IConnection/IChannel pools validating Core abstractions against a real lifecycle-sensitive scenario, bursty publisher sample
 - [ ] **Phase 4: Polish & v1.0 Release** - OSS hardening, CI matrix, README + OTel example, MinVer + SourceLink + snupkg, PublicApiAnalyzers baseline, NuGet publish
@@ -66,7 +66,7 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Core Skeleton — Fixed-Size Pool | 2/3 | In Progress|  |
+| 1. Core Skeleton — Fixed-Size Pool | 3/3 | Complete | 2026-05-03 |
 | 2. Elasticity & Health | 0/0 | Not started | - |
 | 3. RabbitMQ Adapter | 0/0 | Not started | - |
 | 4. Polish & v1.0 Release | 0/0 | Not started | - |
