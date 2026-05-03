@@ -19,4 +19,8 @@
     <AdditionalFiles Include="PublicAPI.Shipped.txt" />
     <AdditionalFiles Include="PublicAPI.Unshipped.txt" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Phase 2: tests reach internal probes on AdaptivePool<T> + BackgroundSweeper<T>. -->
+    <InternalsVisibleTo Include="Oragon.AdaptivePool.Core.Tests" />
+  </ItemGroup>
 </Project>

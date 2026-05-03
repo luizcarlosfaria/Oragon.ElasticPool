@@ -27,6 +27,15 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
     private int _inUse;       // items currently checked out
     private int _lifecycle = (int)PoolLifecycle.Open;
 
+    // Phase 2 elasticity wiring (instantiated in ctor; behavior added in Plan 02 / Plan 03).
+    private readonly UtilizationSampler _utilSampler;
+    private readonly WaitDurationHistogram _waitHistogram;
+    private readonly PressureSampler<T> _pressure;
+    private readonly SweepBackoffState _backoffState;
+    private readonly BackgroundSweeper<T> _sweeper;
+    private int _waitersCount;          // tracked alongside _total/_inUse for PressureSampler.
+    private int _sinceLastGrowTicks;    // hysteresis cooldown counter (Plan 02 reads/resets).
+
     public Task WarmupTask { get; }
 
     public int MaxSize => _options.MaxSize;
@@ -48,8 +57,30 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
         var loggerFactory = services.GetService<ILoggerFactory>();
         _log = loggerFactory?.CreateLogger($"Oragon.AdaptivePool.{typeof(T).Name}") ?? NullLogger.Instance;
 
+        // Phase 2 wiring — components instantiated; sweep loop starts immediately.
+        _utilSampler = new UtilizationSampler(_time, options.UtilizationWindow, TimeSpan.FromSeconds(1));
+        _waitHistogram = new WaitDurationHistogram();
+        _pressure = new PressureSampler<T>(options, _utilSampler, _waitHistogram);
+        _backoffState = new SweepBackoffState(options.SweepInterval, options.MaxBackoff);
+        _sweeper = new BackgroundSweeper<T>(this, options, _backoffState, _lifetimeCts.Token);
+
         WarmupTask = WarmupAsync(_lifetimeCts.Token);
     }
+
+    // --- Internal probes consumed by BackgroundSweeper (Plan 01 stub) and Plan 02 grow/shrink. ---
+    internal void IncrementSinceLastGrowTicks() => Interlocked.Increment(ref _sinceLastGrowTicks);
+    internal int SinceLastGrowTicks => Volatile.Read(ref _sinceLastGrowTicks);
+    internal void ResetSinceLastGrowTicks() => Interlocked.Exchange(ref _sinceLastGrowTicks, 0);
+    internal int CurrentTotal => Volatile.Read(ref _total);
+    internal int WaitersCount => Volatile.Read(ref _waitersCount);
+    internal ConcurrentQueue<PoolEntry<T>> Idle => _idle;
+    internal Channel<TaskCompletionSource<PoolEntry<T>>> Waiters => _waiters;
+    internal AdaptivePoolOptions<T> Options => _options;
+    internal PressureSampler<T> Pressure => _pressure;
+    internal UtilizationSampler UtilSampler => _utilSampler;
+    internal WaitDurationHistogram WaitHistogram => _waitHistogram;
+    internal SweepBackoffState BackoffState => _backoffState;
+    internal BackgroundSweeper<T> Sweeper => _sweeper;
 
     public Task ReadyAsync() => WarmupTask;
 
@@ -66,7 +97,8 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
                 try
                 {
                     var item = await _options.Factory(_services, ct).ConfigureAwait(false);
-                    _idle.Enqueue(new PoolEntry<T>(item, _time.GetUtcNow()));
+                    var now = _time.GetUtcNow();
+                    _idle.Enqueue(new PoolEntry<T>(item, now, now));
                 }
                 catch (OperationCanceledException) when (ct.IsCancellationRequested)
                 {
@@ -131,6 +163,7 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
             }
             Interlocked.Increment(ref _inUse);
             _telemetry.OnAcquire();
+            _utilSampler.Sample(Volatile.Read(ref _inUse), Volatile.Read(ref _total));
             return new PoolItem<T>(this, entry);
         }
         // Sync NEVER blocks (per CONTEXT.md + RESEARCH Open Question 3).
@@ -179,7 +212,8 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
                     Interlocked.Decrement(ref _total);
                     throw;
                 }
-                var fresh = new PoolEntry<T>(newItem, _time.GetUtcNow());
+                var freshNow = _time.GetUtcNow();
+                var fresh = new PoolEntry<T>(newItem, freshNow, freshNow);
                 return await PrepareForUseAsync(fresh, ct, cancellationToken, retryCount).ConfigureAwait(false);
             }
             // CAS failed → retry (another thread created an item or grew).
@@ -191,7 +225,16 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
 
         // WaitBehavior.Wait — direct-handoff waiter.
         var tcs = new TaskCompletionSource<PoolEntry<T>>(TaskCreationOptions.RunContinuationsAsynchronously);
-        await _waiters.Writer.WriteAsync(tcs, ct).ConfigureAwait(false);
+        Interlocked.Increment(ref _waitersCount);
+        try
+        {
+            await _waiters.Writer.WriteAsync(tcs, ct).ConfigureAwait(false);
+        }
+        catch
+        {
+            Interlocked.Decrement(ref _waitersCount);
+            throw;
+        }
 
         // WR-01 fix: pass the cancellation token to TrySetCanceled so awaiters see the
         // correct CancellationToken on the resulting OperationCanceledException.
@@ -212,6 +255,10 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
             if (cancellationToken.IsCancellationRequested)
                 throw new OperationCanceledException(cancellationToken);
             throw new ObjectDisposedException(nameof(AdaptivePool<T>), "Pool was disposed during AcquireAsync.");
+        }
+        finally
+        {
+            Interlocked.Decrement(ref _waitersCount);
         }
     }
 
@@ -266,6 +313,7 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
         }
         Interlocked.Increment(ref _inUse);
         _telemetry.OnAcquire();
+        _utilSampler.Sample(Volatile.Read(ref _inUse), Volatile.Read(ref _total));
         return new PoolItem<T>(this, entry);
     }
 
@@ -273,6 +321,8 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
     internal void ReturnSync(PoolEntry<T> entry)
     {
         Interlocked.Decrement(ref _inUse);
+        entry.LastReturnedAt = _time.GetUtcNow();
+        _utilSampler.Sample(Volatile.Read(ref _inUse), Volatile.Read(ref _total));
         if (Volatile.Read(ref _lifecycle) != (int)PoolLifecycle.Open)
         {
             // Pool is being disposed — invoke Release best-effort, do not requeue.
@@ -364,7 +414,8 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
                 return;
             }
 
-            var entry = new PoolEntry<T>(newItem, _time.GetUtcNow());
+            var growNow = _time.GetUtcNow();
+            var entry = new PoolEntry<T>(newItem, growNow, growNow);
             if (TryHandoff(entry)) return;
 
             // No waiter consumed it — return to idle (it'll be served on next acquire).
@@ -407,6 +458,10 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
 
         // Cancel pending waiters and warm-up.
         try { _lifetimeCts.Cancel(); } catch { /* swallow */ }
+
+        // Phase 2: stop the sweep loop BEFORE we drain. The sweeper must shut down before drain
+        // so it cannot race with `_idle.TryDequeue` in the drain path below.
+        try { await _sweeper.DisposeAsync().ConfigureAwait(false); } catch { /* swallow */ }
 
         // Complete waiter channel so any in-flight WriteAsync throws.
         _waiters.Writer.TryComplete();
