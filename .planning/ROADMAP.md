@@ -8,7 +8,7 @@
 
 - [x] **Phase 1: Core Skeleton — Fixed-Size Pool** - Public API surface, builder, fixed-size engine with hooks, DI, basic telemetry, all unrecoverable design decisions locked in
 - [ ] **Phase 2: Elasticity & Health** - Background sweeper, composite-signal grow, hysteretic shrink, health checks, full Meter/ActivitySource/ILogger telemetry, stress validation
-- [ ] **Phase 3: RabbitMQ Adapter** - Layered IConnection/IChannel pools validating Core abstractions against a real lifecycle-sensitive scenario, bursty publisher sample
+- [x] **Phase 3: RabbitMQ Adapter** - Layered IConnection/IChannel pools validating Core abstractions against a real lifecycle-sensitive scenario, bursty publisher sample (completed 2026-05-03)
 - [ ] **Phase 4: Polish & v1.0 Release** - OSS hardening, CI matrix, README + OTel example, MinVer + SourceLink + snupkg, PublicApiAnalyzers baseline, NuGet publish
 
 ## Phase Details
@@ -48,7 +48,10 @@
   3. Testcontainers.RabbitMq integration test reproduces the bursty cycle (few/hour → 100k simultaneous publish → idle → repeat) using the layered pool; broker observes connection growth under pressure, shrink during idle, no leaked channels or connections
   4. Sample project `samples/PublisherSample` is runnable end-to-end against a Testcontainers RabbitMQ instance, demonstrates the bursty-publisher scenario, and uses the same fluent builder/DI conventions as the sister `Oragon.RabbitMQ` library (naming, factory pattern, async-first)
   5. If any Core API gap is surfaced during adapter implementation (e.g., insufficient hook context, missing policy invocation point), it is resolved by refactoring Core BEFORE proceeding to Phase 4 — adapter does NOT add Core abstractions itself
-**Plans**: TBD
+**Plans**: 3 plans
+- [x] 03-01-PLAN.md — RabbitMQ adapter project + connection pool DI extension (RMQ-01, RMQ-04 partial)
+- [ ] 03-02-PLAN.md — Channel pool DI extension layered on connection pool (RMQ-02, RMQ-04)
+- [ ] 03-03-PLAN.md — Unit + integration tests (Testcontainers) + BurstyPublisher sample (RMQ-01..04 empirical validation)
 
 ### Phase 4: Polish & v1.0 Release
 **Goal**: Cross the OSS quality bar and ship v1.0 to NuGet.org — README that converts evaluators in 60 seconds, multi-TFM CI green, public API surface frozen via analyzer, symbol packages and SourceLink working for consumer step-into debugging.
@@ -68,7 +71,7 @@
 |-------|----------------|--------|-----------|
 | 1. Core Skeleton — Fixed-Size Pool | 3/3 | Complete | 2026-05-03 |
 | 2. Elasticity & Health | 2/3 | In Progress|  |
-| 3. RabbitMQ Adapter | 0/0 | Not started | - |
+| 3. RabbitMQ Adapter | 3/3 | Complete   | 2026-05-03 |
 | 4. Polish & v1.0 Release | 0/0 | Not started | - |
 
 ## Coverage

@@ -54,10 +54,10 @@ Requirements for initial release (v1.0). Each maps to roadmap phases.
 
 ### RMQ — RabbitMQ Adapter
 
-- [ ] **RMQ-01**: Extensão `services.AddAdaptiveConnectionPool(name, configure)` configurando pool de `IConnection` com `BeforeUse`/`Check` baseados em `IsOpen`, `Release` chamando `CloseAsync()`, e `AutomaticRecoveryEnabled = false` por padrão (evita conflito com gestão de lifecycle do pool)
-- [ ] **RMQ-02**: Extensão `services.AddAdaptiveChannelPool(name, configure)` configurando pool de `IChannel` em camada sobre o pool de `IConnection` (factory adquire connection do pool interno via `ConditionalWeakTable` para pareamento, release fecha channel e devolve connection)
-- [ ] **RMQ-03**: Sample executável publicador-bursty demonstrando ciclo "algumas/hora → centenas-de-milhares simultâneas → ocioso" usando o pool em camadas
-- [ ] **RMQ-04**: Convenções de nomenclatura, builder, e DI consistentes com `Oragon.RabbitMQ` (sister library para o lado consumidor)
+- [x] **RMQ-01**: Extensão `services.AddAdaptiveConnectionPool(name, configure)` configurando pool de `IConnection` com `BeforeUse`/`Check` baseados em `IsOpen`, `Release` chamando `CloseAsync()`, e `AutomaticRecoveryEnabled = false` por padrão (evita conflito com gestão de lifecycle do pool)
+- [x] **RMQ-02**: Extensão `services.AddAdaptiveChannelPool(name, configure)` configurando pool de `IChannel` em camada sobre o pool de `IConnection` (factory adquire connection do pool interno via `ConditionalWeakTable` para pareamento, release fecha channel e devolve connection)
+- [x] **RMQ-03**: Sample executável publicador-bursty demonstrando ciclo "algumas/hora → centenas-de-milhares simultâneas → ocioso" usando o pool em camadas
+- [x] **RMQ-04**: Convenções de nomenclatura, builder, e DI consistentes com `Oragon.RabbitMQ` (sister library para o lado consumidor)
 
 ### OSS — Open-Source Quality Bar
 
@@ -129,10 +129,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | QUAL-01 | Phase 1 | Complete |
 | QUAL-02 | Phase 1 | Complete |
 | QUAL-03 | Phase 2 | Pending |
-| RMQ-01 | Phase 3 | Pending |
-| RMQ-02 | Phase 3 | Pending |
-| RMQ-03 | Phase 3 | Pending |
-| RMQ-04 | Phase 3 | Pending |
+| RMQ-01 | Phase 3 | Complete |
+| RMQ-02 | Phase 3 | Complete |
+| RMQ-03 | Phase 3 | Complete |
+| RMQ-04 | Phase 3 | Complete |
 | OSS-01 | Phase 4 | Pending |
 | OSS-02 | Phase 4 | Pending |
 | OSS-03 | Phase 4 | Pending |

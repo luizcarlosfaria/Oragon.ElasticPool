@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Release
-status: executing
+status: verifying
 stopped_at: End of Plan 03 (commits 58c0916, 481fec1, c7b6191). Self-check PASSED. 70 unit tests + 1 stress test green on net8/9/10; 92.8 % line coverage on Core.
-last_updated: "2026-05-03T15:05:30.049Z"
+last_updated: "2026-05-03T18:57:38.352Z"
 last_activity: 2026-05-03
 progress:
   total_phases: 4
@@ -27,8 +27,8 @@ progress:
 ## Current Position
 
 **Phase:** 2 - Elasticity & Health (IN PROGRESS)
-**Plan:** 2 of 3 (Plan 01 complete: components + builder + engine wiring)
-**Status:** Ready to execute
+**Plan:** 3 of 3 (Plan 01 complete: components + builder + engine wiring)
+**Status:** Phase complete — ready for verification
 **Last Activity:** 2026-05-03
 **Progress:** [░░░░░░░░░░] 0%
 
@@ -82,6 +82,7 @@ These cannot be changed without breaking API:
 - [Phase ?]: Pass waiters+1 (caller as if parked) to PressureSampler.Evaluate to preserve Phase 1 grow-on-demand with default GrowOnWaiterCount=1
 - [Phase ?]: WaitBehavior.Throw fires when pressure says no-grow even below MaxSize; intentional Phase 2 elastic contract change
 - [Phase ?]: Sweep span uses HasListeners() guard explicitly; per-item HealthCheck spans use cheap StartActivity null-return path
+- [Phase ?]: Plan 03-03: lazy invalidation (Q1) and eager spread (Q2) empirically validated
 
 ### Open Todos
 
@@ -101,7 +102,7 @@ These cannot be changed without breaking API:
 
 ## Session Continuity
 
-**Last session:** 2026-05-03T15:05:03.028Z
+**Last session:** 2026-05-03T18:57:32.692Z
 **Stopped at:** End of Plan 03 (commits 58c0916, 481fec1, c7b6191). Self-check PASSED. 70 unit tests + 1 stress test green on net8/9/10; 92.8 % line coverage on Core.
 **Resume file:** None
 **Next action:** Plan Phase 2 (Elasticity + Sweeper) — see Open Todos.
