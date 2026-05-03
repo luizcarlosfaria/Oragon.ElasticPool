@@ -1,6 +1,7 @@
 using System.Text;
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using NSubstitute;
 using Oragon.AdaptivePool.Core.Abstractions;
 using Oragon.AdaptivePool.RabbitMQ.DependencyInjection;
 using Oragon.AdaptivePool.RabbitMQ.IntegrationTests.Fixtures;
@@ -89,11 +90,13 @@ public class ChannelPoolIntegrationTests : IClassFixture<RabbitMqContainerFixtur
     }
 
     [Fact]
-    public async Task DeadConnectionMarksChannelsUnhealthy_LazyInvalidation()
+    public async Task ClosedChannelMarkedUnhealthy_OnNextAcquire()
     {
-        // Empirical validation of RESEARCH Q1 (lazy invalidation): when the connection
-        // that produced a channel is force-closed, the channel pool's BeforeUse hook
-        // returns Unhealthy on the next acquire — failure-policy then replaces it.
+        // WR-03 rename + re-scope: this test only validates the IChannel.IsOpen branch
+        // of the channel pool's BeforeUse hook (the channel itself is closed before
+        // re-acquire). It does NOT validate the paired-connection path. See the
+        // companion test DeadConnection_BeforeUseMarksChannelsUnhealthy below for
+        // the connection-side validation.
         var connName = $"conn-{Guid.NewGuid():N}";
         var chPoolName = $"ch-{Guid.NewGuid():N}";
 
@@ -107,46 +110,89 @@ public class ChannelPoolIntegrationTests : IClassFixture<RabbitMqContainerFixtur
         await using var sp = services.BuildServiceProvider();
         var chPool = sp.GetRequiredKeyedService<IAdaptivePool<IChannel>>(chPoolName);
 
-        // Acquire one channel and capture its underlying connection (not its lease — we
-        // just want to call CloseAsync on it from the side).
         var lease1 = await chPool.AcquireAsync();
-        // Underlying connection is not directly exposed via the channel's public surface.
-        // Instead, since the channel pool's MinSize=0/MaxSize=4 each Factory call creates a
-        // fresh connection (via the connection pool), we kill the channel's connection by
-        // closing the channel itself: not enough — the connection persists.
-        //
-        // The cleanest path: dispose the channel lease, then borrow the connection lease
-        // directly via the connection pool, force-close it, and re-acquire a channel.
-        // The new acquire should produce a fresh channel because BeforeUse marked the
-        // idle one Unhealthy when its conn flipped.
         await lease1.DisposeAsync();
 
-        var connPool = sp.GetRequiredKeyedService<IAdaptivePool<IConnection>>(connName);
-        // The connection lease that backs the idle channel is still held by the pairing
-        // CWT — connPool.Available is 0. We instead acquire a NEW connection (Available=0,
-        // pool grows to 2) and close it to simulate a broker-side disconnect of the
-        // already-paired connection, but that doesn't affect the paired one.
-        //
-        // Realistic approach: directly acquire+close from the side-channel facing the
-        // running broker via the management API would require HTTP setup. For this lazy
-        // probe test we rely on the channel pool's own BeforeUse on the channel's IsOpen:
-        // close the channel (not the connection) and re-acquire — BeforeUse must mark
-        // Unhealthy, and the failure policy MUST produce a fresh channel (no exception).
         var lease2 = await chPool.AcquireAsync();
         try
         {
-            // Close it directly (simulating a server-side channel close).
+            // Close the CHANNEL (not the connection) — simulates server-side channel close.
             await lease2.Value.CloseAsync();
-            // Returning the now-closed channel marks it for replacement on next acquire.
         }
         finally
         {
             await lease2.DisposeAsync();
         }
 
-        // Re-acquire — BeforeUse on the closed idle channel must return Unhealthy and the
-        // failure policy must produce a fresh, healthy channel (no exception leakage).
+        // Re-acquire — BeforeUse on the closed idle channel must return Unhealthy and
+        // the failure policy must produce a fresh, healthy channel (no exception leakage).
         await using var lease3 = await chPool.AcquireAsync();
-        lease3.Value.IsOpen.Should().BeTrue("BeforeUse + DiscardAndReplace must produce a healthy channel");
+        lease3.Value.IsOpen.Should().BeTrue(
+            "BeforeUse + DiscardAndReplace must produce a healthy channel after the idle one closed");
+    }
+
+    [Fact]
+    public async Task DeadConnection_BeforeUseMarksChannelsUnhealthy_LazyInvalidation()
+    {
+        // WR-03: empirical validation of RESEARCH Q1 (lazy invalidation when a
+        // CONNECTION dies). The previous test was named for this scenario but
+        // actually only closed the channel, leaving the connection-side BeforeUse
+        // branch (`pairing.TryGet(ch, out var connLease) && !connLease.Value.IsOpen`)
+        // uncovered. This test closes the underlying CONNECTION via a spy
+        // IConnectionFactory that captures every produced IConnection.
+        var connName = $"conn-{Guid.NewGuid():N}";
+        var chPoolName = $"ch-{Guid.NewGuid():N}";
+
+        // Spy the factory so we can grab the IConnection that backs the channel.
+        var realFactory = new ConnectionFactory
+        {
+            Uri = new Uri(_fixture.ConnectionString),
+            AutomaticRecoveryEnabled = false,
+        };
+        var producedConnections = new System.Collections.Concurrent.ConcurrentBag<IConnection>();
+        var spy = Substitute.For<IConnectionFactory>();
+        spy.CreateConnectionAsync(Arg.Any<CancellationToken>())
+            .Returns(async ci =>
+            {
+                var ct = ci.Arg<CancellationToken>();
+                var conn = await realFactory.CreateConnectionAsync(ct).ConfigureAwait(false);
+                producedConnections.Add(conn);
+                return conn;
+            });
+
+        var services = new ServiceCollection();
+        services.AddKeyedSingleton<IConnectionFactory>(connName, (_, _) => spy);
+        services.AddAdaptiveConnectionPool(connName,
+            configureFactory: null,
+            p => p.WithBounds(0, 4, 0));
+        services.AddAdaptiveChannelPool(chPoolName, connName,
+            p => p.WithBounds(0, 4, 0));
+
+        await using var sp = services.BuildServiceProvider();
+        var chPool = sp.GetRequiredKeyedService<IAdaptivePool<IChannel>>(chPoolName);
+
+        // Acquire a channel — this creates exactly one connection (captured by the spy).
+        var lease1 = await chPool.AcquireAsync();
+        await lease1.DisposeAsync();
+        // Channel is now idle; the connection lease is still held by the pairing CWT.
+
+        producedConnections.Should().HaveCount(1, "exactly one connection should have been created so far");
+        var underlyingConnection = producedConnections.Single();
+        underlyingConnection.IsOpen.Should().BeTrue("connection must still be alive before we close it");
+
+        // Force-close the connection from outside the pool (simulates a broker-side
+        // disconnect or operational connection drop).
+        await underlyingConnection.CloseAsync();
+        underlyingConnection.IsOpen.Should().BeFalse("close must mark connection closed");
+
+        // Re-acquire — the BeforeUse hook walks the pairing for the idle channel,
+        // sees connLease.Value.IsOpen=false, returns Unhealthy. The failure policy
+        // discards and replaces, producing a fresh channel on a NEW connection.
+        await using var lease2 = await chPool.AcquireAsync();
+        lease2.Value.IsOpen.Should().BeTrue(
+            "BeforeUse must observe connLease.Value.IsOpen=false on the dead-connection path " +
+            "and the failure policy must produce a fresh channel on a new connection");
+        producedConnections.Count.Should().BeGreaterThan(1,
+            "a new connection must have been created to back the replacement channel");
     }
 }
