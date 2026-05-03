@@ -229,6 +229,15 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
             span?.SetTag(PoolMeterNames.OutcomeTag, "canceled");
             throw;
         }
+        catch
+        {
+            // WR-02 fix: tag any non-cancellation failure (PoolExhaustedException,
+            // ObjectDisposedException, BeforeUseUnhealthy retry-limit InvalidOperationException,
+            // factory rethrow, etc.) with outcome="error" so OTel backends partitioning by
+            // outcome capture these events instead of silently dropping them.
+            span?.SetTag(PoolMeterNames.OutcomeTag, "error");
+            throw;
+        }
         finally { span?.Dispose(); }
     }
 
