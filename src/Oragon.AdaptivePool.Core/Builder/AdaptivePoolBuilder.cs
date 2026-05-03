@@ -28,6 +28,11 @@ public sealed class AdaptivePoolBuilder<T> where T : notnull
     public AdaptivePoolBuilder<T> Factory(FactoryDelegate<T> factory)
     { _factory = factory ?? throw new ArgumentNullException(nameof(factory)); return this; }
     public AdaptivePoolBuilder<T> BeforeUse(BeforeUseDelegate<T> hook) { _beforeUse = hook; return this; }
+    /// <summary>
+    /// Registers a background health-check hook. <b>Phase 1 placeholder:</b> this hook is
+    /// recorded on the options but the engine does not invoke it. The Phase 2 sweeper will
+    /// activate it. Use <see cref="BeforeUse"/> for on-borrow validation today.
+    /// </summary>
     public AdaptivePoolBuilder<T> Check(CheckDelegate<T> hook) { _check = hook; return this; }
     public AdaptivePoolBuilder<T> AfterUse(AfterUseDelegate<T> hook) { _afterUse = hook; return this; }
     public AdaptivePoolBuilder<T> Release(ReleaseDelegate<T> hook) { _release = hook; return this; }

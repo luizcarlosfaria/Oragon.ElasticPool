@@ -64,6 +64,7 @@ Oragon.AdaptivePool.Core.Builder.WaitBehavior.Wait = 0 -> Oragon.AdaptivePool.Co
 Oragon.AdaptivePool.Core.DependencyInjection.ServiceCollectionExtensions
 static Oragon.AdaptivePool.Core.DependencyInjection.ServiceCollectionExtensions.AddAdaptivePool<T>(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, string! name, System.Action<Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!>! configure) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 Oragon.AdaptivePool.Core.Exceptions.PoolExhaustedException
+Oragon.AdaptivePool.Core.Exceptions.PoolExhaustedException.IsTransient.get -> bool
 Oragon.AdaptivePool.Core.Exceptions.PoolExhaustedException.MaxSize.get -> int
 Oragon.AdaptivePool.Core.Exceptions.PoolExhaustedException.PoolExhaustedException(int maxSize, System.TimeSpan? waitTime = null) -> void
 Oragon.AdaptivePool.Core.Exceptions.PoolExhaustedException.WaitTime.get -> System.TimeSpan?

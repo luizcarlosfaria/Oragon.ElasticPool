@@ -429,7 +429,7 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
 
         try { _lifetimeCts.Dispose(); } catch { /* swallow */ }
         _telemetry.Dispose();
-        GC.SuppressFinalize(this);
+        // WR-02: no finalizer on AdaptivePool<T>, so GC.SuppressFinalize is unnecessary.
     }
 
     public void Dispose()
