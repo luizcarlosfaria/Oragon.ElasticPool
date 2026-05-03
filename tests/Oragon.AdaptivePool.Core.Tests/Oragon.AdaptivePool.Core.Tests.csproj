@@ -27,6 +27,8 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Console" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.Testing" />
+    <!-- CR-03 regression test for IHostApplicationLifetime detection -->
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="coverlet.collector" PrivateAssets="all" />
   </ItemGroup>
   <ItemGroup>

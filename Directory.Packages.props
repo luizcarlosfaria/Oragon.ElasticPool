@@ -44,6 +44,8 @@
       tests to attach a MetricCollector. The extension lives in Microsoft.Extensions.Diagnostics.
     -->
     <PackageVersion Include="Microsoft.Extensions.Diagnostics" Version="10.0.6" />
+    <!-- CR-03 regression test only — Core does NOT reference Hosting. -->
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.6" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
   </ItemGroup>
 </Project>

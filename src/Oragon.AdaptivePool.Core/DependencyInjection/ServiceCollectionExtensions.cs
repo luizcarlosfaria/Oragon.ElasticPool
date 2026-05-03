@@ -26,12 +26,22 @@ public static class ServiceCollectionExtensions
         services.AddOptions<AdaptivePoolBuilderConfigurator<T>>(name)
                 .Configure(c => c.Configure = configure);
 
+        // CR-03 fix: capture the IHostApplicationLifetime ServiceType (if registered) at
+        // registration time by scanning IServiceCollection. This avoids a hard reference to
+        // Microsoft.Extensions.Hosting.Abstractions while still being deterministic — the old
+        // implementation used sp.GetServices<object>() which returns nothing in standard DI
+        // and compared the concrete class name "ApplicationLifetime" against the interface
+        // name "IHostApplicationLifetime", so the probe always returned CancellationToken.None.
+        var hostLifetimeServiceType = services
+            .FirstOrDefault(s => s.ServiceType?.FullName == "Microsoft.Extensions.Hosting.IHostApplicationLifetime")
+            ?.ServiceType;
+
         services.TryAddKeyedSingleton<IAdaptivePool<T>>(name, (sp, key) =>
         {
             var keyName = (string)key!;
             var configurator = sp.GetRequiredService<IOptionsMonitor<AdaptivePoolBuilderConfigurator<T>>>().Get(keyName);
             // Optional: pull application-stopping CT if the host registers it (no hard dep).
-            var lifetimeCt = TryGetHostApplicationStoppingToken(sp);
+            var lifetimeCt = TryGetHostApplicationStoppingToken(sp, hostLifetimeServiceType);
             var builder = AdaptiveObjectPoolFactory.Build<T>(sp, lifetimeCt);
             builder.WithName(keyName);  // internal method, same assembly
             configurator.Configure(builder);
@@ -46,15 +56,19 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    private static CancellationToken TryGetHostApplicationStoppingToken(IServiceProvider sp)
+    // Resolves IHostApplicationLifetime.ApplicationStopping via reflection without a hard
+    // reference to Microsoft.Extensions.Hosting.Abstractions. The interface ServiceType
+    // is captured at AddAdaptivePool time (when we still have IServiceCollection); here
+    // we just resolve it from IServiceProvider and read its ApplicationStopping property.
+    private static CancellationToken TryGetHostApplicationStoppingToken(IServiceProvider sp, Type? hostLifetimeServiceType)
     {
-        // Resolve IHostApplicationLifetime by name without a Hosting.Abstractions reference.
-        // We probe for any registered service exposing an "ApplicationStopping" CancellationToken property.
-        var candidate = sp.GetServices<object>()
-            .FirstOrDefault(s => s?.GetType().Name == "IHostApplicationLifetime");
-        if (candidate is null) return CancellationToken.None;
-        var prop = candidate.GetType().GetProperty("ApplicationStopping");
-        if (prop?.GetValue(candidate) is CancellationToken ct) return ct;
+        if (hostLifetimeServiceType is null) return CancellationToken.None;
+        var lifetime = sp.GetService(hostLifetimeServiceType);
+        if (lifetime is null) return CancellationToken.None;
+        var prop = lifetime.GetType().GetProperty(
+            "ApplicationStopping",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+        if (prop?.GetValue(lifetime) is CancellationToken ct) return ct;
         return CancellationToken.None;
     }
 

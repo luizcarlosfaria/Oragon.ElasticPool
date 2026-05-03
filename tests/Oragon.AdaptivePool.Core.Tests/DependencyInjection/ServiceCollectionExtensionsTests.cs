@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.Metrics.Testing;
+using Microsoft.Extensions.Hosting;
 using Oragon.AdaptivePool.Core.Abstractions;
 using Oragon.AdaptivePool.Core.DependencyInjection;
 using Oragon.AdaptivePool.Core.Tests.TestSupport;
@@ -75,6 +76,52 @@ public class ServiceCollectionExtensionsTests
         Action act = () => services.AddAdaptivePool<Resource>(name, configure);
 
         act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public async Task AddAdaptivePool_HostApplicationLifetimeRegistered_PoolReceivesStoppingToken()
+    {
+        // CR-03 regression: when IHostApplicationLifetime is registered (as it is in any
+        // ASP.NET Core / Generic Host app), the pool's lifetime CT must be wired to its
+        // ApplicationStopping token so SIGTERM promptly cancels parked AcquireAsync waiters.
+        var fakeLifetime = new FakeHostApplicationLifetime();
+        var services = new ServiceCollection();
+        services.AddSingleton<IHostApplicationLifetime>(fakeLifetime);
+        services.AddAdaptivePool<Resource>(string.Empty, b => b
+            .Factory((sp, ct) => ValueTask.FromResult(new Resource()))
+            .WithBounds(0, 1, 1));
+
+        await using var sp = services.BuildServiceProvider();
+        var pool = sp.GetRequiredService<IAdaptivePool<Resource>>();
+        await pool.ReadyAsync();
+
+        // Saturate the pool, then park a waiter.
+        var first = await pool.AcquireAsync();
+        var waiterCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var waiterTask = pool.AcquireAsync(waiterCts.Token).AsTask();
+
+        await Task.Delay(50);
+        waiterTask.IsCompleted.Should().BeFalse("waiter must be parked while MaxSize=1 is saturated");
+
+        // Trigger application shutdown — this flips ApplicationStopping which the pool's
+        // lifetime CT is linked to. The parked waiter must observe cancellation promptly.
+        fakeLifetime.StopApplication();
+
+        var act = async () => await waiterTask;
+        await act.Should().ThrowAsync<Exception>("parked waiter must be cancelled when host stops");
+
+        await first.DisposeAsync();
+    }
+
+    private sealed class FakeHostApplicationLifetime : IHostApplicationLifetime
+    {
+        private readonly CancellationTokenSource _stopping = new();
+        private readonly CancellationTokenSource _stopped = new();
+        private readonly CancellationTokenSource _started = new();
+        public CancellationToken ApplicationStarted => _started.Token;
+        public CancellationToken ApplicationStopping => _stopping.Token;
+        public CancellationToken ApplicationStopped => _stopped.Token;
+        public void StopApplication() => _stopping.Cancel();
     }
 
     [Fact]
