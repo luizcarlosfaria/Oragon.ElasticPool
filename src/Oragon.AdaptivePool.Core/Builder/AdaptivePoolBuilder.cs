@@ -22,6 +22,15 @@ public sealed class AdaptivePoolBuilder<T> where T : notnull
     private TimeProvider _timeProvider = TimeProvider.System;
     private string _name = string.Empty;
 
+    // Phase 2 tunables — defaults locked per CONTEXT.md D-01..D-08.
+    private int _growOnWaiterCount = 1;
+    private double _growOnUtilizationPercent = 0.80;
+    private TimeSpan _growOnWaitTimeP95 = TimeSpan.FromMilliseconds(100);
+    private TimeSpan _idleTimeout = TimeSpan.FromSeconds(60);
+    private int _shrinkCooldownWindows = 3;
+    private TimeSpan _sweepInterval = TimeSpan.FromSeconds(30);
+    private TimeSpan _maxBackoff = TimeSpan.FromMinutes(5);
+
     internal AdaptivePoolBuilder(IServiceProvider services, CancellationToken ct)
     { _services = services; _ct = ct; }
 
@@ -36,14 +45,76 @@ public sealed class AdaptivePoolBuilder<T> where T : notnull
     public AdaptivePoolBuilder<T> Check(CheckDelegate<T> hook) { _check = hook; return this; }
     public AdaptivePoolBuilder<T> AfterUse(AfterUseDelegate<T> hook) { _afterUse = hook; return this; }
     public AdaptivePoolBuilder<T> Release(ReleaseDelegate<T> hook) { _release = hook; return this; }
-    public AdaptivePoolBuilder<T> WithBounds(int minSize, int maxSize, int initialSize)
-    { _minSize = minSize; _maxSize = maxSize; _initialSize = initialSize; return this; }
+    public AdaptivePoolBuilder<T> WithBounds(int minSize, int maxSize, int initialSize) { _minSize = minSize; _maxSize = maxSize; _initialSize = initialSize; return this; }
     public AdaptivePoolBuilder<T> WhenExhausted(WaitBehavior behavior) { _whenExhausted = behavior; return this; }
     public AdaptivePoolBuilder<T> WithFailurePolicy(IItemFailurePolicy<T> policy)
     { _failurePolicy = policy ?? throw new ArgumentNullException(nameof(policy)); return this; }
     public AdaptivePoolBuilder<T> WithTimeProvider(TimeProvider timeProvider)
     { _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider)); return this; }
     internal AdaptivePoolBuilder<T> WithName(string name) { _name = name ?? string.Empty; return this; }
+
+    /// <summary>
+    /// Configures the parked-waiters threshold for adaptive grow. Default: 1 (any wait triggers grow).
+    /// </summary>
+    public AdaptivePoolBuilder<T> GrowOnWaiterCount(int n)
+    {
+        if (n < 1) throw new ArgumentOutOfRangeException(nameof(n), "GrowOnWaiterCount must be >= 1.");
+        _growOnWaiterCount = n; return this;
+    }
+
+    /// <summary>
+    /// Configures the sustained utilization threshold (in-use / total) for adaptive grow. Default: 0.80.
+    /// </summary>
+    public AdaptivePoolBuilder<T> GrowOnUtilizationPercent(double p)
+    {
+        if (p <= 0.0 || p > 1.0) throw new ArgumentOutOfRangeException(nameof(p), "GrowOnUtilizationPercent must be in (0, 1].");
+        _growOnUtilizationPercent = p; return this;
+    }
+
+    /// <summary>
+    /// Configures the p95 acquire-wait threshold for adaptive grow. Default: 100 ms.
+    /// </summary>
+    public AdaptivePoolBuilder<T> GrowOnWaitTimeP95(TimeSpan t)
+    {
+        if (t <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(t), "GrowOnWaitTimeP95 must be > TimeSpan.Zero.");
+        _growOnWaitTimeP95 = t; return this;
+    }
+
+    /// <summary>
+    /// Configures the idle-item discard threshold used by the background sweeper. Default: 60 seconds.
+    /// </summary>
+    public AdaptivePoolBuilder<T> IdleTimeout(TimeSpan t)
+    {
+        if (t <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(t), "IdleTimeout must be > TimeSpan.Zero.");
+        _idleTimeout = t; return this;
+    }
+
+    /// <summary>
+    /// Configures the number of sweep windows after a grow during which shrink is suppressed (hysteresis). Default: 3.
+    /// </summary>
+    public AdaptivePoolBuilder<T> ShrinkCooldownWindows(int n)
+    {
+        if (n < 0) throw new ArgumentOutOfRangeException(nameof(n), "ShrinkCooldownWindows must be >= 0.");
+        _shrinkCooldownWindows = n; return this;
+    }
+
+    /// <summary>
+    /// Configures the background sweep tick interval. Default: 30 seconds.
+    /// </summary>
+    public AdaptivePoolBuilder<T> SweepInterval(TimeSpan t)
+    {
+        if (t <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(t), "SweepInterval must be > TimeSpan.Zero.");
+        _sweepInterval = t; return this;
+    }
+
+    /// <summary>
+    /// Configures the maximum sweep interval after exponential backoff on consecutive failure windows. Default: 5 minutes.
+    /// </summary>
+    public AdaptivePoolBuilder<T> MaxBackoff(TimeSpan t)
+    {
+        if (t <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(t), "MaxBackoff must be > TimeSpan.Zero.");
+        _maxBackoff = t; return this;
+    }
 
     public IAdaptivePool<T> Build()
     {
@@ -58,6 +129,12 @@ public sealed class AdaptivePoolBuilder<T> where T : notnull
         if (_initialSize < _minSize || _initialSize > _maxSize)
             throw new InvalidOperationException(
                 $"InitialSize ({_initialSize}) must satisfy MinSize ({_minSize}) <= InitialSize <= MaxSize ({_maxSize}).");
+        if (_growOnWaiterCount > _maxSize)
+            throw new InvalidOperationException(
+                $"GrowOnWaiterCount ({_growOnWaiterCount}) must not exceed MaxSize ({_maxSize}).");
+        if (_sweepInterval > _maxBackoff)
+            throw new InvalidOperationException(
+                $"SweepInterval ({_sweepInterval}) must not exceed MaxBackoff ({_maxBackoff}).");
 
         var options = new AdaptivePoolOptions<T>
         {
@@ -73,6 +150,13 @@ public sealed class AdaptivePoolBuilder<T> where T : notnull
             FailurePolicy = _failurePolicy ?? new DiscardAndReplaceFailurePolicy<T>(),
             TimeProvider = _timeProvider,
             PoolName = _name,
+            GrowOnWaiterCount = _growOnWaiterCount,
+            GrowOnUtilizationPercent = _growOnUtilizationPercent,
+            GrowOnWaitTimeP95 = _growOnWaitTimeP95,
+            IdleTimeout = _idleTimeout,
+            ShrinkCooldownWindows = _shrinkCooldownWindows,
+            SweepInterval = _sweepInterval,
+            MaxBackoff = _maxBackoff,
         };
 
         return new AdaptivePool<T>(options, _services, _ct);

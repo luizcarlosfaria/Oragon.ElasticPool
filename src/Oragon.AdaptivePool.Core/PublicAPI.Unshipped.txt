@@ -28,7 +28,14 @@ Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.BeforeUse(Oragon.Adaptiv
 Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.Build() -> Oragon.AdaptivePool.Core.Abstractions.IAdaptivePool<T>!
 Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.Check(Oragon.AdaptivePool.Core.Hooks.CheckDelegate<T>! hook) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
 Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.Factory(Oragon.AdaptivePool.Core.Hooks.FactoryDelegate<T>! factory) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
+Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.GrowOnUtilizationPercent(double p) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
+Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.GrowOnWaitTimeP95(System.TimeSpan t) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
+Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.GrowOnWaiterCount(int n) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
+Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.IdleTimeout(System.TimeSpan t) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
+Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.MaxBackoff(System.TimeSpan t) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
 Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.Release(Oragon.AdaptivePool.Core.Hooks.ReleaseDelegate<T>! hook) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
+Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.ShrinkCooldownWindows(int n) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
+Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.SweepInterval(System.TimeSpan t) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
 Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.WhenExhausted(Oragon.AdaptivePool.Core.Builder.WaitBehavior behavior) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
 Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.WithBounds(int minSize, int maxSize, int initialSize) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
 Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.WithFailurePolicy(Oragon.AdaptivePool.Core.Abstractions.IItemFailurePolicy<T>! policy) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
@@ -44,8 +51,18 @@ Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.FailurePolicy.init -> vo
 Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.FailurePolicy.get -> Oragon.AdaptivePool.Core.Abstractions.IItemFailurePolicy<T>!
 Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.Factory.init -> void
 Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.Factory.get -> Oragon.AdaptivePool.Core.Hooks.FactoryDelegate<T>!
+Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.GrowOnUtilizationPercent.get -> double
+Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.GrowOnUtilizationPercent.init -> void
+Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.GrowOnWaitTimeP95.get -> System.TimeSpan
+Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.GrowOnWaitTimeP95.init -> void
+Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.GrowOnWaiterCount.get -> int
+Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.GrowOnWaiterCount.init -> void
+Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.IdleTimeout.get -> System.TimeSpan
+Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.IdleTimeout.init -> void
 Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.InitialSize.init -> void
 Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.InitialSize.get -> int
+Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.MaxBackoff.get -> System.TimeSpan
+Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.MaxBackoff.init -> void
 Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.MaxSize.init -> void
 Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.MaxSize.get -> int
 Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.MinSize.init -> void
@@ -54,8 +71,14 @@ Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.PoolName.init -> void
 Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.PoolName.get -> string!
 Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.Release.init -> void
 Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.Release.get -> Oragon.AdaptivePool.Core.Hooks.ReleaseDelegate<T>?
+Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.ShrinkCooldownWindows.get -> int
+Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.ShrinkCooldownWindows.init -> void
+Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.SweepInterval.get -> System.TimeSpan
+Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.SweepInterval.init -> void
 Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.TimeProvider.init -> void
 Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.TimeProvider.get -> System.TimeProvider!
+Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.UtilizationWindow.get -> System.TimeSpan
+Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.UtilizationWindow.init -> void
 Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.WhenExhausted.init -> void
 Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.WhenExhausted.get -> Oragon.AdaptivePool.Core.Builder.WaitBehavior
 Oragon.AdaptivePool.Core.Builder.WaitBehavior
