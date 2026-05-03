@@ -18,6 +18,10 @@
     <PackageReference Include="AwesomeAssertions" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" />
+    <!-- Plan 03: BurstIdleBurstStressTest needs FakeTimeProvider + MetricCollector. -->
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.Testing" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Oragon.AdaptivePool.Core\Oragon.AdaptivePool.Core.csproj" />

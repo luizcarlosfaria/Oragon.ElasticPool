@@ -22,5 +22,7 @@
   <ItemGroup>
     <!-- Phase 2: tests reach internal probes on AdaptivePool<T> + BackgroundSweeper<T>. -->
     <InternalsVisibleTo Include="Oragon.AdaptivePool.Core.Tests" />
+    <!-- Phase 2 Plan 03: anchor stress test needs AdaptivePool<T>.Sweeper.TickCompleted probe. -->
+    <InternalsVisibleTo Include="Oragon.AdaptivePool.Core.Stress" />
   </ItemGroup>
 </Project>
