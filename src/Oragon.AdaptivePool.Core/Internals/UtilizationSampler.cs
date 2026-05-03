@@ -35,9 +35,15 @@ internal sealed class UtilizationSampler
         if (nowTicks - last < _debounceTicks) return;
         if (Interlocked.CompareExchange(ref _lastSampleTicks, nowTicks, last) != last) return;
         var idx = (int)((uint)Interlocked.Increment(ref _writeIndex) - 1) % _bucketTimestampsTicks.Length;
-        Volatile.Write(ref _bucketTimestampsTicks[idx], nowTicks);
+        // CR-02 fix: publication pattern — write data fields FIRST (plain stores), then publish
+        // the timestamp LAST with a store-release fence. Reader's Volatile.Read on the timestamp
+        // is paired load-acquire and guarantees visibility of the data fields written before it.
+        // The previous order (timestamp first, data second) only fenced stores PRIOR to the
+        // timestamp write — leaving _bucketInUse/_bucketTotal stores unfenced, observable as
+        // stale on weakly-ordered architectures (ARM64).
         _bucketInUse[idx] = inUse;
         _bucketTotal[idx] = total;
+        Volatile.Write(ref _bucketTimestampsTicks[idx], nowTicks);
     }
 
     public double AverageUtilization()
