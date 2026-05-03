@@ -88,8 +88,47 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
     public IPoolItem<T> Acquire()
     {
         ThrowIfDisposed();
-        if (_idle.TryDequeue(out var entry))
+        // CR-04 fix: sync Acquire MUST honor BeforeUse so it has the same health guarantees
+        // as AcquireAsync. BeforeUse is contractually cheap (<1ms p99 per HookDelegates docs),
+        // so blocking on it is acceptable. We block via GetAwaiter().GetResult() (TPL pattern
+        // for sync-over-async on cheap hooks). On Unhealthy, recurse to AcquireAsync sync-blocked
+        // so the discard+replace path runs identically; if that path needs to wait/grow it will
+        // throw (sync NEVER blocks per CONTEXT.md + RESEARCH OQ3) — except inside the bounded
+        // BeforeUse-Unhealthy retry loop where it grows on-demand without waiting.
+        while (_idle.TryDequeue(out var entry))
         {
+            if (_options.BeforeUse is { } beforeUse)
+            {
+                PoolState state;
+                try
+                {
+                    // Sync-over-async on a hook contractually < 1ms p99. AsTask().GetAwaiter().GetResult()
+                    // unwraps AggregateException so the original hook exception is observed if BeforeUse throws.
+                    state = beforeUse(entry.Item, _lifetimeCts.Token).AsTask().GetAwaiter().GetResult();
+                }
+                catch
+                {
+                    state = PoolState.Unhealthy;
+                }
+                if (state == PoolState.Unhealthy)
+                {
+                    _log.BeforeUseUnhealthy(_options.PoolName);
+                    Interlocked.Decrement(ref _total);
+                    try
+                    {
+                        _options.FailurePolicy.HandleAsync(entry.Item, FailureKind.BeforeUseUnhealthy, null, _lifetimeCts.Token)
+                            .AsTask().GetAwaiter().GetResult();
+                    }
+                    catch { /* policy failure — continue */ }
+                    if (_options.Release is { } release)
+                    {
+                        try { release(entry.Item, _lifetimeCts.Token).AsTask().GetAwaiter().GetResult(); } catch { /* swallow */ }
+                    }
+                    // Try the next idle entry (if any). If idle is empty, fall through to PoolExhausted —
+                    // sync MUST NEVER block awaiting growth.
+                    continue;
+                }
+            }
             Interlocked.Increment(ref _inUse);
             _telemetry.OnAcquire();
             return new PoolItem<T>(this, entry);

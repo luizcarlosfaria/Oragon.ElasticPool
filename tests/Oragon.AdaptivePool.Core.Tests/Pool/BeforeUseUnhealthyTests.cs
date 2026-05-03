@@ -124,6 +124,47 @@ public class BeforeUseUnhealthyTests
     }
 
     [Fact]
+    public async Task SyncAcquire_BeforeUseUnhealthy_DiscardsAndTriesNext()
+    {
+        // CR-04 regression: sync Acquire() must honor BeforeUse — when an idle item is rejected,
+        // the engine must discard, try the next idle entry, and only throw PoolExhausted once
+        // idle is empty (sync MUST NEVER block awaiting growth).
+        var calls = 0;
+        var sp = new ServiceCollection().BuildServiceProvider();
+        await using var pool = AdaptiveObjectPoolFactory.Build<Resource>(sp)
+            .Factory((s, ct) => ValueTask.FromResult(new Resource { BrokenFlag = Interlocked.Increment(ref calls) == 1 }))
+            .BeforeUse((r, ct) => ValueTask.FromResult(r.BrokenFlag ? PoolState.Unhealthy : PoolState.Healthy))
+            .WithBounds(0, 2, 2)
+            .Build();
+
+        await pool.ReadyAsync();
+
+        // Two warmup items in idle: one broken, one healthy. Sync Acquire must skip broken
+        // and return the healthy one.
+        using var item = pool.Acquire();
+
+        item.Value.BrokenFlag.Should().BeFalse("sync Acquire must reject Unhealthy items via BeforeUse");
+    }
+
+    [Fact]
+    public async Task SyncAcquire_AllIdleUnhealthy_ThrowsPoolExhaustedNotBlocked()
+    {
+        // CR-04 follow-on: sync Acquire MUST NOT block awaiting growth. When ALL idle items
+        // are rejected by BeforeUse, the method throws PoolExhausted rather than calling factory.
+        var sp = new ServiceCollection().BuildServiceProvider();
+        await using var pool = AdaptiveObjectPoolFactory.Build<Resource>(sp)
+            .Factory((s, ct) => ValueTask.FromResult(new Resource()))
+            .BeforeUse((r, ct) => ValueTask.FromResult(PoolState.Unhealthy))
+            .WithBounds(0, 2, 2)
+            .Build();
+
+        await pool.ReadyAsync();
+
+        Action act = () => pool.Acquire();
+        act.Should().Throw<Oragon.AdaptivePool.Core.Exceptions.PoolExhaustedException>();
+    }
+
+    [Fact]
     public async Task BeforeUseUnhealthyRecursion_AfterDispose_DoesNotMaskObjectDisposed()
     {
         // CR-02 regression (narrow): the recursive AcquireAsync call inside the BeforeUse-Unhealthy
