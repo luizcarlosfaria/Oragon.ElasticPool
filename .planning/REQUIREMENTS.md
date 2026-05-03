@@ -108,42 +108,48 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| API-01 | TBD | Pending |
-| API-02 | TBD | Pending |
-| API-03 | TBD | Pending |
-| HOOK-01 | TBD | Pending |
-| HOOK-02 | TBD | Pending |
-| HOOK-03 | TBD | Pending |
-| HOOK-04 | TBD | Pending |
-| HOOK-05 | TBD | Pending |
-| BOUND-01 | TBD | Pending |
-| BOUND-02 | TBD | Pending |
-| ELASTIC-01 | TBD | Pending |
-| ELASTIC-02 | TBD | Pending |
-| FAIL-01 | TBD | Pending |
-| FAIL-02 | TBD | Pending |
-| TELEM-01 | TBD | Pending |
-| TELEM-02 | TBD | Pending |
-| TELEM-03 | TBD | Pending |
-| DI-01 | TBD | Pending |
-| QUAL-01 | TBD | Pending |
-| QUAL-02 | TBD | Pending |
-| QUAL-03 | TBD | Pending |
-| RMQ-01 | TBD | Pending |
-| RMQ-02 | TBD | Pending |
-| RMQ-03 | TBD | Pending |
-| RMQ-04 | TBD | Pending |
-| OSS-01 | TBD | Pending |
-| OSS-02 | TBD | Pending |
-| OSS-03 | TBD | Pending |
-| OSS-04 | TBD | Pending |
-| OSS-05 | TBD | Pending |
+| API-01 | Phase 1 | Pending |
+| API-02 | Phase 1 | Pending |
+| API-03 | Phase 1 | Pending |
+| HOOK-01 | Phase 1 | Pending |
+| HOOK-02 | Phase 1 | Pending |
+| HOOK-03 | Phase 1 | Pending |
+| HOOK-04 | Phase 1 | Pending |
+| HOOK-05 | Phase 1 | Pending |
+| BOUND-01 | Phase 1 | Pending |
+| BOUND-02 | Phase 1 | Pending |
+| ELASTIC-01 | Phase 2 | Pending |
+| ELASTIC-02 | Phase 2 | Pending |
+| FAIL-01 | Phase 1 | Pending |
+| FAIL-02 | Phase 1 | Pending |
+| TELEM-01 | Phase 1 | Pending |
+| TELEM-02 | Phase 2 | Pending |
+| TELEM-03 | Phase 2 | Pending |
+| DI-01 | Phase 1 | Pending |
+| QUAL-01 | Phase 1 | Pending |
+| QUAL-02 | Phase 1 | Pending |
+| QUAL-03 | Phase 2 | Pending |
+| RMQ-01 | Phase 3 | Pending |
+| RMQ-02 | Phase 3 | Pending |
+| RMQ-03 | Phase 3 | Pending |
+| RMQ-04 | Phase 3 | Pending |
+| OSS-01 | Phase 4 | Pending |
+| OSS-02 | Phase 4 | Pending |
+| OSS-03 | Phase 4 | Pending |
+| OSS-04 | Phase 4 | Pending |
+| OSS-05 | Phase 4 | Pending |
 
 **Coverage:**
 - v1 requirements: 30 total
-- Mapped to phases: 0 (will be filled by roadmapper)
-- Unmapped: 30 ⚠️ (expected — roadmapper assigns)
+- Mapped to phases: 30 ✓
+- Unmapped: 0
+
+**Phase distribution:**
+- Phase 1 (Core Skeleton): 16 requirements (API×3, HOOK×5, BOUND×2, FAIL×2, TELEM-01, DI-01, QUAL-01, QUAL-02)
+- Phase 2 (Elasticity & Health): 5 requirements (ELASTIC×2, TELEM-02, TELEM-03, QUAL-03)
+- Phase 3 (RabbitMQ Adapter): 4 requirements (RMQ×4)
+- Phase 4 (Polish & v1.0): 5 requirements (OSS×5)
 
 ---
 *Requirements defined: 2026-05-03*
-*Last updated: 2026-05-03 after initial definition*
+*Last updated: 2026-05-03 after roadmap traceability mapping*
