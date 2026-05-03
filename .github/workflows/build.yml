@@ -45,4 +45,65 @@ jobs:
       - name: dotnet test (Core.Tests only — Stress is intentionally excluded per CONTEXT.md)
         run: >
           dotnet test --project tests/Oragon.AdaptivePool.Core.Tests/Oragon.AdaptivePool.Core.Tests.csproj
-          -c Release --no-build -f ${{ matrix.tfm }}
+          --configuration Release --no-build -f ${{ matrix.tfm }}
+
+      # Coverage gate per CONTEXT.md: 90% line coverage on Oragon.AdaptivePool.Core.
+      # We use coverlet.console as a wrapper over `dotnet <testdll>` because the MTP
+      # runner does not honor `dotnet test --collect:"XPlat Code Coverage"` (see
+      # RESEARCH.md Pitfall 7 — data-collector path under MTP is unreliable in 10.0).
+      - name: install coverlet.console + reportgenerator
+        run: |
+          dotnet tool install -g coverlet.console
+          dotnet tool install -g dotnet-reportgenerator-globaltool
+
+      - name: collect coverage on Core.Tests (cobertura)
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          mkdir -p ./TestResults/${{ matrix.tfm }}
+          pushd tests/Oragon.AdaptivePool.Core.Tests/bin/Release/${{ matrix.tfm }} > /dev/null
+          coverlet ./Oragon.AdaptivePool.Core.Tests.dll \
+            --target dotnet \
+            --targetargs Oragon.AdaptivePool.Core.Tests.dll \
+            --format cobertura \
+            --output "$GITHUB_WORKSPACE/TestResults/${{ matrix.tfm }}/coverage.cobertura.xml" \
+            --include "[Oragon.AdaptivePool.Core]*"
+          popd > /dev/null
+
+      - name: enforce 90% line coverage on Core
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          REPORTS=$(find ./TestResults/${{ matrix.tfm }} -name 'coverage.cobertura.xml' -print | tr '\n' ';' | sed 's/;$//')
+          if [ -z "$REPORTS" ]; then
+            echo "::error::No coverage reports found under ./TestResults/${{ matrix.tfm }}"
+            exit 1
+          fi
+          reportgenerator \
+            -reports:"$REPORTS" \
+            -targetdir:"./TestResults/${{ matrix.tfm }}/coverage-report" \
+            -reporttypes:TextSummary \
+            -assemblyfilters:"+Oragon.AdaptivePool.Core"
+          cat ./TestResults/${{ matrix.tfm }}/coverage-report/Summary.txt
+          LINE_PCT=$(grep -E '^[[:space:]]*Line coverage:' ./TestResults/${{ matrix.tfm }}/coverage-report/Summary.txt | grep -oE '[0-9]+(\.[0-9]+)?' | head -1)
+          if [ -z "$LINE_PCT" ]; then
+            echo "::error::Could not parse line coverage from summary"
+            exit 1
+          fi
+          echo "Line coverage on Oragon.AdaptivePool.Core: $LINE_PCT%"
+          PASS=$(awk -v cov="$LINE_PCT" -v threshold=90.0 'BEGIN { print (cov+0 >= threshold+0) ? 1 : 0 }')
+          if [ "$PASS" -ne 1 ]; then
+            echo "::error::Line coverage $LINE_PCT% is below the required 90% gate"
+            exit 1
+          fi
+          echo "Coverage gate satisfied (>= 90%)."
+
+      - name: upload coverage report (artifact)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.tfm }}
+          path: ./TestResults/${{ matrix.tfm }}/coverage-report
+          if-no-files-found: ignore
