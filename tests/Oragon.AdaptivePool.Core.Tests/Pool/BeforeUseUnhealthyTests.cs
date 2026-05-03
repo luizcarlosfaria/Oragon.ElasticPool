@@ -106,6 +106,61 @@ public class BeforeUseUnhealthyTests
     }
 
     [Fact]
+    public async Task BeforeUseUnhealthy_PersistentlyBroken_RetryLimitTriggersInvalidOperation()
+    {
+        // WR-04 regression: when Factory always succeeds but BeforeUse always returns Unhealthy,
+        // PrepareForUseAsync must NOT recurse forever. After the bounded retry limit, callers
+        // receive a meaningful InvalidOperationException naming the pool.
+        var sp = new ServiceCollection().BuildServiceProvider();
+        await using var pool = AdaptiveObjectPoolFactory.Build<Resource>(sp)
+            .Factory((s, ct) => ValueTask.FromResult(new Resource()))
+            .BeforeUse((r, ct) => ValueTask.FromResult(PoolState.Unhealthy))
+            .WithBounds(0, 100, 0) // big enough that growth never hits MaxSize
+            .Build();
+
+        var act = async () => await pool.AcquireAsync();
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*BeforeUse returned Unhealthy*consecutively*");
+    }
+
+    [Fact]
+    public async Task BeforeUseUnhealthyRecursion_AfterDispose_DoesNotMaskObjectDisposed()
+    {
+        // CR-02 regression (narrow): the recursive AcquireAsync call inside the BeforeUse-Unhealthy
+        // branch must use the CALLER's cancellation token, not the composite (which already includes
+        // _lifetimeCts.Token). With CR-02's fix, after disposal the recursion enters AcquireAsyncCore,
+        // hits ThrowIfDisposed(), and surfaces ObjectDisposedException — not OperationCanceledException.
+        var sp = new ServiceCollection().BuildServiceProvider();
+
+        var beforeUseGate = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var pool = AdaptiveObjectPoolFactory.Build<Resource>(sp)
+            .Factory((s, ct) => ValueTask.FromResult(new Resource()))
+            .BeforeUse(async (r, ct) =>
+            {
+                // Block here so the test can dispose the pool while we're inside BeforeUse.
+                // We DO observe the composite ct (correct — hooks should respect dispose).
+                try { await beforeUseGate.Task.WaitAsync(ct); }
+                catch (OperationCanceledException) { /* expected on dispose */ }
+                return PoolState.Unhealthy;
+            })
+            .WithBounds(0, 2, 1)
+            .Build();
+
+        await pool.ReadyAsync().WaitAsync(TimeSpan.FromSeconds(2));
+
+        var acquireTask = pool.AcquireAsync().AsTask();
+        await Task.Delay(100);
+        acquireTask.IsCompleted.Should().BeFalse();
+
+        // Dispose the pool while BeforeUse is parked. The composite ct cancels.
+        // BeforeUse returns Unhealthy → recursive AcquireAsyncCore(callerCt) → ThrowIfDisposed → ODE.
+        var disposeTask = pool.DisposeAsync().AsTask();
+
+        await Assert.ThrowsAsync<ObjectDisposedException>(async () => await acquireTask);
+        await disposeTask;
+    }
+
+    [Fact]
     public async Task BeforeUseThrows_TreatedAsUnhealthy_AndPolicyInvoked()
     {
         var policy = Substitute.For<IItemFailurePolicy<Resource>>();

@@ -98,7 +98,10 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
         throw new PoolExhaustedException(_options.MaxSize);
     }
 
-    public async ValueTask<IPoolItem<T>> AcquireAsync(CancellationToken cancellationToken = default)
+    public ValueTask<IPoolItem<T>> AcquireAsync(CancellationToken cancellationToken = default)
+        => AcquireAsyncCore(cancellationToken, retryCount: 0);
+
+    private async ValueTask<IPoolItem<T>> AcquireAsyncCore(CancellationToken cancellationToken, int retryCount)
     {
         ThrowIfDisposed();
 
@@ -108,7 +111,7 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
         // Fast path: free item available.
         if (_idle.TryDequeue(out var entry))
         {
-            return await PrepareForUseAsync(entry, ct).ConfigureAwait(false);
+            return await PrepareForUseAsync(entry, ct, cancellationToken, retryCount).ConfigureAwait(false);
         }
 
         // Try to grow up to MaxSize (Phase 1 = on-demand creation up to MaxSize, no elastic signal).
@@ -138,7 +141,7 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
                     throw;
                 }
                 var fresh = new PoolEntry<T>(newItem, _time.GetUtcNow());
-                return await PrepareForUseAsync(fresh, ct).ConfigureAwait(false);
+                return await PrepareForUseAsync(fresh, ct, cancellationToken, retryCount).ConfigureAwait(false);
             }
             // CAS failed → retry (another thread created an item or grew).
         }
@@ -151,16 +154,18 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
         var tcs = new TaskCompletionSource<PoolEntry<T>>(TaskCreationOptions.RunContinuationsAsynchronously);
         await _waiters.Writer.WriteAsync(tcs, ct).ConfigureAwait(false);
 
+        // WR-01 fix: pass the cancellation token to TrySetCanceled so awaiters see the
+        // correct CancellationToken on the resulting OperationCanceledException.
         using var registration = ct.Register(static state =>
         {
-            var t = (TaskCompletionSource<PoolEntry<T>>)state!;
-            t.TrySetCanceled();
-        }, tcs);
+            var (t, token) = ((TaskCompletionSource<PoolEntry<T>>, CancellationToken))state!;
+            t.TrySetCanceled(token);
+        }, (tcs, ct));
 
         try
         {
             var awaited = await tcs.Task.ConfigureAwait(false);
-            return await PrepareForUseAsync(awaited, ct).ConfigureAwait(false);
+            return await PrepareForUseAsync(awaited, ct, cancellationToken, retryCount).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -171,7 +176,20 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
         }
     }
 
-    private async ValueTask<IPoolItem<T>> PrepareForUseAsync(PoolEntry<T> entry, CancellationToken ct)
+    // Maximum number of consecutive BeforeUse-Unhealthy discards before we give up and
+    // surface a meaningful exception. Guards against unbounded recursion when a Factory
+    // always succeeds but BeforeUse always rejects (WR-04). 10 is an arbitrary but
+    // sensible cap — a healthy pool should never hit this.
+    private const int BeforeUseUnhealthyRetryLimit = 10;
+
+    // CR-02 + WR-04: takes BOTH the composite ct (linked: caller + lifetime) AND the original
+    // caller cancellation token. The composite is used for hook invocations (so they abort on
+    // pool dispose); the caller token is used to recurse into AcquireAsyncCore so that
+    // disposal-vs-cancellation semantics are preserved (caller still observes
+    // ObjectDisposedException on pool dispose, not OperationCanceledException).
+    // retryCount bounds the BeforeUse-Unhealthy retry loop.
+    private async ValueTask<IPoolItem<T>> PrepareForUseAsync(
+        PoolEntry<T> entry, CancellationToken ct, CancellationToken callerCt, int retryCount = 0)
     {
         if (_options.BeforeUse is { } beforeUse)
         {
@@ -194,8 +212,17 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
                 {
                     try { await release(entry.Item, ct).ConfigureAwait(false); } catch { /* swallow */ }
                 }
-                // Replace by recursing the acquire path (will create a new item up to MaxSize).
-                return await AcquireAsync(ct).ConfigureAwait(false);
+                if (retryCount >= BeforeUseUnhealthyRetryLimit)
+                {
+                    throw new InvalidOperationException(
+                        $"BeforeUse returned Unhealthy {BeforeUseUnhealthyRetryLimit} times consecutively for pool '{_options.PoolName}'; " +
+                        "the Factory may be producing persistently broken items.");
+                }
+                // Replace by recursing the acquire path with the caller's original token
+                // so ObjectDisposedException semantics (CR-02) are preserved on pool dispose.
+                // retryCount is threaded through AcquireAsyncCore -> PrepareForUseAsync to
+                // bound the BeforeUse-Unhealthy retry chain (WR-04).
+                return await AcquireAsyncCore(callerCt, retryCount + 1).ConfigureAwait(false);
             }
         }
         Interlocked.Increment(ref _inUse);
