@@ -9,22 +9,22 @@ Requirements for initial release (v1.0). Each maps to roadmap phases.
 
 ### API — Public Surface (Core)
 
-- [ ] **API-01**: Pool expõe interface `IAdaptivePool<T>` com `Acquire()` síncrono (retorno imediato quando há item livre) e `AcquireAsync(CancellationToken)` retornando `ValueTask<IPoolItem<T>>`
-- [ ] **API-02**: Wrapper `IPoolItem<T>` disposable expõe `.Object` e devolve ao pool em `Dispose()` / `DisposeAsync()`, com idempotência e detecção de double-dispose
-- [ ] **API-03**: Builder fluente `AdaptiveObjectPoolFactory.Build<T>(IServiceProvider, CancellationToken)` produz pool selado a partir de configuração imutável; `.Build()` valida configuração obrigatória e lança em config inválida
+- [x] **API-01**: Pool expõe interface `IAdaptivePool<T>` com `Acquire()` síncrono (retorno imediato quando há item livre) e `AcquireAsync(CancellationToken)` retornando `ValueTask<IPoolItem<T>>`
+- [x] **API-02**: Wrapper `IPoolItem<T>` disposable expõe `.Object` e devolve ao pool em `Dispose()` / `DisposeAsync()`, com idempotência e detecção de double-dispose
+- [x] **API-03**: Builder fluente `AdaptiveObjectPoolFactory.Build<T>(IServiceProvider, CancellationToken)` produz pool selado a partir de configuração imutável; `.Build()` valida configuração obrigatória e lança em config inválida
 
 ### HOOK — Lifecycle Hook Surface
 
-- [ ] **HOOK-01**: Hook `Factory((IServiceProvider, CancellationToken) → ValueTask<T>)` obrigatório, executado fora de locks para não bloquear hot path
-- [ ] **HOOK-02**: Hook `BeforeUse((T, CancellationToken) → ValueTask<PoolState>)` opcional, executado em `Acquire` antes de entregar o item ao chamador; falha aciona política de falha
-- [ ] **HOOK-03**: Hook `Check((T, CancellationToken) → ValueTask<PoolState>)` opcional, executado pelo background sweeper em itens ociosos
-- [ ] **HOOK-04**: Hook `AfterUse((T, CancellationToken) → ValueTask<PoolState>)` opcional, executado no retorno; padrão no-op (opt-in real para validação fica em v2)
-- [ ] **HOOK-05**: Hook `Release((T, CancellationToken) → ValueTask)` opcional para cleanup/disposal customizado (ex.: `connection.CloseAsync()`)
+- [x] **HOOK-01**: Hook `Factory((IServiceProvider, CancellationToken) → ValueTask<T>)` obrigatório, executado fora de locks para não bloquear hot path
+- [x] **HOOK-02**: Hook `BeforeUse((T, CancellationToken) → ValueTask<PoolState>)` opcional, executado em `Acquire` antes de entregar o item ao chamador; falha aciona política de falha
+- [x] **HOOK-03**: Hook `Check((T, CancellationToken) → ValueTask<PoolState>)` opcional, executado pelo background sweeper em itens ociosos
+- [x] **HOOK-04**: Hook `AfterUse((T, CancellationToken) → ValueTask<PoolState>)` opcional, executado no retorno; padrão no-op (opt-in real para validação fica em v2)
+- [x] **HOOK-05**: Hook `Release((T, CancellationToken) → ValueTask)` opcional para cleanup/disposal customizado (ex.: `connection.CloseAsync()`)
 
 ### BOUND — Capacity & Warm-up
 
-- [ ] **BOUND-01**: Configuração `MinSize` (piso mantido), `MaxSize` (teto absoluto), `InitialSize` (warm-up alvo), com validação `0 ≤ Min ≤ Initial ≤ Max`
-- [ ] **BOUND-02**: Eager warm-up assíncrono awaitable até atingir `InitialSize` (gating opcional para readiness probes), com cancelamento limpo em shutdown durante warm-up
+- [x] **BOUND-01**: Configuração `MinSize` (piso mantido), `MaxSize` (teto absoluto), `InitialSize` (warm-up alvo), com validação `0 ≤ Min ≤ Initial ≤ Max`
+- [x] **BOUND-02**: Eager warm-up assíncrono awaitable até atingir `InitialSize` (gating opcional para readiness probes), com cancelamento limpo em shutdown durante warm-up
 
 ### ELASTIC — Adaptive Sizing
 
@@ -33,23 +33,23 @@ Requirements for initial release (v1.0). Each maps to roadmap phases.
 
 ### FAIL — Failure Policy
 
-- [ ] **FAIL-01**: Interface pública `IItemFailurePolicy<T>` invocada quando hook de saúde retorna `Unhealthy` ou quando Factory falha; recebe contexto suficiente para decidir descarte/quarentena/custom
-- [ ] **FAIL-02**: Política built-in `DiscardAndReplace` (descarta item, dispara reposição se abaixo de `MinSize`) como padrão do builder
+- [x] **FAIL-01**: Interface pública `IItemFailurePolicy<T>` invocada quando hook de saúde retorna `Unhealthy` ou quando Factory falha; recebe contexto suficiente para decidir descarte/quarentena/custom
+- [x] **FAIL-02**: Política built-in `DiscardAndReplace` (descarta item, dispara reposição se abaixo de `MinSize`) como padrão do builder
 
 ### TELEM — Observability
 
-- [ ] **TELEM-01**: `Meter` nomeado `"Oragon.AdaptivePool"` obtido via `IMeterFactory`, expondo gauges (`pool.size`, `pool.available`, `pool.in_use`, `pool.waiting`) e counters (`pool.acquire.count`, `pool.acquire.duration`, `pool.factory.failures`, `pool.grow.count`, `pool.shrink.count`, `pool.health.failures`); tags com cardinalidade limitada (`pool.name`)
+- [x] **TELEM-01**: `Meter` nomeado `"Oragon.AdaptivePool"` obtido via `IMeterFactory`, expondo gauges (`pool.size`, `pool.available`, `pool.in_use`, `pool.waiting`) e counters (`pool.acquire.count`, `pool.acquire.duration`, `pool.factory.failures`, `pool.grow.count`, `pool.shrink.count`, `pool.health.failures`); tags com cardinalidade limitada (`pool.name`)
 - [ ] **TELEM-02**: `ActivitySource` nomeado `"Oragon.AdaptivePool"` com spans em `Acquire`, `Release`, `HealthCheck`, `Grow`, `Shrink`; uso de `HasListeners()` para evitar custo quando ninguém escuta
 - [ ] **TELEM-03**: Logging via `ILogger<T>` usando `[LoggerMessage]` source-generated (allocation-free) para transições de estado, falhas de factory, evictions, decisões de política
 
 ### DI — Dependency Injection
 
-- [ ] **DI-01**: Extensão `services.AddAdaptivePool<T>(name, configure)` para Microsoft.Extensions.DependencyInjection com pools nomeados (named options pattern), resolução de hooks via `IServiceProvider`, e auto-registro de health checks opcional
+- [x] **DI-01**: Extensão `services.AddAdaptivePool<T>(name, configure)` para Microsoft.Extensions.DependencyInjection com pools nomeados (named options pattern), resolução de hooks via `IServiceProvider`, e auto-registro de health checks opcional
 
 ### QUAL — Cross-cutting Quality
 
-- [ ] **QUAL-01**: `CancellationToken` propagado fim-a-fim em todos os hooks async, em `AcquireAsync`, e na cancelação de waiters pendentes (sem perda de wake-up)
-- [ ] **QUAL-02**: Pool implementa `IAsyncDisposable` com semântica de drain (parar de aceitar novos `Acquire`, aguardar in-flight, então liberar recursos)
+- [x] **QUAL-01**: `CancellationToken` propagado fim-a-fim em todos os hooks async, em `AcquireAsync`, e na cancelação de waiters pendentes (sem perda de wake-up)
+- [x] **QUAL-02**: Pool implementa `IAsyncDisposable` com semântica de drain (parar de aceitar novos `Acquire`, aguardar in-flight, então liberar recursos)
 - [ ] **QUAL-03**: Thread-safety verificada via testes de stress concorrente (centenas de threads, milhares de acquire/release ciclos) cobrindo paths de grow/shrink/sweep
 
 ### RMQ — RabbitMQ Adapter
@@ -108,26 +108,26 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| API-01 | Phase 1 | Pending |
-| API-02 | Phase 1 | Pending |
-| API-03 | Phase 1 | Pending |
-| HOOK-01 | Phase 1 | Pending |
-| HOOK-02 | Phase 1 | Pending |
-| HOOK-03 | Phase 1 | Pending |
-| HOOK-04 | Phase 1 | Pending |
-| HOOK-05 | Phase 1 | Pending |
-| BOUND-01 | Phase 1 | Pending |
-| BOUND-02 | Phase 1 | Pending |
+| API-01 | Phase 1 | Complete |
+| API-02 | Phase 1 | Complete |
+| API-03 | Phase 1 | Complete |
+| HOOK-01 | Phase 1 | Complete |
+| HOOK-02 | Phase 1 | Complete |
+| HOOK-03 | Phase 1 | Complete |
+| HOOK-04 | Phase 1 | Complete |
+| HOOK-05 | Phase 1 | Complete |
+| BOUND-01 | Phase 1 | Complete |
+| BOUND-02 | Phase 1 | Complete |
 | ELASTIC-01 | Phase 2 | Pending |
 | ELASTIC-02 | Phase 2 | Pending |
-| FAIL-01 | Phase 1 | Pending |
-| FAIL-02 | Phase 1 | Pending |
-| TELEM-01 | Phase 1 | Pending |
+| FAIL-01 | Phase 1 | Complete |
+| FAIL-02 | Phase 1 | Complete |
+| TELEM-01 | Phase 1 | Complete |
 | TELEM-02 | Phase 2 | Pending |
 | TELEM-03 | Phase 2 | Pending |
-| DI-01 | Phase 1 | Pending |
-| QUAL-01 | Phase 1 | Pending |
-| QUAL-02 | Phase 1 | Pending |
+| DI-01 | Phase 1 | Complete |
+| QUAL-01 | Phase 1 | Complete |
+| QUAL-02 | Phase 1 | Complete |
 | QUAL-03 | Phase 2 | Pending |
 | RMQ-01 | Phase 3 | Pending |
 | RMQ-02 | Phase 3 | Pending |

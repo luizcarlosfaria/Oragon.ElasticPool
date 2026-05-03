@@ -1,3 +1,17 @@
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: Release
+status: Awaiting plan creation
+last_updated: "2026-05-03T07:02:29.261Z"
+progress:
+  total_phases: 4
+  completed_phases: 0
+  total_plans: 3
+  completed_plans: 2
+  percent: 67
+---
+
 # State: Oragon.AdaptivePool
 
 **Last updated:** 2026-05-03
@@ -6,23 +20,29 @@
 
 **Core Value:** Pool genérico .NET que entrega simultaneamente elasticidade real (min/max com crescimento e encolhimento automáticos), auto-cura (detecta e substitui objetos quebrados sem o cliente saber) e DX fluente (builder limpo, async-first, DI-first) — os três pilares juntos são o produto e nenhum pode ser sacrificado.
 
-**Current Focus:** Roadmap initialized. Awaiting `/gsd-plan-phase 1` to begin Phase 1 planning.
+**Current Focus:** Phase 1 in progress. Plan 02 (Core Skeleton — Public API + Sealed Engine) complete; Plan 03 (Tests + Stress + Coverage) is the next executable.
 
 ## Current Position
 
-**Phase:** 1 - Core Skeleton — Fixed-Size Pool (not started)
-**Plan:** None
-**Status:** Awaiting plan creation
-**Progress:** [░░░░░░░░░░░░░░░░░░░░] 0% (0/4 phases complete)
+**Phase:** 1 - Core Skeleton — Fixed-Size Pool (in progress)
+**Plan:** 2 of 3
+**Status:** Plan 02 complete — Plan 03 ready to execute
+**Last Activity:** 2026-05-02
+**Progress:** [██████░░░░] 67%
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
 | Phases complete | 0/4 |
-| Plans complete | 0/0 |
+| Plans complete | 2/3 (Phase 1) |
 | Requirements mapped | 30/30 |
 | Requirements validated | 0/30 |
+
+| Phase | Plan | Duration | Tasks | Files | Commits |
+|-------|------|----------|-------|-------|---------|
+| 1 | 01 | 10m37s | 3 | 14 | 3 |
+| 1 | 02 | 14m22s | 3 | 22 | 3 |
 
 ## Accumulated Context
 
@@ -41,6 +61,7 @@
 ### Architecture Locked-In Decisions (Phase 1 Critical)
 
 These cannot be changed without breaking API:
+
 - `CancellationToken` parameter in every hook delegate signature
 - `ValueTask` (not `Task`) return on async hooks
 - `IPoolItem<T>` wrapper with both `IDisposable` and `IAsyncDisposable`
@@ -48,9 +69,14 @@ These cannot be changed without breaking API:
 - Counter rollback (`Interlocked.Decrement(_total)`) on Factory exception
 - `Channel<TaskCompletionSource<PoolEntry<T>>>` direct-handoff for waiter queue (not split free-list/waiter-list)
 
+### Decisions Made
+
+- [Phase 1 Plan 01]: Repository scaffolding green-baseline (CPM, SourceLink deterministic, PublicApiAnalyzers wired, xUnit v3+MTP test/stress projects, multi-TFM CI workflow)
+- [Phase 1 Plan 02]: 12 public types + sealed AdaptivePool<T> engine (Channel direct-handoff waiter, Interlocked counter rollback, dual IDisposable+IAsyncDisposable drain, eager warm-up via ReadyAsync(), IMeterFactory telemetry with Meter fallback, source-gen [LoggerMessage] logging) + DI extension `services.AddAdaptivePool<T>(name, configure)` with named-options + keyed singleton + non-keyed default-name fallback. PublicAPI.Unshipped.txt now has 75 declarations; full solution build green on net8/9/10.
+
 ### Open Todos
 
-- None yet — kicks off when Phase 1 planning begins
+- Plan 03: Unit + stress test suite (one test per must_have truth from Plan 02), MaxSize=1 ping-pong stress test, MetricCollector counter assertions for `pool.acquire.count` + `pool.factory.failures`, 90% coverage gate on Core in CI, replace Plan 01 placeholder smoke test and stress fact
 
 ### Blockers
 
@@ -65,9 +91,13 @@ These cannot be changed without breaking API:
 
 ## Session Continuity
 
-**Next action:** Run `/gsd-plan-phase 1` to decompose Phase 1 into executable plans.
+**Last session:** 2026-05-02 — completed Phase 1 Plan 02 (Core API surface + sealed engine + DI extension).
+**Stopped at:** End of Plan 02 (commits 3c0e25f, fdb29d9, db7ae8a). Self-check PASSED.
+**Resume file:** `.planning/phases/01-core-skeleton-fixed-size-pool/02-SUMMARY.md`
+**Next action:** Execute Phase 1 Plan 03 (`.planning/phases/01-core-skeleton-fixed-size-pool/03-PLAN.md`) — unit + stress tests, MaxSize=1 ping-pong, MetricCollector assertions, 90% coverage gate.
 
 **Files in `.planning/`:**
+
 - `PROJECT.md` — vision, core value, constraints, key decisions
 - `REQUIREMENTS.md` — 30 v1 requirements, traceability table
 - `ROADMAP.md` — 4 phases with success criteria, coverage map

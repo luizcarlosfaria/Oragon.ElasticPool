@@ -66,7 +66,7 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Core Skeleton — Fixed-Size Pool | 0/0 | Not started | - |
+| 1. Core Skeleton — Fixed-Size Pool | 2/3 | In Progress|  |
 | 2. Elasticity & Health | 0/0 | Not started | - |
 | 3. RabbitMQ Adapter | 0/0 | Not started | - |
 | 4. Polish & v1.0 Release | 0/0 | Not started | - |
