@@ -1,4 +1,6 @@
 #nullable enable
+Oragon.AdaptivePool.RabbitMQ.DependencyInjection.AdaptiveConnectionPoolServiceCollectionExtensions
+static Oragon.AdaptivePool.RabbitMQ.DependencyInjection.AdaptiveConnectionPoolServiceCollectionExtensions.AddAdaptiveConnectionPool(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, string! name, System.Action<RabbitMQ.Client.ConnectionFactory!>? configureFactory, System.Action<Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveConnectionPoolBuilder!>! configurePool) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveConnectionPoolBuilder
 Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveConnectionPoolBuilder.AdaptiveConnectionPoolBuilder() -> void
 Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveConnectionPoolBuilder.IdleTimeout.get -> System.TimeSpan
