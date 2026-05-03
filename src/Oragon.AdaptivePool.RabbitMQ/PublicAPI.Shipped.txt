@@ -1,0 +1,39 @@
+#nullable enable
+Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveChannelPoolBuilder
+Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveChannelPoolBuilder.AdaptiveChannelPoolBuilder() -> void
+Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveChannelPoolBuilder.ChannelOptions.get -> RabbitMQ.Client.CreateChannelOptions!
+Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveChannelPoolBuilder.IdleTimeout.get -> System.TimeSpan
+Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveChannelPoolBuilder.InitialSize.get -> int
+Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveChannelPoolBuilder.MaxChannelsPerConnection.get -> int
+Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveChannelPoolBuilder.MaxSize.get -> int
+Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveChannelPoolBuilder.MinSize.get -> int
+Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveChannelPoolBuilder.WithBounds(int min, int max, int initial) -> Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveChannelPoolBuilder!
+Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveChannelPoolBuilder.WithChannelOptions(RabbitMQ.Client.CreateChannelOptions! options) -> Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveChannelPoolBuilder!
+Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveChannelPoolBuilder.WithIdleTimeout(System.TimeSpan t) -> Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveChannelPoolBuilder!
+Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveChannelPoolBuilder.WithMaxChannelsPerConnection(int n) -> Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveChannelPoolBuilder!
+Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveConnectionPoolBuilder
+Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveConnectionPoolBuilder.AdaptiveConnectionPoolBuilder() -> void
+Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveConnectionPoolBuilder.IdleTimeout.get -> System.TimeSpan
+Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveConnectionPoolBuilder.InitialSize.get -> int
+Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveConnectionPoolBuilder.MaxSize.get -> int
+Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveConnectionPoolBuilder.MinSize.get -> int
+Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveConnectionPoolBuilder.WithBounds(int min, int max, int initial) -> Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveConnectionPoolBuilder!
+Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveConnectionPoolBuilder.WithIdleTimeout(System.TimeSpan t) -> Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveConnectionPoolBuilder!
+Oragon.AdaptivePool.RabbitMQ.DependencyInjection.AdaptiveChannelPoolServiceCollectionExtensions
+Oragon.AdaptivePool.RabbitMQ.DependencyInjection.AdaptiveConnectionPoolServiceCollectionExtensions
+Oragon.AdaptivePool.RabbitMQ.Options.AdaptiveConnectionPoolOptions
+Oragon.AdaptivePool.RabbitMQ.Options.AdaptiveConnectionPoolOptions.AdaptiveConnectionPoolOptions() -> void
+Oragon.AdaptivePool.RabbitMQ.Options.AdaptiveConnectionPoolOptions.HostName.get -> string?
+Oragon.AdaptivePool.RabbitMQ.Options.AdaptiveConnectionPoolOptions.HostName.set -> void
+Oragon.AdaptivePool.RabbitMQ.Options.AdaptiveConnectionPoolOptions.Password.get -> string?
+Oragon.AdaptivePool.RabbitMQ.Options.AdaptiveConnectionPoolOptions.Password.set -> void
+Oragon.AdaptivePool.RabbitMQ.Options.AdaptiveConnectionPoolOptions.Port.get -> int
+Oragon.AdaptivePool.RabbitMQ.Options.AdaptiveConnectionPoolOptions.Port.set -> void
+Oragon.AdaptivePool.RabbitMQ.Options.AdaptiveConnectionPoolOptions.RequestedHeartbeat.get -> System.TimeSpan?
+Oragon.AdaptivePool.RabbitMQ.Options.AdaptiveConnectionPoolOptions.RequestedHeartbeat.set -> void
+Oragon.AdaptivePool.RabbitMQ.Options.AdaptiveConnectionPoolOptions.UserName.get -> string?
+Oragon.AdaptivePool.RabbitMQ.Options.AdaptiveConnectionPoolOptions.UserName.set -> void
+Oragon.AdaptivePool.RabbitMQ.Options.AdaptiveConnectionPoolOptions.VirtualHost.get -> string?
+Oragon.AdaptivePool.RabbitMQ.Options.AdaptiveConnectionPoolOptions.VirtualHost.set -> void
+static Oragon.AdaptivePool.RabbitMQ.DependencyInjection.AdaptiveChannelPoolServiceCollectionExtensions.AddAdaptiveChannelPool(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, string! name, string! connectionPoolName, System.Action<Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveChannelPoolBuilder!>! configurePool) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Oragon.AdaptivePool.RabbitMQ.DependencyInjection.AdaptiveConnectionPoolServiceCollectionExtensions.AddAdaptiveConnectionPool(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, string! name, System.Action<RabbitMQ.Client.ConnectionFactory!>? configureFactory, System.Action<Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveConnectionPoolBuilder!>! configurePool) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
