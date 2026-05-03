@@ -1,9 +1,13 @@
+using System.Diagnostics;
+using Oragon.AdaptivePool.Core.Abstractions;
+using Oragon.AdaptivePool.Core.Telemetry;
+
 namespace Oragon.AdaptivePool.Core.Internals;
 
 /// <summary>
-/// PeriodicTimer-driven background sweeper. The loop body (<see cref="RunSweepTickAsync"/>) is a
-/// stub for Plan 01 — it only advances the cooldown counter and records a clean sweep on the
-/// backoff state. Plan 02 replaces the body with health-check + shrink + telemetry.
+/// PeriodicTimer-driven background sweeper. Runs Check hook on idle items, applies failure
+/// policy on Unhealthy decisions, evicts at most one idle item per tick when the pool is over
+/// MinSize and grow cooldown has elapsed, and adapts the timer interval via SweepBackoffState.
 /// </summary>
 internal sealed class BackgroundSweeper<T> : IAsyncDisposable where T : notnull
 {
@@ -40,17 +44,18 @@ internal sealed class BackgroundSweeper<T> : IAsyncDisposable where T : notnull
                     new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously));
                 try
                 {
-                    await RunSweepTickAsync(_sweepCts.Token).ConfigureAwait(false);
+                    await RunSweepTickAsync(timer, _sweepCts.Token).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
                 {
                     prevTcs.TrySetResult();
                     break;
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    // Plan 02 will route to PoolDiagnosticsLog.SweepFailed. For Plan 01,
-                    // swallow defensively so a single tick failure cannot kill the loop.
+                    // Catastrophic failure outside per-item try/catch — surface via 1099 SweepFailed
+                    // and continue. The loop must not die from a single tick.
+                    _pool.Log.SweepFailed(_options.PoolName, ex);
                 }
                 finally
                 {
@@ -66,15 +71,125 @@ internal sealed class BackgroundSweeper<T> : IAsyncDisposable where T : notnull
         }
     }
 
-    // Plan 01 stub: increments the since-last-grow counter only. Plan 02 replaces this body
-    // with health-check pass + shrink pass + telemetry. The "clean sweep" call below keeps
-    // the backoff state at base interval for Phase 2's Plan 03 tests that observe interval
-    // stability under no-op sweeps.
-    private ValueTask RunSweepTickAsync(CancellationToken ct)
+    /// <summary>
+    /// One sweep tick: health-check pass + shrink pass + cooldown bookkeeping + backoff update.
+    /// Sequence: (1) start sweep span + log SweepStarted, (2) snapshot idle queue,
+    /// (3) per-item Check + ActivityEvent, (4) shrink at most 1 if cooldown elapsed and over MinSize,
+    /// (5) IncrementSinceLastGrowTicks, (6) OnSweepResult + log SweepFailureBackoff if interval bumped,
+    /// (7) record sweep duration histogram + log SweepCompleted.
+    /// </summary>
+    private async ValueTask RunSweepTickAsync(PeriodicTimer timer, CancellationToken ct)
     {
+        var sweepStart = _options.TimeProvider.GetTimestamp();
+        using var sweepSpan = _pool.Telemetry.StartSweepSpan(_options.PoolName);
+        _pool.Log.SweepStarted(_options.PoolName, _backoff.CurrentInterval.TotalSeconds);
+
+        int totalChecked = 0;
+        int unhealthy = 0;
+        int shrunk = 0;
+
+        // ---- (1) Health-check pass ----
+        // Iterate a snapshot — ConcurrentQueue.ToArray is a stable snapshot. Concurrent
+        // Acquire/Return on the queue continues unimpeded; we operate read-only here, marking
+        // unhealthy items via LastReturnedAt = MinValue for the shrink pass to evict.
+        if (_options.Check is { } check)
+        {
+            var snapshot = _pool.Idle.ToArray();
+            foreach (var entry in snapshot)
+            {
+                ct.ThrowIfCancellationRequested();
+                totalChecked++;
+                using var hcSpan = _pool.Telemetry.StartHealthCheckSpan(_options.PoolName);
+                bool isUnhealthy = false;
+                Exception? thrown = null;
+                try
+                {
+                    var state = await check(entry.Item, ct).ConfigureAwait(false);
+                    if (state == PoolState.Unhealthy) isUnhealthy = true;
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { isUnhealthy = true; thrown = ex; }
+
+                if (isUnhealthy)
+                {
+                    unhealthy++;
+                    _pool.Telemetry.OnHealthFailure();
+                    _pool.Log.CheckUnhealthy(_options.PoolName, thrown?.GetType().Name ?? "Unhealthy");
+                    try
+                    {
+                        await _pool.Options.FailurePolicy.HandleAsync(entry.Item, FailureKind.AfterUseUnhealthy, thrown, ct).ConfigureAwait(false);
+                    }
+                    catch { /* policy failure — keep sweeping */ }
+                    // ConcurrentQueue<T> can't remove a specific element. Mark the entry stale via
+                    // LastReturnedAt = MinValue so the shrink pass evicts it on this tick (or the
+                    // next, whichever wins the cooldown gate first). DecrementTotal is NOT called
+                    // here — the shrink pass owns the dequeue+decrement to keep _total balanced.
+                    entry.LastReturnedAt = DateTimeOffset.MinValue;
+                    hcSpan?.SetTag(PoolMeterNames.OutcomeTag, "unhealthy");
+                }
+                else
+                {
+                    hcSpan?.SetTag(PoolMeterNames.OutcomeTag, "healthy");
+                }
+                sweepSpan?.AddEvent(new ActivityEvent(
+                    "item-checked",
+                    tags: new ActivityTagsCollection
+                    {
+                        { "result", isUnhealthy ? "unhealthy" : "healthy" }
+                    }));
+            }
+        }
+
+        // ---- (2) Shrink pass ----
+        // Cooldown gate: SinceLastGrowTicks must have reached ShrinkCooldownWindows before any
+        // shrink is considered. Floor: never go below MinSize. Gentle decay: at most 1 item/tick.
+        if (_pool.SinceLastGrowTicks >= _options.ShrinkCooldownWindows
+            && _pool.CurrentTotal > _options.MinSize)
+        {
+            var now = _options.TimeProvider.GetUtcNow();
+            if (_pool.Idle.TryPeek(out var head))
+            {
+                if (head.LastReturnedAt + _options.IdleTimeout <= now)
+                {
+                    if (_pool.Idle.TryDequeue(out var evict))
+                    {
+                        var oldTotal = _pool.CurrentTotal;
+                        _pool.DecrementTotal();
+                        var newTotal = _pool.CurrentTotal;
+                        using var shrinkSpan = _pool.Telemetry.StartShrinkSpan(_options.PoolName, oldTotal, newTotal);
+                        if (_options.Release is { } release)
+                        {
+                            try { await release(evict.Item, ct).ConfigureAwait(false); } catch { /* swallow */ }
+                        }
+                        _pool.Telemetry.OnShrink();
+                        _pool.Log.Shrunk(_options.PoolName, oldTotal, newTotal);
+                        shrinkSpan?.SetTag(PoolMeterNames.OutcomeTag, "shrunk");
+                        shrunk = 1;
+                    }
+                }
+            }
+        }
+
+        // ---- (3) Cooldown bookkeeping ----
         _pool.IncrementSinceLastGrowTicks();
-        _backoff.OnSweepResult(totalChecked: 0, unhealthy: 0);
-        return ValueTask.CompletedTask;
+
+        // ---- (4) Backoff state update ----
+        var prevInterval = _backoff.CurrentInterval;
+        _backoff.OnSweepResult(totalChecked, unhealthy);
+        if (_backoff.IntervalChanged && _backoff.CurrentInterval > prevInterval)
+        {
+            _pool.Log.SweepFailureBackoff(
+                _options.PoolName,
+                prevInterval.TotalSeconds,
+                _backoff.CurrentInterval.TotalSeconds,
+                _backoff.ConsecutiveFailureWindows);
+        }
+
+        // ---- (5) Tick close ----
+        var elapsed = _options.TimeProvider.GetElapsedTime(sweepStart);
+        _pool.Telemetry.OnSweepDuration(elapsed);
+        _pool.Log.SweepCompleted(_options.PoolName, elapsed.TotalMilliseconds, totalChecked, unhealthy, shrunk);
+        sweepSpan?.SetTag(PoolMeterNames.OutcomeTag, unhealthy > 0 ? "unhealthy" : "healthy");
     }
 
     public async ValueTask DisposeAsync()
