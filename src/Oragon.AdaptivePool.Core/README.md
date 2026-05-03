@@ -31,10 +31,8 @@ var builder = Host.CreateApplicationBuilder(args);
 
 builder.Services.AddAdaptivePool<MyExpensiveClient>("default", pool =>
 {
-    pool.MinSize     = 1;
-    pool.InitialSize = 2;
-    pool.MaxSize     = 16;
-    pool.IdleTimeout = TimeSpan.FromMinutes(2);
+    pool.WithBounds(minSize: 1, maxSize: 16, initialSize: 2);
+    pool.IdleTimeout(TimeSpan.FromMinutes(2));
 
     pool.Factory((sp, ct) => ValueTask.FromResult(new MyExpensiveClient()));
     pool.BeforeUse((c, ct) => ValueTask.FromResult(c.IsHealthy ? PoolState.Healthy : PoolState.Unhealthy));
@@ -42,7 +40,8 @@ builder.Services.AddAdaptivePool<MyExpensiveClient>("default", pool =>
 });
 
 using var host = builder.Build();
-var pool = host.Services.GetRequiredService<IAdaptivePool<MyExpensiveClient>>();
+// AddAdaptivePool registers a *keyed* singleton — match the name above.
+var pool = host.Services.GetRequiredKeyedService<IAdaptivePool<MyExpensiveClient>>("default");
 
 await using var lease = await pool.AcquireAsync();
 lease.Value.DoWork();

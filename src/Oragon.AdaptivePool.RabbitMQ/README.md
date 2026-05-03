@@ -41,10 +41,8 @@ builder.Services.AddAdaptiveConnectionPool(
     },
     configurePool: pool =>
     {
-        pool.MinSize     = 1;
-        pool.MaxSize     = 32;
-        pool.InitialSize = 2;
-        pool.IdleTimeout = TimeSpan.FromMinutes(2);
+        pool.WithBounds(minSize: 1, maxSize: 32, initialSize: 2);
+        pool.IdleTimeout(TimeSpan.FromMinutes(2));
     });
 
 // Channel pool layered on top
@@ -53,14 +51,13 @@ builder.Services.AddAdaptiveChannelPool(
     connectionPoolName: "default",
     configurePool: pool =>
     {
-        pool.MinSize     = 0;
-        pool.MaxSize     = 256;
-        pool.InitialSize = 0;
-        pool.IdleTimeout = TimeSpan.FromSeconds(30);
+        pool.WithBounds(minSize: 0, maxSize: 256, initialSize: 0);
+        pool.IdleTimeout(TimeSpan.FromSeconds(30));
     });
 
 using var host = builder.Build();
-var channels = host.Services.GetRequiredService<IAdaptivePool<IChannel>>();
+// AddAdaptiveChannelPool registers a *keyed* singleton — match the name above.
+var channels = host.Services.GetRequiredKeyedService<IAdaptivePool<IChannel>>("default");
 
 // Publish under any load shape — pool grows/shrinks/heals automatically.
 // IChannel is NOT thread-safe — acquire one per logical publisher / per iteration.
