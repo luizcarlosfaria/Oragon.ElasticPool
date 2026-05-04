@@ -243,9 +243,12 @@ public class ChannelPoolUnitTests
 
         // Channel CloseAsync extension calls the 4-arg overload — receive at least once.
         Mock.Get(ch).Verify(m => m.CloseAsync(It.IsAny<ushort>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
-        Mock.Get(ch).Verify(m => m.DisposeAsync(), Times.AtLeastOnce);
+        // DisposeAsync() comes from IAsyncDisposable (explicit interface implementation
+        // on IChannel/IConnection). Moq records it under the declaring interface, so
+        // verification must use .As<IAsyncDisposable>() to match the recorded invocation.
+        Mock.Get(ch).As<IAsyncDisposable>().Verify(m => m.DisposeAsync(), Times.AtLeastOnce);
         // Connection eventually closed/disposed during connection-pool drain.
-        Mock.Get(conn).Verify(m => m.DisposeAsync(), Times.AtLeastOnce);
+        Mock.Get(conn).As<IAsyncDisposable>().Verify(m => m.DisposeAsync(), Times.AtLeastOnce);
     }
 
     [Fact]
@@ -299,8 +302,10 @@ public class ChannelPoolUnitTests
 
         var chMock = new Mock<IChannel>();
         chMock.Setup(m => m.IsOpen).Returns(true);
-        chMock.Setup(m => m.DisposeAsync()).Returns(ValueTask.FromException(
-            new IOException("simulated DisposeAsync failure")));
+        // DisposeAsync is on IAsyncDisposable (explicit interface) — set up via .As<>.
+        chMock.As<IAsyncDisposable>()
+            .Setup(m => m.DisposeAsync())
+            .Returns(ValueTask.FromException(new IOException("simulated DisposeAsync failure")));
         var ch = chMock.Object;
 
         var connMock = new Mock<IConnection>();

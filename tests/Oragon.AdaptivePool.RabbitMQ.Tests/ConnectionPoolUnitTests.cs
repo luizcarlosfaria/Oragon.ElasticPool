@@ -146,7 +146,9 @@ public class ConnectionPoolUnitTests
         await sp.DisposeAsync();
 
         connMock.Verify(m => m.CloseAsync(It.IsAny<ushort>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
-        connMock.Verify(m => m.DisposeAsync(), Times.AtLeastOnce);
+        // DisposeAsync() is on IAsyncDisposable (explicit interface impl); Moq records
+        // the call under that interface, so verification must use .As<IAsyncDisposable>().
+        connMock.As<IAsyncDisposable>().Verify(m => m.DisposeAsync(), Times.AtLeastOnce);
     }
 
     [Fact]
