@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NSubstitute;
+using Moq;
 using Oragon.AdaptivePool.Core.Abstractions;
 using Oragon.AdaptivePool.RabbitMQ.DependencyInjection;
 using Oragon.AdaptivePool.RabbitMQ.Tests.TestSupport;
@@ -13,7 +13,7 @@ namespace Oragon.AdaptivePool.RabbitMQ.Tests;
 /// <summary>
 /// Unit tests for <c>AddAdaptiveChannelPool</c> — the layered Factory acquires from
 /// the connection pool, pairing via CWT, BeforeUse double-IsOpen probe, eager spread,
-/// and Release order. NSubstitute IConnection/IChannel; real Core pool engine.
+/// and Release order. Moq IConnection/IChannel; real Core pool engine.
 /// </summary>
 public class ChannelPoolUnitTests
 {
@@ -22,34 +22,34 @@ public class ChannelPoolUnitTests
 
     private static IConnection MakeConn(IChannel? channelToReturn = null, bool isOpen = true)
     {
-        var conn = Substitute.For<IConnection>();
-        conn.IsOpen.Returns(isOpen);
+        var connMock = new Mock<IConnection>();
+        connMock.Setup(m => m.IsOpen).Returns(isOpen);
         if (channelToReturn is not null)
         {
-            conn.CreateChannelAsync(Arg.Any<CreateChannelOptions?>(), Arg.Any<CancellationToken>())
-                .Returns(_ => channelToReturn);
+            connMock.Setup(m => m.CreateChannelAsync(It.IsAny<CreateChannelOptions?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(channelToReturn);
         }
-        return conn;
+        return connMock.Object;
     }
 
     private static IChannel MakeChannel(bool isOpen = true)
     {
-        var ch = Substitute.For<IChannel>();
-        ch.IsOpen.Returns(isOpen);
-        return ch;
+        var chMock = new Mock<IChannel>();
+        chMock.Setup(m => m.IsOpen).Returns(isOpen);
+        return chMock.Object;
     }
 
     private static IConnectionFactory FactoryProducingDistinctConnections(Func<IConnection>[] generators)
     {
-        var factory = Substitute.For<IConnectionFactory>();
+        var factoryMock = new Mock<IConnectionFactory>();
         int idx = 0;
-        factory.CreateConnectionAsync(Arg.Any<CancellationToken>())
-            .Returns(_ =>
+        factoryMock.Setup(m => m.CreateConnectionAsync(It.IsAny<CancellationToken>()))
+            .Returns(() =>
             {
                 var i = Math.Min(idx++, generators.Length - 1);
-                return generators[i]();
+                return Task.FromResult(generators[i]());
             });
-        return factory;
+        return factoryMock.Object;
     }
 
     [Fact]
@@ -60,8 +60,9 @@ public class ChannelPoolUnitTests
         var ch = MakeChannel();
         var conn = MakeConn(ch);
 
-        var factory = Substitute.For<IConnectionFactory>();
-        factory.CreateConnectionAsync(Arg.Any<CancellationToken>()).Returns(_ => conn);
+        var factoryMock = new Mock<IConnectionFactory>();
+        factoryMock.Setup(m => m.CreateConnectionAsync(It.IsAny<CancellationToken>())).ReturnsAsync(conn);
+        var factory = factoryMock.Object;
 
         var services = new ServiceCollection();
         services.AddKeyedSingleton<IConnectionFactory>(connName, (_, _) => factory);
@@ -73,8 +74,8 @@ public class ChannelPoolUnitTests
 
         await using var lease = await chPool.AcquireAsync();
 
-        await factory.Received(1).CreateConnectionAsync(Arg.Any<CancellationToken>());
-        await conn.Received(1).CreateChannelAsync(Arg.Any<CreateChannelOptions?>(), Arg.Any<CancellationToken>());
+        factoryMock.Verify(m => m.CreateConnectionAsync(It.IsAny<CancellationToken>()), Times.Once);
+        Mock.Get(conn).Verify(m => m.CreateChannelAsync(It.IsAny<CreateChannelOptions?>(), It.IsAny<CancellationToken>()), Times.Once);
         lease.Value.Should().BeSameAs(ch);
     }
 
@@ -91,8 +92,9 @@ public class ChannelPoolUnitTests
         var ch = MakeChannel();
         var conn = MakeConn(ch);
 
-        var factory = Substitute.For<IConnectionFactory>();
-        factory.CreateConnectionAsync(Arg.Any<CancellationToken>()).Returns(_ => conn);
+        var factoryMock = new Mock<IConnectionFactory>();
+        factoryMock.Setup(m => m.CreateConnectionAsync(It.IsAny<CancellationToken>())).ReturnsAsync(conn);
+        var factory = factoryMock.Object;
 
         var services = new ServiceCollection();
         services.AddKeyedSingleton<IConnectionFactory>(connName, (_, _) => factory);
@@ -124,14 +126,16 @@ public class ChannelPoolUnitTests
         // First channel: closed (IsOpen=false). Second: healthy.
         var deadCh = MakeChannel(isOpen: false);
         var freshCh = MakeChannel(isOpen: true);
-        var conn = Substitute.For<IConnection>();
-        conn.IsOpen.Returns(true);
+        var connMock = new Mock<IConnection>();
+        connMock.Setup(m => m.IsOpen).Returns(true);
         int chCalls = 0;
-        conn.CreateChannelAsync(Arg.Any<CreateChannelOptions?>(), Arg.Any<CancellationToken>())
-            .Returns(_ => ++chCalls == 1 ? deadCh : freshCh);
+        connMock.Setup(m => m.CreateChannelAsync(It.IsAny<CreateChannelOptions?>(), It.IsAny<CancellationToken>()))
+            .Returns(() => Task.FromResult(++chCalls == 1 ? deadCh : freshCh));
+        var conn = connMock.Object;
 
-        var factory = Substitute.For<IConnectionFactory>();
-        factory.CreateConnectionAsync(Arg.Any<CancellationToken>()).Returns(_ => conn);
+        var factoryMock = new Mock<IConnectionFactory>();
+        factoryMock.Setup(m => m.CreateConnectionAsync(It.IsAny<CancellationToken>())).ReturnsAsync(conn);
+        var factory = factoryMock.Object;
 
         var services = new ServiceCollection();
         services.AddKeyedSingleton<IConnectionFactory>(connName, (_, _) => factory);
@@ -161,9 +165,9 @@ public class ChannelPoolUnitTests
         // before the channel's BeforeUse runs. Easiest: configure conn.IsOpen to return
         // true on the first call, false on subsequent calls.
         var ch = MakeChannel(isOpen: true);
-        var conn = Substitute.For<IConnection>();
+        var connMock = new Mock<IConnection>();
         var ioOpenCalls = 0;
-        conn.IsOpen.Returns(_ =>
+        connMock.Setup(m => m.IsOpen).Returns(() =>
         {
             // First two calls (connection pool BeforeUse + channel pool's BeforeUse for conn)
             // see true; subsequent calls see false. We're not relying on exact call order —
@@ -171,11 +175,13 @@ public class ChannelPoolUnitTests
             ioOpenCalls++;
             return ioOpenCalls <= 1;
         });
-        conn.CreateChannelAsync(Arg.Any<CreateChannelOptions?>(), Arg.Any<CancellationToken>())
-            .Returns(_ => ch);
+        connMock.Setup(m => m.CreateChannelAsync(It.IsAny<CreateChannelOptions?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ch);
+        var conn = connMock.Object;
 
-        var factory = Substitute.For<IConnectionFactory>();
-        factory.CreateConnectionAsync(Arg.Any<CancellationToken>()).Returns(_ => conn);
+        var factoryMock = new Mock<IConnectionFactory>();
+        factoryMock.Setup(m => m.CreateConnectionAsync(It.IsAny<CancellationToken>())).ReturnsAsync(conn);
+        var factory = factoryMock.Object;
 
         var services = new ServiceCollection();
         services.AddKeyedSingleton<IConnectionFactory>(connName, (_, _) => factory);
@@ -216,8 +222,9 @@ public class ChannelPoolUnitTests
         var ch = MakeChannel();
         var conn = MakeConn(ch);
 
-        var factory = Substitute.For<IConnectionFactory>();
-        factory.CreateConnectionAsync(Arg.Any<CancellationToken>()).Returns(_ => conn);
+        var factoryMock = new Mock<IConnectionFactory>();
+        factoryMock.Setup(m => m.CreateConnectionAsync(It.IsAny<CancellationToken>())).ReturnsAsync(conn);
+        var factory = factoryMock.Object;
 
         var services = new ServiceCollection();
         services.AddKeyedSingleton<IConnectionFactory>(connName, (_, _) => factory);
@@ -235,10 +242,10 @@ public class ChannelPoolUnitTests
         await sp.DisposeAsync();
 
         // Channel CloseAsync extension calls the 4-arg overload — receive at least once.
-        await ch.Received().CloseAsync(Arg.Any<ushort>(), Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
-        await ch.Received().DisposeAsync();
+        Mock.Get(ch).Verify(m => m.CloseAsync(It.IsAny<ushort>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+        Mock.Get(ch).Verify(m => m.DisposeAsync(), Times.AtLeastOnce);
         // Connection eventually closed/disposed during connection-pool drain.
-        await conn.Received().DisposeAsync();
+        Mock.Get(conn).Verify(m => m.DisposeAsync(), Times.AtLeastOnce);
     }
 
     [Fact]
@@ -271,9 +278,9 @@ public class ChannelPoolUnitTests
 
         // Two distinct channels obtained from two distinct connections (eager-spread).
         lease1.Value.Should().NotBeSameAs(lease2.Value);
-        await factory.Received(2).CreateConnectionAsync(Arg.Any<CancellationToken>());
-        await conn1.Received(1).CreateChannelAsync(Arg.Any<CreateChannelOptions?>(), Arg.Any<CancellationToken>());
-        await conn2.Received(1).CreateChannelAsync(Arg.Any<CreateChannelOptions?>(), Arg.Any<CancellationToken>());
+        Mock.Get(factory).Verify(m => m.CreateConnectionAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+        Mock.Get(conn1).Verify(m => m.CreateChannelAsync(It.IsAny<CreateChannelOptions?>(), It.IsAny<CancellationToken>()), Times.Once);
+        Mock.Get(conn2).Verify(m => m.CreateChannelAsync(It.IsAny<CreateChannelOptions?>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -290,18 +297,21 @@ public class ChannelPoolUnitTests
         var chPoolName = ChName();
         var captured = new CapturedLogEntries();
 
-        var ch = Substitute.For<IChannel>();
-        ch.IsOpen.Returns(true);
-        ch.DisposeAsync().Returns(_ => ValueTask.FromException(
+        var chMock = new Mock<IChannel>();
+        chMock.Setup(m => m.IsOpen).Returns(true);
+        chMock.Setup(m => m.DisposeAsync()).Returns(ValueTask.FromException(
             new IOException("simulated DisposeAsync failure")));
+        var ch = chMock.Object;
 
-        var conn = Substitute.For<IConnection>();
-        conn.IsOpen.Returns(true);
-        conn.CreateChannelAsync(Arg.Any<CreateChannelOptions?>(), Arg.Any<CancellationToken>())
-            .Returns(_ => ch);
+        var connMock = new Mock<IConnection>();
+        connMock.Setup(m => m.IsOpen).Returns(true);
+        connMock.Setup(m => m.CreateChannelAsync(It.IsAny<CreateChannelOptions?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ch);
+        var conn = connMock.Object;
 
-        var factory = Substitute.For<IConnectionFactory>();
-        factory.CreateConnectionAsync(Arg.Any<CancellationToken>()).Returns(_ => conn);
+        var factoryMock = new Mock<IConnectionFactory>();
+        factoryMock.Setup(m => m.CreateConnectionAsync(It.IsAny<CancellationToken>())).ReturnsAsync(conn);
+        var factory = factoryMock.Object;
 
         var services = new ServiceCollection();
         services.AddLogging(b => b.AddProvider(captured).SetMinimumLevel(LogLevel.Trace));
@@ -339,8 +349,9 @@ public class ChannelPoolUnitTests
         var connName = CName();
         var chPoolName = ChName();
         var conn = MakeConn(MakeChannel());
-        var factory = Substitute.For<IConnectionFactory>();
-        factory.CreateConnectionAsync(Arg.Any<CancellationToken>()).Returns(_ => conn);
+        var factoryMock = new Mock<IConnectionFactory>();
+        factoryMock.Setup(m => m.CreateConnectionAsync(It.IsAny<CancellationToken>())).ReturnsAsync(conn);
+        var factory = factoryMock.Object;
 
         var services = new ServiceCollection();
         services.AddKeyedSingleton<IConnectionFactory>(connName, (_, _) => factory);
@@ -359,13 +370,15 @@ public class ChannelPoolUnitTests
         var connName = CName();
         var chPoolName = ChName();
 
-        var conn = Substitute.For<IConnection>();
-        conn.IsOpen.Returns(true);
-        conn.CreateChannelAsync(Arg.Any<CreateChannelOptions?>(), Arg.Any<CancellationToken>())
-            .Returns<IChannel>(_ => throw new IOException("simulated channel creation failure"));
+        var connMock = new Mock<IConnection>();
+        connMock.Setup(m => m.IsOpen).Returns(true);
+        connMock.Setup(m => m.CreateChannelAsync(It.IsAny<CreateChannelOptions?>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new IOException("simulated channel creation failure"));
+        var conn = connMock.Object;
 
-        var factory = Substitute.For<IConnectionFactory>();
-        factory.CreateConnectionAsync(Arg.Any<CancellationToken>()).Returns(_ => conn);
+        var factoryMock = new Mock<IConnectionFactory>();
+        factoryMock.Setup(m => m.CreateConnectionAsync(It.IsAny<CancellationToken>())).ReturnsAsync(conn);
+        var factory = factoryMock.Object;
 
         var services = new ServiceCollection();
         services.AddKeyedSingleton<IConnectionFactory>(connName, (_, _) => factory);

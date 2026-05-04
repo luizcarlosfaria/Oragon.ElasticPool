@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using NSubstitute;
+using Moq;
 using Oragon.AdaptivePool.RabbitMQ.Internals;
 using RabbitMQ.Client;
 using Xunit;
@@ -16,7 +16,7 @@ public class ConnectionChannelTrackerTests
     public void TryAcquireSlot_IncrementsBelowMax()
     {
         var tracker = new ConnectionChannelTracker();
-        var conn = Substitute.For<IConnection>();
+        var conn = new Mock<IConnection>().Object;
 
         var ok = tracker.TryAcquireSlot(conn, max: 2);
 
@@ -28,7 +28,7 @@ public class ConnectionChannelTrackerTests
     public void TryAcquireSlot_ReturnsFalse_AtMax()
     {
         var tracker = new ConnectionChannelTracker();
-        var conn = Substitute.For<IConnection>();
+        var conn = new Mock<IConnection>().Object;
         tracker.TryAcquireSlot(conn, 2).Should().BeTrue();
         tracker.TryAcquireSlot(conn, 2).Should().BeTrue();
 
@@ -42,7 +42,7 @@ public class ConnectionChannelTrackerTests
     public void ReleaseSlot_DecrementsAndRemovesAtZero()
     {
         var tracker = new ConnectionChannelTracker();
-        var conn = Substitute.For<IConnection>();
+        var conn = new Mock<IConnection>().Object;
         tracker.TryAcquireSlot(conn, 3).Should().BeTrue();
 
         tracker.ReleaseSlot(conn);
@@ -54,7 +54,7 @@ public class ConnectionChannelTrackerTests
     public void ReleaseSlot_DecrementsAboveOne()
     {
         var tracker = new ConnectionChannelTracker();
-        var conn = Substitute.For<IConnection>();
+        var conn = new Mock<IConnection>().Object;
         tracker.TryAcquireSlot(conn, 5).Should().BeTrue();
         tracker.TryAcquireSlot(conn, 5).Should().BeTrue();
         tracker.TryAcquireSlot(conn, 5).Should().BeTrue();
@@ -68,7 +68,7 @@ public class ConnectionChannelTrackerTests
     public void ReleaseSlot_NoOpWhenAbsent()
     {
         var tracker = new ConnectionChannelTracker();
-        var conn = Substitute.For<IConnection>();
+        var conn = new Mock<IConnection>().Object;
 
         Action act = () => tracker.ReleaseSlot(conn);
 
@@ -80,7 +80,7 @@ public class ConnectionChannelTrackerTests
     public async Task Concurrent_TryAcquireSlot_NeverExceedsMax()
     {
         var tracker = new ConnectionChannelTracker();
-        var conn = Substitute.For<IConnection>();
+        var conn = new Mock<IConnection>().Object;
         const int max = 10;
         const int threads = 64;
         const int attemptsPerThread = 1000;
@@ -104,7 +104,7 @@ public class ConnectionChannelTrackerTests
     public async Task Concurrent_AcquireRelease_RemainsBoundedAndConsistent()
     {
         var tracker = new ConnectionChannelTracker();
-        var conn = Substitute.For<IConnection>();
+        var conn = new Mock<IConnection>().Object;
         const int max = 10;
         const int threads = 32;
 
@@ -129,7 +129,7 @@ public class ConnectionChannelTrackerTests
     public void TryAcquireSlot_InvalidMax_Throws()
     {
         var tracker = new ConnectionChannelTracker();
-        var conn = Substitute.For<IConnection>();
+        var conn = new Mock<IConnection>().Object;
 
         Action act = () => tracker.TryAcquireSlot(conn, 0);
 
@@ -150,7 +150,7 @@ public class ConnectionChannelTrackerTests
         // removes the entry); a subsequent acquire must succeed via the !hasEntry branch
         // and complete promptly.
         var tracker = new ConnectionChannelTracker();
-        var conn = Substitute.For<IConnection>();
+        var conn = new Mock<IConnection>().Object;
 
         // Acquire then release — leaves no entry (correct invariant).
         tracker.TryAcquireSlot(conn, 4).Should().BeTrue();
@@ -179,7 +179,7 @@ public class ConnectionChannelTrackerTests
         // and re-inserted by a third thread between TryGetValue and the CAS could cause
         // pathological retries. The fixed branch uses TryUpdate for any hasEntry case.
         var tracker = new ConnectionChannelTracker();
-        var conn = Substitute.For<IConnection>();
+        var conn = new Mock<IConnection>().Object;
         const int max = 10;
         const int threads = 16;
         const int iterations = 5_000;

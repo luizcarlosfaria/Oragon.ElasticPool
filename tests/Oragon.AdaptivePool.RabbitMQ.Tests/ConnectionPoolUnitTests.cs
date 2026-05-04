@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NSubstitute;
+using Moq;
 using Oragon.AdaptivePool.Core.Abstractions;
 using Oragon.AdaptivePool.RabbitMQ.DependencyInjection;
 using Oragon.AdaptivePool.RabbitMQ.Tests.TestSupport;
@@ -11,7 +11,7 @@ using Xunit;
 namespace Oragon.AdaptivePool.RabbitMQ.Tests;
 
 /// <summary>
-/// Unit tests for <c>AddAdaptiveConnectionPool</c> DI extension wiring. NSubstitute
+/// Unit tests for <c>AddAdaptiveConnectionPool</c> DI extension wiring. Moq
 /// substitutes <see cref="IConnectionFactory"/> and <see cref="IConnection"/>; the Core
 /// pool engine is real (we verify the adapter glues hooks correctly).
 /// </summary>
@@ -21,25 +21,25 @@ public class ConnectionPoolUnitTests
 
     private static IConnection MakeOpenConn()
     {
-        var conn = Substitute.For<IConnection>();
-        conn.IsOpen.Returns(true);
-        return conn;
+        var connMock = new Mock<IConnection>();
+        connMock.Setup(m => m.IsOpen).Returns(true);
+        return connMock.Object;
     }
 
     private static IConnectionFactory FactoryReturning(params IConnection[] conns)
     {
-        var factory = Substitute.For<IConnectionFactory>();
+        var factoryMock = new Mock<IConnectionFactory>();
         if (conns.Length == 1)
         {
-            factory.CreateConnectionAsync(Arg.Any<CancellationToken>()).Returns(_ => conns[0]);
+            factoryMock.Setup(m => m.CreateConnectionAsync(It.IsAny<CancellationToken>())).ReturnsAsync(conns[0]);
         }
         else
         {
             int idx = 0;
-            factory.CreateConnectionAsync(Arg.Any<CancellationToken>())
-                .Returns(_ => conns[Math.Min(idx++, conns.Length - 1)]);
+            factoryMock.Setup(m => m.CreateConnectionAsync(It.IsAny<CancellationToken>()))
+                .Returns(() => Task.FromResult(conns[Math.Min(idx++, conns.Length - 1)]));
         }
-        return factory;
+        return factoryMock.Object;
     }
 
     [Fact]
@@ -84,7 +84,7 @@ public class ConnectionPoolUnitTests
         await using var lease = await pool.AcquireAsync();
 
         lease.Value.Should().BeSameAs(conn);
-        await factory.Received(1).CreateConnectionAsync(Arg.Any<CancellationToken>());
+        Mock.Get(factory).Verify(m => m.CreateConnectionAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -94,14 +94,16 @@ public class ConnectionPoolUnitTests
         // re-uses the pool, but BeforeUse marks it Unhealthy and the failure-policy
         // discards/replaces — so the Factory is invoked a 2nd time.
         var name = Name();
-        var deadConn = Substitute.For<IConnection>();
-        deadConn.IsOpen.Returns(false);
+        var deadConnMock = new Mock<IConnection>();
+        deadConnMock.Setup(m => m.IsOpen).Returns(false);
+        var deadConn = deadConnMock.Object;
         var freshConn = MakeOpenConn();
 
-        var factory = Substitute.For<IConnectionFactory>();
+        var factoryMock = new Mock<IConnectionFactory>();
         int callCount = 0;
-        factory.CreateConnectionAsync(Arg.Any<CancellationToken>())
-            .Returns(_ => ++callCount == 1 ? deadConn : freshConn);
+        factoryMock.Setup(m => m.CreateConnectionAsync(It.IsAny<CancellationToken>()))
+            .Returns(() => Task.FromResult(++callCount == 1 ? deadConn : freshConn));
+        var factory = factoryMock.Object;
 
         var services = new ServiceCollection();
         services.AddKeyedSingleton<IConnectionFactory>(name, (_, _) => factory);
@@ -121,12 +123,14 @@ public class ConnectionPoolUnitTests
     public async Task Release_CallsCloseAsync_ThenDispose_EvenWhenCloseThrows()
     {
         var name = Name();
-        var conn = MakeOpenConn();
+        var connMock = new Mock<IConnection>();
+        connMock.Setup(m => m.IsOpen).Returns(true);
         // CloseAsync throws — the adapter must still call DisposeAsync.
         // RabbitMQ.Client's IConnection.CloseAsync(ct) extension delegates to the multi-arg
         // overload (replyCode, replyText, timeout, abort, ct) — match Any.
-        conn.CloseAsync(Arg.Any<ushort>(), Arg.Any<string>(), Arg.Any<TimeSpan>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns(_ => Task.FromException(new IOException("simulated")));
+        connMock.Setup(m => m.CloseAsync(It.IsAny<ushort>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.FromException(new IOException("simulated")));
+        var conn = connMock.Object;
 
         var services = new ServiceCollection();
         services.AddKeyedSingleton<IConnectionFactory>(name, (_, _) => FactoryReturning(conn));
@@ -141,8 +145,8 @@ public class ConnectionPoolUnitTests
         // Release the pool: triggers final drain (Release hook on idle items).
         await sp.DisposeAsync();
 
-        await conn.Received().CloseAsync(Arg.Any<ushort>(), Arg.Any<string>(), Arg.Any<TimeSpan>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
-        await conn.Received().DisposeAsync();
+        connMock.Verify(m => m.CloseAsync(It.IsAny<ushort>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+        connMock.Verify(m => m.DisposeAsync(), Times.AtLeastOnce);
     }
 
     [Fact]

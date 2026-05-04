@@ -2,7 +2,7 @@ using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using NSubstitute;
+using Moq;
 using Oragon.AdaptivePool.RabbitMQ.Internals;
 using Oragon.AdaptivePool.RabbitMQ.Options;
 using Oragon.AdaptivePool.RabbitMQ.Tests.TestSupport;
@@ -22,7 +22,7 @@ public class ConnectionFactoryResolverTests
     [Fact]
     public void Resolve_PrefersKeyedSingleton_OverClosure()
     {
-        var keyedFactory = Substitute.For<IConnectionFactory>();
+        var keyedFactory = new Mock<IConnectionFactory>().Object;
         var services = new ServiceCollection();
         services.AddKeyedSingleton<IConnectionFactory>("p1", (_, _) => keyedFactory);
         using var sp = services.BuildServiceProvider();
@@ -127,7 +127,7 @@ public class ConnectionFactoryResolverTests
         var captured = new CapturedLogEntries();
         using var lf = LoggerFactory.Create(b => b.AddProvider(captured).SetMinimumLevel(LogLevel.Trace));
         var logger = lf.CreateLogger("test");
-        var fakeFactory = Substitute.For<IConnectionFactory>();
+        var fakeFactory = new Mock<IConnectionFactory>().Object;
 
         ConnectionFactoryResolver.ForceAutomaticRecoveryDisabled(fakeFactory, logger, "p1");
 
@@ -216,7 +216,7 @@ public class ConnectionFactoryResolverTests
         var captured = new CapturedLogEntries();
         using var lf = LoggerFactory.Create(b => b.AddProvider(captured).SetMinimumLevel(LogLevel.Trace));
         var logger = lf.CreateLogger("test");
-        var fakeFactory = Substitute.For<IConnectionFactory>();
+        var fakeFactory = new Mock<IConnectionFactory>().Object;
 
         var result = ConnectionFactoryResolver.ApplyAutomaticRecoveryOverride(fakeFactory, logger, "p1");
 

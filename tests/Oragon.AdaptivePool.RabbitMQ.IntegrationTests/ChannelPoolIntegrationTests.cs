@@ -1,7 +1,7 @@
 using System.Text;
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NSubstitute;
+using Moq;
 using Oragon.AdaptivePool.Core.Abstractions;
 using Oragon.AdaptivePool.RabbitMQ.DependencyInjection;
 using Oragon.AdaptivePool.RabbitMQ.IntegrationTests.Fixtures;
@@ -150,15 +150,15 @@ public class ChannelPoolIntegrationTests : IClassFixture<RabbitMqContainerFixtur
             AutomaticRecoveryEnabled = false,
         };
         var producedConnections = new System.Collections.Concurrent.ConcurrentBag<IConnection>();
-        var spy = Substitute.For<IConnectionFactory>();
-        spy.CreateConnectionAsync(Arg.Any<CancellationToken>())
-            .Returns(async ci =>
+        var spyMock = new Mock<IConnectionFactory>();
+        spyMock.Setup(m => m.CreateConnectionAsync(It.IsAny<CancellationToken>()))
+            .Returns<CancellationToken>(async ct =>
             {
-                var ct = ci.Arg<CancellationToken>();
                 var conn = await realFactory.CreateConnectionAsync(ct).ConfigureAwait(false);
                 producedConnections.Add(conn);
                 return conn;
             });
+        var spy = spyMock.Object;
 
         var services = new ServiceCollection();
         services.AddKeyedSingleton<IConnectionFactory>(connName, (_, _) => spy);

@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NSubstitute;
+using Moq;
 using Oragon.AdaptivePool.Core.Abstractions;
 using Oragon.AdaptivePool.Core.Builder;
 using Oragon.AdaptivePool.Core.Tests.TestSupport;
@@ -13,9 +13,10 @@ public class BeforeUseUnhealthyTests
     [Fact]
     public async Task BeforeUseUnhealthy_InvokesFailurePolicy_WithFailureKindBeforeUseUnhealthy()
     {
-        var policy = Substitute.For<IItemFailurePolicy<Resource>>();
-        policy.HandleAsync(Arg.Any<Resource?>(), Arg.Any<FailureKind>(), Arg.Any<Exception?>(), Arg.Any<CancellationToken>())
-              .Returns(ValueTask.FromResult(FailureDecision.Discard));
+        var policyMock = new Mock<IItemFailurePolicy<Resource>>();
+        policyMock.Setup(m => m.HandleAsync(It.IsAny<Resource?>(), It.IsAny<FailureKind>(), It.IsAny<Exception?>(), It.IsAny<CancellationToken>()))
+                  .Returns(ValueTask.FromResult(FailureDecision.Discard));
+        var policy = policyMock.Object;
 
         var calls = 0;
         var sp = new ServiceCollection().BuildServiceProvider();
@@ -28,11 +29,11 @@ public class BeforeUseUnhealthyTests
 
         await using var item = await pool.AcquireAsync();
 
-        await policy.Received(1).HandleAsync(
-            Arg.Any<Resource?>(),
+        policyMock.Verify(m => m.HandleAsync(
+            It.IsAny<Resource?>(),
             FailureKind.BeforeUseUnhealthy,
             null,
-            Arg.Any<CancellationToken>());
+            It.IsAny<CancellationToken>()), Times.Once);
         item.Value.BrokenFlag.Should().BeFalse();
     }
 
@@ -84,9 +85,10 @@ public class BeforeUseUnhealthyTests
     [Fact]
     public async Task BeforeUseHealthy_DoesNotInvokePolicyOrRelease()
     {
-        var policy = Substitute.For<IItemFailurePolicy<Resource>>();
-        policy.HandleAsync(Arg.Any<Resource?>(), Arg.Any<FailureKind>(), Arg.Any<Exception?>(), Arg.Any<CancellationToken>())
-              .Returns(ValueTask.FromResult(FailureDecision.Discard));
+        var policyMock = new Mock<IItemFailurePolicy<Resource>>();
+        policyMock.Setup(m => m.HandleAsync(It.IsAny<Resource?>(), It.IsAny<FailureKind>(), It.IsAny<Exception?>(), It.IsAny<CancellationToken>()))
+                  .Returns(ValueTask.FromResult(FailureDecision.Discard));
+        var policy = policyMock.Object;
         var releaseCount = 0;
 
         var sp = new ServiceCollection().BuildServiceProvider();
@@ -100,8 +102,8 @@ public class BeforeUseUnhealthyTests
 
         await using var item = await pool.AcquireAsync();
 
-        await policy.DidNotReceive().HandleAsync(
-            Arg.Any<Resource?>(), Arg.Any<FailureKind>(), Arg.Any<Exception?>(), Arg.Any<CancellationToken>());
+        policyMock.Verify(m => m.HandleAsync(
+            It.IsAny<Resource?>(), It.IsAny<FailureKind>(), It.IsAny<Exception?>(), It.IsAny<CancellationToken>()), Times.Never);
         releaseCount.Should().Be(0, "Release should not be invoked while item is healthy and in-use");
     }
 
@@ -204,9 +206,10 @@ public class BeforeUseUnhealthyTests
     [Fact]
     public async Task BeforeUseThrows_TreatedAsUnhealthy_AndPolicyInvoked()
     {
-        var policy = Substitute.For<IItemFailurePolicy<Resource>>();
-        policy.HandleAsync(Arg.Any<Resource?>(), Arg.Any<FailureKind>(), Arg.Any<Exception?>(), Arg.Any<CancellationToken>())
-              .Returns(ValueTask.FromResult(FailureDecision.Discard));
+        var policyMock = new Mock<IItemFailurePolicy<Resource>>();
+        policyMock.Setup(m => m.HandleAsync(It.IsAny<Resource?>(), It.IsAny<FailureKind>(), It.IsAny<Exception?>(), It.IsAny<CancellationToken>()))
+                  .Returns(ValueTask.FromResult(FailureDecision.Discard));
+        var policy = policyMock.Object;
 
         var calls = 0;
         var sp = new ServiceCollection().BuildServiceProvider();
@@ -224,10 +227,10 @@ public class BeforeUseUnhealthyTests
 
         await using var item = await pool.AcquireAsync();
 
-        await policy.Received(1).HandleAsync(
-            Arg.Any<Resource?>(),
+        policyMock.Verify(m => m.HandleAsync(
+            It.IsAny<Resource?>(),
             FailureKind.BeforeUseUnhealthy,
             null,
-            Arg.Any<CancellationToken>());
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 }

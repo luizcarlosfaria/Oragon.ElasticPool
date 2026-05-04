@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.Metrics.Testing;
-using NSubstitute;
+using Moq;
 using Oragon.AdaptivePool.Core.Abstractions;
 using Oragon.AdaptivePool.Core.Builder;
 using Oragon.AdaptivePool.Core.Tests.TestSupport;
@@ -48,9 +48,10 @@ public class FactoryFailureTests
     [Fact]
     public async Task FactoryThrows_InvokesFailurePolicy_WithFailureKindFactoryThrew_AndException()
     {
-        var policy = Substitute.For<IItemFailurePolicy<Resource>>();
-        policy.HandleAsync(default, Arg.Any<FailureKind>(), Arg.Any<Exception?>(), Arg.Any<CancellationToken>())
-              .Returns(ValueTask.FromResult(FailureDecision.Discard));
+        var policyMock = new Mock<IItemFailurePolicy<Resource>>();
+        policyMock.Setup(m => m.HandleAsync(default, It.IsAny<FailureKind>(), It.IsAny<Exception?>(), It.IsAny<CancellationToken>()))
+                  .Returns(ValueTask.FromResult(FailureDecision.Discard));
+        var policy = policyMock.Object;
 
         var boom = new InvalidOperationException("boom");
         var sp = new ServiceCollection().BuildServiceProvider();
@@ -62,11 +63,11 @@ public class FactoryFailureTests
 
         await Assert.ThrowsAsync<InvalidOperationException>(async () => await pool.AcquireAsync());
 
-        await policy.Received(1).HandleAsync(
+        policyMock.Verify(m => m.HandleAsync(
             default,
             FailureKind.FactoryThrew,
-            Arg.Is<Exception?>(e => ReferenceEquals(e, boom)),
-            Arg.Any<CancellationToken>());
+            It.Is<Exception?>(e => ReferenceEquals(e, boom)),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
