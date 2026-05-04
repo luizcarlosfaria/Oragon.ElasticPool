@@ -22,6 +22,19 @@ public class RabbitMqContainerFixture : IAsyncLifetime
     /// </summary>
     internal const string ImageTag = "rabbitmq:4.0-management";
 
+    /// <summary>
+    /// Static initializer disables Testcontainers' Ryuk (ResourceReaper) globally for
+    /// this assembly. Ryuk spawns a privileged sidecar container that races on init
+    /// when multiple fixtures across multi-TFM test runs start concurrently, causing
+    /// intermittent <c>ResourceReaperException: Initialization has been cancelled</c>.
+    /// We rely on <see cref="DisposeAsync"/> for deterministic cleanup; if the test
+    /// process aborts uncleanly, the user can prune dangling containers manually.
+    /// </summary>
+    static RabbitMqContainerFixture()
+    {
+        Environment.SetEnvironmentVariable("TESTCONTAINERS_RYUK_DISABLED", "true");
+    }
+
     public RabbitMqContainer Container { get; } =
         new RabbitMqBuilder(ImageTag)
             .Build();

@@ -20,6 +20,26 @@ public class ChannelPoolUnitTests
     private static string CName() => $"conn-{Guid.NewGuid():N}";
     private static string ChName() => $"ch-{Guid.NewGuid():N}";
 
+    /// <summary>
+    /// Polls the mock's Invocations list until at least one invocation's method name
+    /// contains the given <paramref name="methodNamePart"/>, or the timeout elapses.
+    /// Used to bridge the brief window between <c>await sp.DisposeAsync()</c> returning
+    /// and Moq finishing to record interceptor invocations from the dispose chain on
+    /// resource-constrained test agents.
+    /// </summary>
+    private static async Task WaitForInvocationAsync<T>(T mockedObject, string methodNamePart, TimeSpan timeout)
+        where T : class
+    {
+        var mock = Mock.Get(mockedObject);
+        var deadline = DateTime.UtcNow + timeout;
+        while (DateTime.UtcNow < deadline)
+        {
+            if (mock.Invocations.Any(i => i.Method.Name.Contains(methodNamePart)))
+                return;
+            await Task.Delay(20);
+        }
+    }
+
     private static IConnection MakeConn(IChannel? channelToReturn = null, bool isOpen = true)
     {
         var connMock = new Mock<IConnection>();
@@ -243,15 +263,21 @@ public class ChannelPoolUnitTests
 
         // Channel CloseAsync extension calls the 4-arg overload — receive at least once.
         Mock.Get(ch).Verify(m => m.CloseAsync(It.IsAny<ushort>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
-        // DisposeAsync() is on IAsyncDisposable as an explicit interface implementation
-        // on both IChannel and IConnection. Moq's .Verify() lambda matching on the
-        // inherited `m => m.DisposeAsync()` is unstable across TFMs (works on net9/10,
-        // breaks intermittently on net8 — Moq 4.20.x bug with explicit interface dispatch
-        // through As<TInterface>()). The Invocations API inspects raw method calls
-        // independently of resolved-method matching and is deterministic across all TFMs.
-        Mock.Get(ch).Invocations.Should().Contain(i => i.Method.Name == nameof(IAsyncDisposable.DisposeAsync),
+
+        // DisposeAsync is dispatched via the explicit IAsyncDisposable interface implementation
+        // on both IChannel and IConnection. Method matching for explicit-interface invocations
+        // is fragile across runtimes/TFMs in Moq, so we inspect Invocations and match by
+        // method.Name containing "DisposeAsync" (covers "DisposeAsync" plain, the prefixed
+        // "IAsyncDisposable.DisposeAsync", and any synthetic stub name).
+        // Under heavy concurrent multi-TFM test load, the underlying disposal chain
+        // (connection pool drain after channel pool drain) may not finish recording
+        // invocations the instant `await sp.DisposeAsync()` returns, so we poll briefly.
+        await WaitForInvocationAsync(ch, "DisposeAsync", TimeSpan.FromSeconds(2));
+        await WaitForInvocationAsync(conn, "DisposeAsync", TimeSpan.FromSeconds(2));
+
+        Mock.Get(ch).Invocations.Should().Contain(i => i.Method.Name.Contains("DisposeAsync"),
             "channel must be disposed by the channel pool's Release hook during drain");
-        Mock.Get(conn).Invocations.Should().Contain(i => i.Method.Name == nameof(IAsyncDisposable.DisposeAsync),
+        Mock.Get(conn).Invocations.Should().Contain(i => i.Method.Name.Contains("DisposeAsync"),
             "connection must be disposed by the connection pool's Release hook during drain");
     }
 

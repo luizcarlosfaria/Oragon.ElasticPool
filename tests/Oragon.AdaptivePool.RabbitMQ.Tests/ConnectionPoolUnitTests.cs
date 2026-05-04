@@ -147,9 +147,16 @@ public class ConnectionPoolUnitTests
 
         connMock.Verify(m => m.CloseAsync(It.IsAny<ushort>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
         // DisposeAsync() is on IAsyncDisposable as an explicit interface implementation.
-        // Moq's lambda Verify on this method is unstable on net8 (works on net9/10).
-        // Use the raw Invocations API for deterministic cross-TFM behavior.
-        connMock.Invocations.Should().Contain(i => i.Method.Name == nameof(IAsyncDisposable.DisposeAsync),
+        // Use Invocations + Contains (covers both "DisposeAsync" and the prefixed
+        // "IAsyncDisposable.DisposeAsync"). Poll briefly to tolerate concurrent multi-TFM
+        // load where the dispose chain finishes recording slightly after sp.DisposeAsync returns.
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(2);
+        while (DateTime.UtcNow < deadline
+               && !connMock.Invocations.Any(i => i.Method.Name.Contains("DisposeAsync")))
+        {
+            await Task.Delay(20);
+        }
+        connMock.Invocations.Should().Contain(i => i.Method.Name.Contains("DisposeAsync"),
             "connection must be disposed during pool drain");
     }
 

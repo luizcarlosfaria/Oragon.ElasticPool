@@ -163,17 +163,24 @@ public class ElasticGrowTests
             .GrowOnWaiterCount(1));
         try
         {
-            // Saturate the pool: 5 concurrent acquires holding their items.
+            // Saturate the pool: 5 concurrent acquires holding their items. Use deterministic
+            // signaling so we know exactly when all 5 have acquired (no polling/race window).
             using var holders = new SemaphoreSlim(0, 5);
+            using var allAcquired = new CountdownEvent(5);
             var holdTasks = Enumerable.Range(0, 5).Select(_ => Task.Run(async () =>
             {
                 var item = await pool.AcquireAsync();
+                allAcquired.Signal();
                 await holders.WaitAsync();
                 await item.DisposeAsync();
             })).ToArray();
 
-            // Wait until all 5 slots are in use.
-            for (int i = 0; i < 50 && pool.InUse < 5; i++) await Task.Delay(20);
+            // Wait deterministically until all 5 acquires have completed (no time-based polling).
+            // 30s ceiling tolerates extreme load on resource-constrained agents while still
+            // bounding the test duration to fail fast on real bugs.
+            allAcquired.Wait(TimeSpan.FromSeconds(30)).Should().BeTrue(
+                "all 5 concurrent acquires must complete; otherwise the saturation precondition "
+                + "for the MaxSize cap test is invalid");
             pool.InUse.Should().Be(5);
             pool.CurrentTotal.Should().Be(5, "MaxSize=5 must cap _total");
 
