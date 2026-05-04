@@ -25,4 +25,10 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Oragon.AdaptivePool.RabbitMQ\Oragon.AdaptivePool.RabbitMQ.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Serialize test classes (parallelizeTestCollections=false) to avoid Docker daemon
+         contention from multiple concurrent Testcontainers fixtures. See xunit.runner.json
+         in this project for rationale. -->
+    <None Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

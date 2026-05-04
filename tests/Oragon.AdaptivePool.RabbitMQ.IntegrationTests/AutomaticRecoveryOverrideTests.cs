@@ -29,7 +29,10 @@ public class AutomaticRecoveryOverrideTests : IClassFixture<RabbitMqContainerFix
         var services = new ServiceCollection();
         services.AddLogging(b => b.AddProvider(captured).SetMinimumLevel(LogLevel.Trace));
 
-        // Closure sets AutomaticRecoveryEnabled=true — adapter must override + log EventId 2001.
+        // Closure sets AutomaticRecoveryEnabled=true — adapter must override (via clone) + log EventId 2001.
+        // Per WR-02 fix in Phase 3 review, the adapter does NOT mutate the shared/keyed factory; it
+        // produces a per-acquire clone with AutomaticRecoveryEnabled=false used for the actual
+        // CreateConnectionAsync call. The shared `capturedFactory` retains the consumer's setting.
         ConnectionFactory? capturedFactory = null;
         services.AddAdaptiveConnectionPool(connName,
             cf =>
@@ -45,10 +48,22 @@ public class AutomaticRecoveryOverrideTests : IClassFixture<RabbitMqContainerFix
 
         await using var lease = await pool.AcquireAsync();
 
+        // The connection succeeded — proves the override was actually applied to the clone used
+        // by CreateConnectionAsync (otherwise AutomaticRecoveryEnabled=true would conflict with
+        // the pool's lifecycle ownership and either hang on recovery loops or fail differently).
         lease.Value.IsOpen.Should().BeTrue("broker connection must succeed normally despite the override");
-        captured.ByEventId(2001).Should().NotBeEmpty();
-        capturedFactory!.AutomaticRecoveryEnabled.Should().BeFalse(
-            "adapter must force AutomaticRecoveryEnabled=false at every Factory invocation");
+
+        // EventId 2001 fires every time the adapter overrides AutomaticRecoveryEnabled=true → false
+        // on a per-acquire clone. This is the authoritative proof that the override happened.
+        captured.ByEventId(2001).Should().NotBeEmpty(
+            "adapter must log the AutomaticRecoveryEnabled override (EventId 2001) on every clone");
+
+        // The shared/keyed ConnectionFactory MUST NOT be mutated by the adapter (WR-02 fix).
+        // The override is applied to a per-acquire clone, never to this shared instance.
+        capturedFactory!.AutomaticRecoveryEnabled.Should().BeTrue(
+            "adapter must NOT mutate the shared ConnectionFactory (WR-02); the override is applied "
+            + "to a per-acquire clone used by CreateConnectionAsync, leaving the consumer-supplied "
+            + "configuration intact for any other code that reads it");
     }
 
     [Fact]

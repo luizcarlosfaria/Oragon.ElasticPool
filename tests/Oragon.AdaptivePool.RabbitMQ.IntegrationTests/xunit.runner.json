@@ -1,0 +1,7 @@
+{
+  "$schema": "https://xunit.net/schema/v3/xunit.runner.schema.json",
+
+  "_comment": "Integration tests spin up Testcontainers (Docker) per IClassFixture. Running multiple test classes in parallel creates concurrent Docker container provisioning that overwhelms the daemon and causes intermittent 'Connection refused' on freshly-published broker ports (especially on resource-constrained CI agents and WSL/Docker Desktop hosts). Serialize test collections so containers are spawned/disposed sequentially. Within a single class, tests still run in parallel — that's safe because they share the same fixture-managed container.",
+
+  "parallelizeTestCollections": false
+}
