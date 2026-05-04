@@ -8,6 +8,8 @@
     -->
     <OutputType>Exe</OutputType>
     <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+    <IsTestProject>true</IsTestProject>
+    <IsTestingPlatformApplication>true</IsTestingPlatformApplication>
     <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
     <!--
       xUnit1051 (advisory) requires every CT-accepting call inside a test to thread
@@ -20,7 +22,9 @@
   <ItemGroup>
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Microsoft.Testing.Extensions.TrxReport" />
     <PackageReference Include="AwesomeAssertions" />
+    <PackageReference Include="Moq" />
     <PackageReference Include="NSubstitute" />
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
@@ -30,6 +34,7 @@
     <!-- CR-03 regression test for IHostApplicationLifetime detection -->
     <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="coverlet.collector" PrivateAssets="all" />
+    <PackageReference Include="coverlet.msbuild" PrivateAssets="all" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Oragon.AdaptivePool.Core\Oragon.AdaptivePool.Core.csproj" />
