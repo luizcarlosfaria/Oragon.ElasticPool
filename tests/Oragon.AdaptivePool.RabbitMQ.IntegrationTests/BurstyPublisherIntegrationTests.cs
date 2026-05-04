@@ -32,12 +32,9 @@ public class BurstyPublisherIntegrationTests : IClassFixture<RabbitMqContainerFi
         var queueName = $"bursty-{Guid.NewGuid():N}";
 
         var services = new ServiceCollection();
-        // Connection pool MaxSize ≥ parallelism + channel-pool-floor: each in-flight
-        // channel-pool acquire borrows a connection lease (which the channel retains for
-        // its lifetime — see ChannelPoolIntegrationTests for the layered ownership model).
-        // With parallelism=16 and channels reused via the channel pool's idle queue, the
-        // peak in-flight connection-lease count equals the channel pool's effective
-        // MaxSize bounded by parallelism. MaxSize=32 gives comfortable headroom.
+        // Connection pool MaxSize must cover the number of retained connections needed
+        // by the channel pool. With MaxChannelsPerConnection=50 and parallelism=16,
+        // MaxSize=32 gives comfortable headroom while still validating no leaks.
         services.AddAdaptiveConnectionPool(connName,
             cf => cf.Uri = new Uri(_fixture.ConnectionString),
             p => p.WithBounds(1, 32, 1));
@@ -88,11 +85,9 @@ public class BurstyPublisherIntegrationTests : IClassFixture<RabbitMqContainerFi
         }
 
         // After all cycles, channel pool's InUse must be 0 (all channels returned to
-        // idle queue or discarded). Connection pool's Available + Idle channels still hold
-        // their connection leases (layered-pool ownership: channels in idle queue retain
-        // their paired IPoolItem<IConnection> via the CWT pairing). Therefore connPool.InUse
-        // reflects the number of CONNECTIONS BACKING IDLE CHANNELS — must be ≤ MaxSize and
-        // ≤ chPool.Available.
+        // idle queue or discarded). Idle channels still retain their shared backing
+        // connection leases. Therefore connPool.InUse reflects the number of
+        // CONNECTIONS BACKING IDLE CHANNELS — must be ≤ MaxSize.
         chPool.InUse.Should().Be(0, "all channel leases must have been returned");
         connPool.InUse.Should().BeLessThanOrEqualTo(connPool.MaxSize,
             "connection lease count is bounded by the connection pool's MaxSize");

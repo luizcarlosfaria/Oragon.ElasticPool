@@ -5,11 +5,13 @@ namespace Oragon.AdaptivePool.RabbitMQ.Builder;
 /// <summary>
 /// Adapter-side fluent builder for an <c>IAdaptivePool&lt;IChannel&gt;</c>. Exposes the
 /// pool-shape knobs most relevant to RabbitMQ channel pools (size bounds, idle timeout,
-/// channels-per-connection ceiling, and the <see cref="CreateChannelOptions"/> applied
-/// when channels are created).
+/// sweep interval, shrink pressure, shrink cooldown, channels-per-connection ceiling, and the
+/// <see cref="CreateChannelOptions"/> applied when channels are created).
 /// </summary>
 /// <remarks>
 /// <para>Defaults: MinSize=0, MaxSize=32, InitialSize=0, IdleTimeout=60s,
+/// SweepInterval=30s, ShrinkOnUtilizationPercent=0.50,
+/// ShrinkTargetUtilizationPercent=0.75, ShrinkBatchSize=1, ShrinkCooldownWindows=3,
 /// MaxChannelsPerConnection=100, and a <see cref="CreateChannelOptions"/> with
 /// publisher-confirmations + tracking ENABLED (per Pitfall E).</para>
 /// <para>The 100-default for <see cref="MaxChannelsPerConnection"/> sits well below the
@@ -30,6 +32,16 @@ public sealed class AdaptiveChannelPoolBuilder
 
     /// <summary>Idle-item discard threshold for the background sweeper. Default: 60 seconds.</summary>
     public TimeSpan IdleTimeout { get; private set; } = TimeSpan.FromSeconds(60);
+    /// <summary>Background sweep tick interval. Default: 30 seconds.</summary>
+    public TimeSpan SweepInterval { get; private set; } = TimeSpan.FromSeconds(30);
+    /// <summary>Utilization at or below which sustained low pressure may shrink the pool. Default: 0.50.</summary>
+    public double ShrinkOnUtilizationPercent { get; private set; } = 0.50;
+    /// <summary>Target utilization used to compute post-shrink size. Default: 0.75.</summary>
+    public double ShrinkTargetUtilizationPercent { get; private set; } = 0.75;
+    /// <summary>Maximum number of available items evicted per shrink tick. Default: 1.</summary>
+    public int ShrinkBatchSize { get; private set; } = 1;
+    /// <summary>Number of sweep windows after a grow during which shrink is suppressed. Default: 3.</summary>
+    public int ShrinkCooldownWindows { get; private set; } = 3;
 
     /// <summary>
     /// Maximum number of channels multiplexed over a single <see cref="IConnection"/>
@@ -80,6 +92,65 @@ public sealed class AdaptiveChannelPoolBuilder
         if (t <= TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(t), "IdleTimeout must be > TimeSpan.Zero.");
         IdleTimeout = t;
+        return this;
+    }
+
+    /// <summary>
+    /// Configures the background sweep tick interval. Validates <c>t &gt; TimeSpan.Zero</c>.
+    /// </summary>
+    public AdaptiveChannelPoolBuilder WithSweepInterval(TimeSpan t)
+    {
+        if (t <= TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(t), "SweepInterval must be > TimeSpan.Zero.");
+        SweepInterval = t;
+        return this;
+    }
+
+    /// <summary>
+    /// Configures the utilization threshold at or below which sustained low pressure may shrink.
+    /// Validates <c>p in [0, 1]</c>.
+    /// </summary>
+    public AdaptiveChannelPoolBuilder WithShrinkOnUtilizationPercent(double p)
+    {
+        if (p < 0.0 || p > 1.0)
+            throw new ArgumentOutOfRangeException(nameof(p), "ShrinkOnUtilizationPercent must be in [0, 1].");
+        ShrinkOnUtilizationPercent = p;
+        return this;
+    }
+
+    /// <summary>
+    /// Configures the target utilization used to compute post-shrink size.
+    /// Validates <c>p in (0, 1]</c>.
+    /// </summary>
+    public AdaptiveChannelPoolBuilder WithShrinkTargetUtilizationPercent(double p)
+    {
+        if (p <= 0.0 || p > 1.0)
+            throw new ArgumentOutOfRangeException(nameof(p), "ShrinkTargetUtilizationPercent must be in (0, 1].");
+        ShrinkTargetUtilizationPercent = p;
+        return this;
+    }
+
+    /// <summary>
+    /// Configures the maximum number of available items evicted per shrink tick.
+    /// Validates <c>n &gt;= 1</c>.
+    /// </summary>
+    public AdaptiveChannelPoolBuilder WithShrinkBatchSize(int n)
+    {
+        if (n < 1)
+            throw new ArgumentOutOfRangeException(nameof(n), "ShrinkBatchSize must be >= 1.");
+        ShrinkBatchSize = n;
+        return this;
+    }
+
+    /// <summary>
+    /// Configures the number of sweep windows after grow during which shrink is suppressed.
+    /// Validates <c>n &gt;= 0</c>.
+    /// </summary>
+    public AdaptiveChannelPoolBuilder WithShrinkCooldownWindows(int n)
+    {
+        if (n < 0)
+            throw new ArgumentOutOfRangeException(nameof(n), "ShrinkCooldownWindows must be >= 0.");
+        ShrinkCooldownWindows = n;
         return this;
     }
 

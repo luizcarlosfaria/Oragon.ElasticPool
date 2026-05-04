@@ -12,9 +12,8 @@ public delegate ValueTask<PoolState> BeforeUseDelegate<T>(T item, CancellationTo
 /// Background health probe consumed by the Phase 2 sweeper.
 /// </summary>
 /// <remarks>
-/// In Phase 1 this hook signature exists for API stability but is NEVER invoked by the engine —
-/// configuring it via <c>AdaptivePoolBuilder&lt;T&gt;.Check(...)</c> has no effect until the
-/// Phase 2 sweeper ships. Use <c>BeforeUse</c> for on-borrow validation in Phase 1.
+/// The engine invokes this hook from the background sweeper for idle entries. Use
+/// <c>BeforeUse</c> for cheap on-borrow validation and <c>Check</c> for periodic probes.
 /// </remarks>
 public delegate ValueTask<PoolState> CheckDelegate<T>(T item, CancellationToken cancellationToken);
 
@@ -40,8 +39,7 @@ public delegate PoolState BeforeUseSyncDelegate<T>(T item, CancellationToken can
 
 /// <summary>
 /// Synchronous variant of <see cref="CheckDelegate{T}"/>. Use when the background sweep probe
-/// is a cheap in-memory check that doesn't need <c>await</c>. Phase-1 hook is recorded but not
-/// invoked by the engine; this overload exists for API parity.
+/// is a cheap in-memory check that doesn't need <c>await</c>.
 /// </summary>
 public delegate PoolState CheckSyncDelegate<T>(T item, CancellationToken cancellationToken);
 

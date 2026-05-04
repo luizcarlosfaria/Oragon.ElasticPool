@@ -27,6 +27,9 @@ public sealed class AdaptivePoolBuilder<T> where T : notnull
     private double _growOnUtilizationPercent = 0.80;
     private TimeSpan _growOnWaitTimeP95 = TimeSpan.FromMilliseconds(100);
     private TimeSpan _idleTimeout = TimeSpan.FromSeconds(60);
+    private double _shrinkOnUtilizationPercent = 0.50;
+    private double _shrinkTargetUtilizationPercent = 0.75;
+    private int _shrinkBatchSize = 1;
     private int _shrinkCooldownWindows = 3;
     private TimeSpan _sweepInterval = TimeSpan.FromSeconds(30);
     private TimeSpan _maxBackoff = TimeSpan.FromMinutes(5);
@@ -39,9 +42,8 @@ public sealed class AdaptivePoolBuilder<T> where T : notnull
     public AdaptivePoolBuilder<T> BeforeUse(BeforeUseDelegate<T> hook)
     { _beforeUse = hook ?? throw new ArgumentNullException(nameof(hook)); return this; }
     /// <summary>
-    /// Registers a background health-check hook. <b>Phase 1 placeholder:</b> this hook is
-    /// recorded on the options but the engine does not invoke it. The Phase 2 sweeper will
-    /// activate it. Use <see cref="BeforeUse"/> for on-borrow validation today.
+    /// Registers a background health-check hook invoked by the sweeper for idle entries.
+    /// Use <see cref="BeforeUse"/> for cheap on-borrow validation.
     /// </summary>
     public AdaptivePoolBuilder<T> Check(CheckDelegate<T> hook)
     { _check = hook ?? throw new ArgumentNullException(nameof(hook)); return this; }
@@ -76,7 +78,6 @@ public sealed class AdaptivePoolBuilder<T> where T : notnull
     /// <summary>
     /// Synchronous overload of <see cref="Check(CheckDelegate{T})"/>. The delegate's result
     /// is wrapped in a completed <see cref="ValueTask{PoolState}"/> internally.
-    /// <b>Phase 1 placeholder:</b> hook stored but not invoked by the engine.
     /// </summary>
     public AdaptivePoolBuilder<T> Check(CheckSyncDelegate<T> hook)
     {
@@ -152,6 +153,34 @@ public sealed class AdaptivePoolBuilder<T> where T : notnull
     }
 
     /// <summary>
+    /// Configures the utilization threshold (in-use / total) at or below which sustained
+    /// low pressure may shrink the pool. Default: 0.50.
+    /// </summary>
+    public AdaptivePoolBuilder<T> ShrinkOnUtilizationPercent(double p)
+    {
+        if (p < 0.0 || p > 1.0) throw new ArgumentOutOfRangeException(nameof(p), "ShrinkOnUtilizationPercent must be in [0, 1].");
+        _shrinkOnUtilizationPercent = p; return this;
+    }
+
+    /// <summary>
+    /// Configures the target utilization used to compute post-shrink size. Default: 0.75.
+    /// </summary>
+    public AdaptivePoolBuilder<T> ShrinkTargetUtilizationPercent(double p)
+    {
+        if (p <= 0.0 || p > 1.0) throw new ArgumentOutOfRangeException(nameof(p), "ShrinkTargetUtilizationPercent must be in (0, 1].");
+        _shrinkTargetUtilizationPercent = p; return this;
+    }
+
+    /// <summary>
+    /// Configures the maximum number of available items evicted per shrink tick. Default: 1.
+    /// </summary>
+    public AdaptivePoolBuilder<T> ShrinkBatchSize(int n)
+    {
+        if (n < 1) throw new ArgumentOutOfRangeException(nameof(n), "ShrinkBatchSize must be >= 1.");
+        _shrinkBatchSize = n; return this;
+    }
+
+    /// <summary>
     /// Configures the number of sweep windows after a grow during which shrink is suppressed (hysteresis). Default: 3.
     /// </summary>
     public AdaptivePoolBuilder<T> ShrinkCooldownWindows(int n)
@@ -216,6 +245,9 @@ public sealed class AdaptivePoolBuilder<T> where T : notnull
             GrowOnUtilizationPercent = _growOnUtilizationPercent,
             GrowOnWaitTimeP95 = _growOnWaitTimeP95,
             IdleTimeout = _idleTimeout,
+            ShrinkOnUtilizationPercent = _shrinkOnUtilizationPercent,
+            ShrinkTargetUtilizationPercent = _shrinkTargetUtilizationPercent,
+            ShrinkBatchSize = _shrinkBatchSize,
             ShrinkCooldownWindows = _shrinkCooldownWindows,
             SweepInterval = _sweepInterval,
             MaxBackoff = _maxBackoff,

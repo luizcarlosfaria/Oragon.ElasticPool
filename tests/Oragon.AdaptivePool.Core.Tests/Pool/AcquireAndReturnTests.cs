@@ -34,8 +34,10 @@ public class AcquireAndReturnTests
         using var item = pool.Acquire();
 
         item.Value.Should().NotBeNull();
+        pool.Total.Should().Be(1);
         pool.InUse.Should().Be(1);
         pool.Available.Should().Be(0);
+        pool.Waiting.Should().Be(0);
     }
 
     [Fact]
@@ -95,6 +97,9 @@ public class AcquireAndReturnTests
 
         var first = await pool.AcquireAsync();
         var firstId = first.Value.Id;
+        pool.Total.Should().Be(1);
+        pool.InUse.Should().Be(1);
+        pool.Waiting.Should().Be(0);
 
         // Start a waiter while the only slot is taken.
         var waiterTask = Task.Run(async () => await pool.AcquireAsync());
@@ -102,6 +107,8 @@ public class AcquireAndReturnTests
         // Yield + small delay so the waiter is parked in the channel before we return.
         await Task.Delay(50);
         waiterTask.IsCompleted.Should().BeFalse("the second AcquireAsync must be waiting since MaxSize=1");
+        pool.Total.Should().Be(1);
+        pool.Waiting.Should().Be(1);
 
         // Returning the only slot should hand it off directly to the waiter.
         await first.DisposeAsync();
@@ -110,7 +117,9 @@ public class AcquireAndReturnTests
         try
         {
             second.Value.Id.Should().Be(firstId, "direct-handoff should reuse the same pooled instance");
+            pool.Total.Should().Be(1);
             pool.InUse.Should().Be(1);
+            pool.Waiting.Should().Be(0);
         }
         finally
         {
@@ -132,6 +141,8 @@ public class AcquireAndReturnTests
 
         pool.InUse.Should().Be(0);
         pool.Available.Should().Be(1);
+        pool.Total.Should().Be(1);
+        pool.Waiting.Should().Be(0);
     }
 
     [Fact]

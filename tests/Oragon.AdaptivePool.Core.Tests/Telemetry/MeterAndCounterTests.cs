@@ -107,6 +107,72 @@ public class MeterAndCounterTests
     }
 
     [Fact]
+    public async Task ObservableGauges_ReportCurrentPoolState()
+    {
+        var measurements = new List<(string Name, int Value, Dictionary<string, object?> Tags)>();
+        var lockObj = new object();
+        var gaugeNames = new HashSet<string>
+        {
+            "pool.size",
+            "pool.available",
+            "pool.in_use",
+            "pool.waiting",
+        };
+
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, l) =>
+        {
+            if (instrument.Meter.Name == "Oragon.AdaptivePool" && gaugeNames.Contains(instrument.Name))
+            {
+                l.EnableMeasurementEvents(instrument);
+            }
+        };
+        listener.SetMeasurementEventCallback<int>((instrument, value, tags, state) =>
+        {
+            var copiedTags = new Dictionary<string, object?>();
+            foreach (var tag in tags)
+            {
+                copiedTags[tag.Key] = tag.Value;
+            }
+            lock (lockObj) measurements.Add((instrument.Name, value, copiedTags));
+        });
+        listener.Start();
+
+        var services = new ServiceCollection();
+        services.AddMetrics();
+        var sp = services.BuildServiceProvider();
+
+        await using var pool = AdaptiveObjectPoolFactory.Build<Resource>(sp)
+            .Factory((s, ct) => ValueTask.FromResult(new Resource()))
+            .WithBounds(0, 1, 1)
+            .Build();
+        await pool.ReadyAsync();
+
+        listener.RecordObservableInstruments();
+
+        var holder = await pool.AcquireAsync();
+        var waiter = pool.AcquireAsync().AsTask();
+        for (var i = 0; i < 50 && pool.Waiting == 0; i++)
+        {
+            await Task.Delay(10);
+        }
+
+        listener.RecordObservableInstruments();
+
+        lock (lockObj)
+        {
+            measurements.Should().Contain(m => m.Name == "pool.size" && m.Value == 1);
+            measurements.Should().Contain(m => m.Name == "pool.available" && m.Value == 0);
+            measurements.Should().Contain(m => m.Name == "pool.in_use" && m.Value == 1);
+            measurements.Should().Contain(m => m.Name == "pool.waiting" && m.Value == 1);
+            measurements.Should().AllSatisfy(m => m.Tags.Should().ContainKey("pool.name"));
+        }
+
+        await holder.DisposeAsync();
+        await using var waited = await waiter;
+    }
+
+    [Fact]
     public async Task PoolWithoutAddMetrics_FallbackMeterUsed_AndPoolStillFunctions()
     {
         // Bare ServiceCollection — no AddMetrics(); engine must fall back to `new Meter`.

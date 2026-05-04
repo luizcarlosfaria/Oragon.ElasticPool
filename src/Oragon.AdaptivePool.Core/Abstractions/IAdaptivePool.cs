@@ -1,8 +1,8 @@
 namespace Oragon.AdaptivePool.Core.Abstractions;
 
 /// <summary>
-/// Generic, elastic pool of T. Phase 1 ships fixed-size behavior; elasticity arrives in Phase 2.
-/// Disposing the pool drains in-flight items and invokes the Release hook on each remaining entry.
+/// Generic, elastic pool of T. Disposing the pool drains in-flight items and invokes
+/// the Release hook on each remaining entry.
 /// </summary>
 public interface IAdaptivePool<T> : IDisposable, IAsyncDisposable
     where T : notnull
@@ -11,10 +11,14 @@ public interface IAdaptivePool<T> : IDisposable, IAsyncDisposable
     int MaxSize { get; }
     /// <summary>Configured minimum pool size (floor maintained by Phase 2 sweep).</summary>
     int MinSize { get; }
+    /// <summary>Total live items the pool currently owns (idle + in-use + being-created).</summary>
+    int Total { get; }
     /// <summary>Items currently idle in the pool, available for immediate Acquire.</summary>
     int Available { get; }
     /// <summary>Items currently checked out by consumers.</summary>
     int InUse { get; }
+    /// <summary>AcquireAsync callers currently waiting for a returned item.</summary>
+    int Waiting { get; }
 
     /// <summary>
     /// Synchronous fast-path: returns immediately if a free item exists.

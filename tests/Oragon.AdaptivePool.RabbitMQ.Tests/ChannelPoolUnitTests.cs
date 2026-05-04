@@ -52,6 +52,15 @@ public class ChannelPoolUnitTests
         return connMock.Object;
     }
 
+    private static IConnection MakeConnProducingFreshChannels(bool isOpen = true)
+    {
+        var connMock = new Mock<IConnection>();
+        connMock.Setup(m => m.IsOpen).Returns(isOpen);
+        connMock.Setup(m => m.CreateChannelAsync(It.IsAny<CreateChannelOptions?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => MakeChannel());
+        return connMock.Object;
+    }
+
     private static IChannel MakeChannel(bool isOpen = true)
     {
         var chMock = new Mock<IChannel>();
@@ -100,13 +109,13 @@ public class ChannelPoolUnitTests
     }
 
     [Fact]
-    public async Task AddAdaptiveChannelPool_PairingHoldsConnectionLease_WhileChannelIdleInPool()
+    public async Task AddAdaptiveChannelPool_SharedConnectionLeaseStaysHeld_WhileChannelIdleInPool()
     {
         // After a channel is returned to the channel pool's idle queue, it is NOT discarded
-        // (Release hook not invoked). Therefore the paired connection lease is STILL held
-        // (CWT entry intact). Connection pool's InUse remains 1; releasing the connection
-        // happens only when the channel is discarded by the channel pool (failed BeforeUse,
-        // idle-sweep, or pool dispose). This validates the layered-pool ownership model.
+        // (Release hook not invoked). Therefore its shared connection lease is STILL held.
+        // Connection pool's InUse remains 1; releasing the connection happens only when
+        // the last channel backed by it is discarded by the channel pool (failed BeforeUse,
+        // idle-sweep, or pool dispose).
         var connName = CName();
         var chPoolName = ChName();
         var ch = MakeChannel();
@@ -126,14 +135,14 @@ public class ChannelPoolUnitTests
         var connPool = sp.GetRequiredKeyedService<IAdaptivePool<IConnection>>(connName);
 
         var lease = await chPool.AcquireAsync();
-        connPool.InUse.Should().Be(1, "channel acquire borrowed one connection lease");
+        connPool.InUse.Should().Be(1, "channel acquire borrowed one shared connection lease");
         connPool.Available.Should().Be(0);
 
         await lease.DisposeAsync();
 
-        // Channel is now idle in the channel pool. Release hook NOT invoked. Connection
-        // lease is still held by the CWT pairing entry — InUse remains 1.
-        connPool.InUse.Should().Be(1, "channel returned to idle queue retains its connection lease");
+        // Channel is now idle in the channel pool. Release hook NOT invoked. The shared
+        // connection lease is still retained — InUse remains 1.
+        connPool.InUse.Should().Be(1, "channel returned to idle queue retains its shared connection lease");
         connPool.Available.Should().Be(0);
     }
 
@@ -317,11 +326,52 @@ public class ChannelPoolUnitTests
     }
 
     [Fact]
+    public async Task ChannelPool_SharesConnections_UntilMaxChannelsPerConnection()
+    {
+        var connName = CName();
+        var chPoolName = ChName();
+
+        var connections = new[]
+        {
+            MakeConnProducingFreshChannels(),
+            MakeConnProducingFreshChannels(),
+        };
+        var factory = FactoryProducingDistinctConnections(connections.Select<IConnection, Func<IConnection>>(c => () => c).ToArray());
+
+        var services = new ServiceCollection();
+        services.AddKeyedSingleton<IConnectionFactory>(connName, (_, _) => factory);
+        services.AddAdaptiveConnectionPool(connName, null, p => p.WithBounds(0, 64, 0));
+        services.AddAdaptiveChannelPool(chPoolName, connName, p => p
+            .WithBounds(0, 64, 0)
+            .WithMaxChannelsPerConnection(16));
+
+        await using var sp = services.BuildServiceProvider();
+        var connPool = sp.GetRequiredKeyedService<IAdaptivePool<IConnection>>(connName);
+        var chPool = sp.GetRequiredKeyedService<IAdaptivePool<IChannel>>(chPoolName);
+
+        var leases = new List<IPoolItem<IChannel>>();
+        try
+        {
+            for (var i = 0; i < 32; i++)
+                leases.Add(await chPool.AcquireAsync());
+
+            connPool.InUse.Should().Be(2,
+                "32 live channels with MaxChannelsPerConnection=16 should retain only ceil(32/16) connection leases");
+            Mock.Get(factory).Verify(m => m.CreateConnectionAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+        }
+        finally
+        {
+            foreach (var lease in leases)
+                await lease.DisposeAsync();
+        }
+    }
+
+    [Fact]
     public async Task Release_ChannelDisposeAsyncThrows_StillReleasesConnectionLease()
     {
         // CR-01 regression: previously, an exception from IChannel.DisposeAsync inside the
-        // Release hook silently leaked the tracker slot, the pairing entry, AND the
-        // connection lease (Core call sites swallow Release-hook exceptions). The fix
+        // Release hook silently leaked the pairing entry AND the
+        // shared lease count (Core call sites swallow Release-hook exceptions). The fix
         // wraps DisposeAsync in try/catch so the cleanup below ALWAYS runs.
         //
         // Verify: after a forced DisposeAsync throw, the connection pool's InUse drops
@@ -366,10 +416,10 @@ public class ChannelPoolUnitTests
         // but cleanup must still run.
         await sp.DisposeAsync();
 
-        // CR-01 invariant: tracker slot and connection lease were released even though
+        // CR-01 invariant: shared lease count and connection lease were released even though
         // ch.DisposeAsync threw. Connection pool's InUse must end at 0.
         connPool.InUse.Should().Be(0,
-            "tracker.ReleaseSlot + connLease.DisposeAsync must run even when ch.DisposeAsync throws");
+            "shared lease release must run even when ch.DisposeAsync throws");
 
         // EventId 2003 must have been emitted at Warning level.
         captured.ByEventId(2003).Should().NotBeEmpty(

@@ -32,16 +32,14 @@ public class ChannelSpreadIntegrationTests : IClassFixture<LowChannelMaxFixture>
         var connName = $"conn-{Guid.NewGuid():N}";
         var chPoolName = $"ch-{Guid.NewGuid():N}";
 
-        // Per the layered-pool design (Plan 02): each acquired channel holds its OWN
-        // IPoolItem<IConnection> lease (not shared across channels). MaxSize on the
-        // connection pool therefore must accommodate the desired concurrent-channel count.
-        // The eager-spread tracker still validates that the channel pool, under broker
-        // channel_max=10 enforcement, distributes channel-creation calls across distinct
-        // IConnection refs — observable via the spy IConnectionFactory below (WR-04).
+        // The channel pool shares retained connection leases up to
+        // MaxChannelsPerConnection. Under broker channel_max=10 enforcement, the pool
+        // must distribute channel-creation calls across distinct IConnection refs —
+        // observable via the spy IConnectionFactory below (WR-04).
         //
         // WR-04 fix: previously this test asserted `connPool.InUse + connPool.Available
-        // >= 5` which is trivially satisfied by InUse=50 alone (one lease per channel,
-        // even if all sat on the same IConnection). The reviewer flagged that this does
+        // >= 5` which did not directly prove enough distinct IConnection instances were
+        // used. The reviewer flagged that this does
         // not directly prove distinct-connection spread — proof was indirect (broker
         // would error if a single connection exceeded channel_max=10). We now register
         // a spy IConnectionFactory keyed by `connName` that wraps the real

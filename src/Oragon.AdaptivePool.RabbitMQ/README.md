@@ -17,7 +17,7 @@ dotnet add package Oragon.AdaptivePool.RabbitMQ
 ## What it gives you
 
 - `services.AddAdaptiveConnectionPool(name, configureFactory, configurePool)` — pool of `IConnection` with `IsOpen`-based health checks.
-- `services.AddAdaptiveChannelPool(name, connectionPoolName, configurePool)` — pool of `IChannel` **layered** on the connection pool: each channel acquire borrows one connection lease for its lifetime.
+- `services.AddAdaptiveChannelPool(name, connectionPoolName, configurePool)` — pool of `IChannel` **layered** on the connection pool: channels share retained connection leases up to `MaxChannelsPerConnection`.
 - Conventions consistent with [`Oragon.RabbitMQ`](https://github.com/oragon/Oragon.RabbitMQ) (sister consumer-side library).
 
 ## Quickstart — bursty publisher
@@ -43,6 +43,12 @@ builder.Services.AddAdaptiveConnectionPool(
     {
         pool.WithBounds(minSize: 1, maxSize: 32, initialSize: 2);
         pool.IdleTimeout(TimeSpan.FromMinutes(2));
+        // Optional for demos or faster recycle loops:
+        // pool.WithSweepInterval(TimeSpan.FromSeconds(5));
+        // pool.WithShrinkOnUtilizationPercent(0.60);
+        // pool.WithShrinkTargetUtilizationPercent(0.75);
+        // pool.WithShrinkBatchSize(8);
+        // pool.WithShrinkCooldownWindows(1);
     });
 
 // Channel pool layered on top
@@ -76,14 +82,26 @@ demonstrates the per-iteration acquire pattern under bursty load.
 
 ## ⚠ Sizing the connection pool
 
-Because each in-flight channel acquire holds one `IPoolItem<IConnection>` lease,
-**the connection pool's `MaxSize` must be ≥ the peak number of simultaneously
-in-flight channel acquires** in your workload — not just `ceil(channels / channel_max)`.
+The channel pool shares each retained `IConnection` lease across multiple channels
+until `MaxChannelsPerConnection` is reached. Size the connection pool for roughly:
 
-If you see waiters parked indefinitely on `chPool.AcquireAsync`, raise the
-**connection pool's** `MaxSize` first.
+```text
+ceil(peak live channels / MaxChannelsPerConnection)
+```
 
-(See Phase 3 SUMMARY for the empirical analysis behind this rule.)
+For example, 64 live channels with `MaxChannelsPerConnection(16)` should need about
+4 retained connections, not 64. If you see waiters parked indefinitely on
+`chPool.AcquireAsync`, check both the channel pool's `MaxSize` and the connection
+pool's `MaxSize`.
+
+## Shrink behavior
+
+The underlying core shrinks on sustained aggregate low pressure, not on per-item
+age. A pool is eligible when there are no waiters, utilization is at or below
+`ShrinkOnUtilizationPercent`, excess items are available, the post-grow cooldown
+has elapsed, and that low-pressure shape has lasted for `IdleTimeout`. The target
+size is computed from `ShrinkTargetUtilizationPercent`, and `ShrinkBatchSize`
+controls how quickly each sweep moves toward that target.
 
 ## ⚠ AutomaticRecoveryEnabled override
 
@@ -110,6 +128,11 @@ for the full instrument inventory.
 ships a runnable demo: cycles between idle and 100k-simultaneous publish,
 demonstrates pool grow/shrink/heal under real load against a Testcontainers
 RabbitMQ broker.
+
+[`samples/Oragon.AdaptivePool.RabbitMQ.Sample.LiveDashboard`](https://github.com/oragon/Oragon.AdaptivePool/tree/main/samples/Oragon.AdaptivePool.RabbitMQ.Sample.LiveDashboard)
+ships an Aspire + Blazor dashboard for visual validation: RabbitMQ starts from the
+AppHost, the page updates at 10 Hz, and a concurrency slider lets you grow and
+shrink the pools live.
 
 ```bash
 RABBITMQ_URI=amqp://guest:guest@localhost:5672/ \

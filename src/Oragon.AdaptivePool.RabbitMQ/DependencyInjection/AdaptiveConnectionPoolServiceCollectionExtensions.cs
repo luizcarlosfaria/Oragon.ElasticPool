@@ -131,7 +131,12 @@ public static class AdaptiveConnectionPoolServiceCollectionExtensions
                     }
                 })
                 .WithBounds(poolBuilder.MinSize, poolBuilder.MaxSize, poolBuilder.InitialSize)
-                .IdleTimeout(poolBuilder.IdleTimeout);
+                .IdleTimeout(poolBuilder.IdleTimeout)
+                .SweepInterval(poolBuilder.SweepInterval)
+                .ShrinkOnUtilizationPercent(poolBuilder.ShrinkOnUtilizationPercent)
+                .ShrinkTargetUtilizationPercent(poolBuilder.ShrinkTargetUtilizationPercent)
+                .ShrinkBatchSize(poolBuilder.ShrinkBatchSize)
+                .ShrinkCooldownWindows(poolBuilder.ShrinkCooldownWindows);
         });
 
         return services;

@@ -1,14 +1,13 @@
 using System.Runtime.CompilerServices;
-using Oragon.AdaptivePool.Core.Abstractions;
 using RabbitMQ.Client;
 
 namespace Oragon.AdaptivePool.RabbitMQ.Internals;
 
 /// <summary>
 /// Pairs each <see cref="IChannel"/> handed out by the channel pool with the
-/// <see cref="IPoolItem{IConnection}"/> lease it was created from. Backed by
+/// shared connection lease it was created from. Backed by
 /// <see cref="ConditionalWeakTable{TKey, TValue}"/> so a channel that is GC-collected
-/// without being released does not pin its connection lease in memory.
+/// without being released does not pin its connection reference in memory.
 /// </summary>
 /// <remarks>
 /// CWT key uniqueness — <see cref="ConditionalWeakTable{TKey, TValue}.Add"/> throws
@@ -17,18 +16,18 @@ namespace Oragon.AdaptivePool.RabbitMQ.Internals;
 /// </remarks>
 internal sealed class ChannelLeasePairing
 {
-    private readonly ConditionalWeakTable<IChannel, IPoolItem<IConnection>> _table = new();
+    private readonly ConditionalWeakTable<IChannel, SharedConnectionLease> _table = new();
 
     /// <summary>Registers the pairing. Throws on duplicate keys (CWT contract).</summary>
-    public void Add(IChannel channel, IPoolItem<IConnection> lease)
+    public void Add(IChannel channel, SharedConnectionLease lease)
     {
         ArgumentNullException.ThrowIfNull(channel);
         ArgumentNullException.ThrowIfNull(lease);
         _table.Add(channel, lease);
     }
 
-    /// <summary>Looks up the lease paired to <paramref name="channel"/>.</summary>
-    public bool TryGet(IChannel channel, out IPoolItem<IConnection>? lease)
+    /// <summary>Looks up the shared lease paired to <paramref name="channel"/>.</summary>
+    public bool TryGet(IChannel channel, out SharedConnectionLease? lease)
     {
         ArgumentNullException.ThrowIfNull(channel);
         if (_table.TryGetValue(channel, out var found))

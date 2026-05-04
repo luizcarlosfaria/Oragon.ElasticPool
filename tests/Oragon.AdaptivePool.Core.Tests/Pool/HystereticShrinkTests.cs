@@ -116,7 +116,7 @@ public class HystereticShrinkTests
     }
 
     [Fact(Timeout = 30_000)]
-    public async Task Shrink_OnlyEvictsItemsPastIdleTimeout()
+    public async Task Shrink_RequiresSustainedLowPressurePastIdleTimeout()
     {
         var fake = new FakeTimeProvider(DateTimeOffset.UtcNow);
         var (pool, sp, poolName) = Build(fake, b => b
@@ -130,14 +130,13 @@ public class HystereticShrinkTests
             await SweepDeterminism.PrimeAsync(pool);
             pool.Available.Should().Be(3);
 
-            // Advance 30s; all 3 items have LastReturnedAt = startTime, so age = 30s < 60s timeout.
+            // Advance 30s; low pressure has not lasted long enough.
             await SweepDeterminism.AdvanceAndAwaitTickAsync(pool, fake, TimeSpan.FromSeconds(30));
-            pool.Available.Should().Be(3, "no items past IdleTimeout yet");
+            pool.Available.Should().Be(3, "low pressure has not persisted for IdleTimeout yet");
 
-            // Advance one more sweep interval; items aged 60s — exactly at the IdleTimeout
-            // boundary (head.LastReturnedAt + IdleTimeout <= now). One stale item evicted.
+            // Advance one more sweep interval; low pressure has persisted for IdleTimeout.
             await SweepDeterminism.AdvanceAndAwaitTickAsync(pool, fake, TimeSpan.FromSeconds(30));
-            pool.Available.Should().Be(2, "first stale item evicted (gentle decay = 1 per tick)");
+            pool.Available.Should().Be(2, "default ShrinkBatchSize=1 evicts one item per tick");
         }
         finally
         {
@@ -147,27 +146,12 @@ public class HystereticShrinkTests
     }
 
     [Fact(Timeout = 30_000)]
-    public async Task Shrink_DoesNotEvict_FreshlyReturnedItem_TocTouRegression()
+    public async Task Shrink_UsesAggregateLowPressure_NotPerItemLastReturnedAt()
     {
-        // CR-01 regression: TryPeek-then-TryDequeue is a TOCTOU window. ConcurrentQueue<T> has
-        // no atomic conditional dequeue. The fix re-validates the DEQUEUED entry's age and
-        // re-enqueues it if it is no longer stale.
-        //
-        // Deterministic test of the post-dequeue re-validation branch: directly inject a fresh
-        // PoolEntry into the idle queue using internal access, then drive a sweep tick. The
-        // sweep must NOT evict the fresh entry — because the post-dequeue age re-check returns
-        // false and the fix re-enqueues the entry at the tail.
-        //
-        // The injected entry has LastReturnedAt = now (fresh), but TryPeek would see it as
-        // potentially stale ONLY if we contrived a window. To guarantee a TryPeek-says-stale-
-        // but-TryDequeue-returns-fresh path is impossible here without true concurrency, but
-        // we can deterministically verify the fix's *symmetry* invariant: if the head IS
-        // peeked-stale and the dequeued item is also stale, normal eviction happens; if the
-        // dequeued item turns out fresh (the fix's protection), it must be re-enqueued.
-        //
-        // We test the latter branch by: configure cooldown=0, IdleTimeout=60s, MinSize=0,
-        // MaxSize=2, prime warmup with 1 entry, age it past IdleTimeout, refresh it via
-        // acquire+dispose, drive sweep, and assert the fresh entry survives.
+        // LastReturnedAt is not a reliable shrink signal under ring-buffer/FIFO reuse:
+        // a small number of workers can keep refreshing many idle items while the pool
+        // still owns excess capacity. Shrink therefore uses aggregate low pressure and
+        // treats IdleTimeout as the sustained-low-pressure window.
         var fake = new FakeTimeProvider(DateTimeOffset.UtcNow);
         var releaseCalls = new System.Collections.Concurrent.ConcurrentBag<int>();
         var (pool, sp, poolName) = Build(fake, b => b
@@ -200,14 +184,57 @@ public class HystereticShrinkTests
 
             // Drive sweep at +60s (entry age = 30s, still fresh).
             await SweepDeterminism.AdvanceAndAwaitTickAsync(pool, fake, TimeSpan.FromSeconds(30));
-            pool.Available.Should().Be(1, "fresh entry must NOT be evicted (post-dequeue re-validation, CR-01)");
-            releaseCalls.Should().BeEmpty("Release must NOT fire on a fresh entry");
+            pool.Available.Should().Be(0, "aggregate low pressure has persisted for IdleTimeout even though the item was freshly returned");
+            releaseCalls.Should().HaveCount(1, "Release fires on aggregate-pressure shrink");
+        }
+        finally
+        {
+            await pool.DisposeAsync();
+            sp.Dispose();
+        }
+    }
 
-            // Sanity: drive sweep at +90s (entry age = 60s, exactly at IdleTimeout). Now eviction
-            // is correct (entry IS genuinely stale).
-            await SweepDeterminism.AdvanceAndAwaitTickAsync(pool, fake, TimeSpan.FromSeconds(30));
-            pool.Available.Should().Be(0, "entry now genuinely stale (age=60s>=IdleTimeout), evicted");
-            releaseCalls.Should().HaveCount(1, "Release fires exactly once on the genuinely-stale entry");
+    [Fact(Timeout = 30_000)]
+    public async Task Shrink_BatchEvictsTowardTargetUtilization()
+    {
+        var fake = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        var releaseCalls = 0;
+        var (pool, sp, poolName) = Build(fake, b => b
+            .WithBounds(minSize: 0, maxSize: 20, initialSize: 10)
+            .IdleTimeout(TimeSpan.FromSeconds(10))
+            .ShrinkCooldownWindows(0)
+            .ShrinkOnUtilizationPercent(0.50)
+            .ShrinkTargetUtilizationPercent(0.75)
+            .ShrinkBatchSize(3)
+            .SweepInterval(TimeSpan.FromSeconds(10)),
+            release: (r, ct) =>
+            {
+                Interlocked.Increment(ref releaseCalls);
+                return ValueTask.CompletedTask;
+            });
+        try
+        {
+            await pool.ReadyAsync();
+            await SweepDeterminism.PrimeAsync(pool);
+
+            var held1 = await pool.AcquireAsync();
+            var held2 = await pool.AcquireAsync();
+            try
+            {
+                pool.InUse.Should().Be(2);
+                pool.Available.Should().Be(8);
+
+                await SweepDeterminism.AdvanceAndAwaitTickAsync(pool, fake, TimeSpan.FromSeconds(10));
+
+                pool.CurrentTotal.Should().Be(7, "batch size 3 removes only three of the seven excess items in one tick");
+                pool.Available.Should().Be(5);
+                releaseCalls.Should().Be(3);
+            }
+            finally
+            {
+                await held1.DisposeAsync();
+                await held2.DisposeAsync();
+            }
         }
         finally
         {

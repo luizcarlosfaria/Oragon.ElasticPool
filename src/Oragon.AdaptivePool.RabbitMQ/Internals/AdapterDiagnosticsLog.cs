@@ -18,7 +18,7 @@ internal static partial class AdapterDiagnosticsLog
     [LoggerMessage(
         EventId = 2002,
         Level = LogLevel.Debug,
-        Message = "Channel pool '{PoolName}': Release hook found no paired connection lease for the channel. Tracker slot and connection lease cannot be released — lease tracking may be lost.")]
+        Message = "Channel pool '{PoolName}': Release hook found no paired shared connection lease for the channel. Connection lease accounting may be lost.")]
     public static partial void UnpairedChannelRelease(this ILogger logger, string poolName);
 
     [LoggerMessage(

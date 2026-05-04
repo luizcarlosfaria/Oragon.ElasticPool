@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Oragon.AdaptivePool.RabbitMQ.Sample.LiveDashboard.ServiceDefaults\Oragon.AdaptivePool.RabbitMQ.Sample.LiveDashboard.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\..\..\src\Oragon.AdaptivePool.RabbitMQ\Oragon.AdaptivePool.RabbitMQ.csproj" SetConfiguration="Configuration=$(Configuration)" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+  </PropertyGroup>
+
+</Project>

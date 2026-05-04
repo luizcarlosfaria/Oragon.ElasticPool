@@ -31,6 +31,12 @@ public sealed record AdaptivePoolOptions<T>
     public TimeSpan GrowOnWaitTimeP95 { get; init; } = TimeSpan.FromMilliseconds(100);
     /// <summary>An idle item older than this is eligible for shrink. Default: 60 seconds.</summary>
     public TimeSpan IdleTimeout { get; init; } = TimeSpan.FromSeconds(60);
+    /// <summary>Utilization (in-use / total) at or below which sustained low pressure may shrink the pool. Default: 0.50.</summary>
+    public double ShrinkOnUtilizationPercent { get; init; } = 0.50;
+    /// <summary>Target utilization used to compute the post-shrink pool size. Default: 0.75.</summary>
+    public double ShrinkTargetUtilizationPercent { get; init; } = 0.75;
+    /// <summary>Maximum number of available items the sweeper may evict per shrink tick. Default: 1.</summary>
+    public int ShrinkBatchSize { get; init; } = 1;
     /// <summary>Number of sweep windows after a grow during which shrink is suppressed. Default: 3.</summary>
     public int ShrinkCooldownWindows { get; init; } = 3;
     /// <summary>Background sweep tick interval. Default: 30 seconds.</summary>

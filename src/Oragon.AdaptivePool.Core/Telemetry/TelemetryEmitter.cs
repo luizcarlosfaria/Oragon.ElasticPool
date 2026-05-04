@@ -25,7 +25,13 @@ internal sealed class TelemetryEmitter : IDisposable
     private readonly KeyValuePair<string, object?> _poolNameTag;
     private readonly bool _ownsMeter;
 
-    public TelemetryEmitter(IServiceProvider services, string poolName)
+    public TelemetryEmitter(
+        IServiceProvider services,
+        string poolName,
+        Func<int> observeTotal,
+        Func<int> observeAvailable,
+        Func<int> observeInUse,
+        Func<int> observeWaiting)
     {
         var factory = services.GetService<IMeterFactory>();
         if (factory is not null)
@@ -71,6 +77,27 @@ internal sealed class TelemetryEmitter : IDisposable
             description: "Wall-clock duration of one sweep tick (health-check pass + shrink pass).");
 
         _poolNameTag = new KeyValuePair<string, object?>(PoolMeterNames.PoolNameTag, poolName);
+
+        _meter.CreateObservableGauge(
+            PoolMeterNames.Size,
+            () => new Measurement<int>(observeTotal(), _poolNameTag),
+            unit: "{items}",
+            description: "Total items the pool currently owns (idle + in-use + being-created).");
+        _meter.CreateObservableGauge(
+            PoolMeterNames.Available,
+            () => new Measurement<int>(observeAvailable(), _poolNameTag),
+            unit: "{items}",
+            description: "Items currently idle in the pool, available for immediate acquire.");
+        _meter.CreateObservableGauge(
+            PoolMeterNames.InUse,
+            () => new Measurement<int>(observeInUse(), _poolNameTag),
+            unit: "{items}",
+            description: "Items currently checked out by consumers.");
+        _meter.CreateObservableGauge(
+            PoolMeterNames.Waiting,
+            () => new Measurement<int>(observeWaiting(), _poolNameTag),
+            unit: "{waiters}",
+            description: "AcquireAsync callers currently waiting for a returned item.");
     }
 
     public void OnAcquire() => _acquireCount.Add(1, _poolNameTag);

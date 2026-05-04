@@ -52,6 +52,8 @@ var pool = host.Services.GetRequiredKeyedService<IAdaptivePool<MyExpensiveClient
 await using var lease = await pool.AcquireAsync();
 lease.Value.DoWork();
 // On Dispose, the item returns to the pool — or is discarded if BeforeUse said Unhealthy.
+var liveItems = pool.Total;   // idle + in-use + being-created
+var waiters = pool.Waiting;   // callers parked in AcquireAsync
 
 public sealed class MyExpensiveClient : IDisposable
 {
@@ -83,7 +85,7 @@ allocation on the fast path. Use it whenever the hook doesn't need `await`.
 |------------------------------------|-----------------------------------|----------------------------|
 | `Min` / `Max` bounds               | ❌ (only `MaximumRetained`)        | ✅                          |
 | Elastic grow under pressure        | ❌                                 | ✅ (composite signal: waiters + utilization + p95 wait) |
-| Auto-shrink when idle              | ❌                                 | ✅ (hysteretic, IdleTimeout-driven) |
+| Auto-shrink when pressure drops    | ❌                                 | ✅ (hysteretic, aggregate-signal driven) |
 | Lifecycle hooks (5 stages)         | ❌                                 | ✅ (`Factory`, `BeforeUse`, `Check`, `AfterUse`, `Release`) |
 | Health check on borrow             | ❌                                 | ✅ (`BeforeUse`)            |
 | Background health sweep            | ❌                                 | ✅ (`Check` + `PeriodicTimer` + exponential backoff) |
@@ -99,8 +101,9 @@ stateful, lifecycle-sensitive resources where elasticity and health matter.
 ## Three pillars
 
 1. **Elasticity** — composite-signal grow (waiters + sustained utilization % + p95
-   acquire-wait), hysteretic shrink to `MinSize` only after consecutive low-utilization
-   sweep windows past a cooldown since the last grow. No thrashing.
+   acquire-wait), hysteretic shrink to a target size after sustained aggregate low
+   pressure (`Available` high, `InUse` low, `Waiting` zero) past a cooldown since
+   the last grow. No thrashing.
 2. **Auto-healing** — five lifecycle hooks at every stage: `Factory` (create),
    `BeforeUse` (validate on borrow), `Check` (background sweep), `AfterUse` (validate
    on return; opt-in), `Release` (cleanup/dispose). Pluggable `IItemFailurePolicy<T>`

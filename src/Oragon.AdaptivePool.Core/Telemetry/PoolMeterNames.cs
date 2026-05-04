@@ -12,6 +12,12 @@ internal static class PoolMeterNames
     public const string FactoryFailures = "pool.factory.failures";
     public const string PoolNameTag = "pool.name";
 
+    // Observable gauges.
+    public const string Size = "pool.size";
+    public const string Available = "pool.available";
+    public const string InUse = "pool.in_use";
+    public const string Waiting = "pool.waiting";
+
     // Phase 2 — telemetry expansion (CONTEXT D-09..D-13). The ActivitySource name is the same
     // string as MeterName but they are different types (one is a Meter, one is an ActivitySource);
     // OTel pipelines wire them separately. Keeping the constant separate avoids ambiguity.

@@ -19,7 +19,7 @@ public static class AdaptiveChannelPoolServiceCollectionExtensions
     /// Registers an <see cref="IAdaptivePool{IChannel}"/> in DI under the given
     /// <paramref name="name"/>. The pool's Factory acquires connections from the inner
     /// pool resolved via <paramref name="connectionPoolName"/> and creates channels on
-    /// them via <see cref="IConnection.CreateChannelAsync"/>.
+    /// retained shared connection leases via <see cref="IConnection.CreateChannelAsync"/>.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <param name="name">
@@ -41,27 +41,23 @@ public static class AdaptiveChannelPoolServiceCollectionExtensions
     /// <returns>The service collection (for chaining).</returns>
     /// <remarks>
     /// <para>Sister-library DI conventions: aligned with <c>Oragon.RabbitMQ</c> per RMQ-04.</para>
-    /// <para><b>Eager spread (RESEARCH Q2).</b> Each Factory acquire selects a connection
+    /// <para><b>Connection sharing.</b> Each Factory acquire selects a retained connection
     /// whose live channel count is below
-    /// <see cref="AdaptiveChannelPoolBuilder.MaxChannelsPerConnection"/>. If the first
-    /// connection acquired from the connection pool is saturated, the Factory keeps
-    /// drawing fresh connections from the pool (releasing the saturated leases) until it
-    /// finds one with a free slot, up to a safety net of 16 attempts. Default ceiling is
-    /// 100 channels/connection — well below the broker's 2047 default channel_max
-    /// (Pitfall 11).</para>
+    /// <see cref="AdaptiveChannelPoolBuilder.MaxChannelsPerConnection"/>. If all retained
+    /// connections are saturated, the Factory borrows one more connection lease from the
+    /// inner pool. Default ceiling is 100 channels/connection — well below the broker's
+    /// 2047 default channel_max (Pitfall 11).</para>
     /// <para><b>Lazy cross-pool invalidation (RESEARCH Q1 — ship lazy, validate empirically).</b>
     /// The <c>BeforeUse</c> hook returns Unhealthy when EITHER the channel itself has
-    /// closed (<c>IChannel.IsOpen=false</c>) OR the paired connection lease has closed
-    /// (<c>IPoolItem&lt;IConnection&gt;.Value.IsOpen=false</c>). No eager event/callback
+    /// closed (<c>IChannel.IsOpen=false</c>) OR the paired shared connection has closed
+    /// (<c>IConnection.IsOpen=false</c>). No eager event/callback
     /// hook is exposed in v1; integration tests in Plan 03 will validate whether the
     /// lazy probe latency is acceptable, and Phase 4 may revisit if defects surface.</para>
     /// <para><b>Release order (Pitfall E + lifecycle ownership).</b>
     /// <c>IChannel.CloseAsync</c> (close errors swallowed), then <c>IChannel.DisposeAsync</c>,
-    /// then <c>tracker.ReleaseSlot</c>, then <c>pairing.TryRemove</c>, finally
-    /// <c>IPoolItem&lt;IConnection&gt;.DisposeAsync</c> (returns the connection lease to
-    /// the inner pool). The tracker decrement happens BEFORE returning the lease to
-    /// avoid a race where a concurrent Factory call sees the connection as still
-    /// saturated.</para>
+    /// then <c>pairing.TryRemove</c>, finally decrements the shared connection lease.
+    /// The retained connection lease returns to the inner pool only after the last
+    /// associated channel is discarded.</para>
     /// </remarks>
     public static IServiceCollection AddAdaptiveChannelPool(
         this IServiceCollection services,
@@ -89,9 +85,10 @@ public static class AdaptiveChannelPoolServiceCollectionExtensions
         var chBuilder = new AdaptiveChannelPoolBuilder();
         configurePool(chBuilder);
 
-        // Single instance per channel-pool registration: pairing + tracker live alongside the pool.
+        // Single instance per channel-pool registration: pairing + shared connection
+        // registry live alongside the pool.
         var pairing = new ChannelLeasePairing();
-        var tracker = new ConnectionChannelTracker();
+        var sharedConnections = new SharedConnectionLeaseRegistry();
 
         // Logger is resolved on the first Factory call (which receives sp) and cached for
         // subsequent Release calls (which do not). Volatile read on a reference type is
@@ -109,7 +106,7 @@ public static class AdaptiveChannelPoolServiceCollectionExtensions
                                           ?.CreateLogger("Oragon.AdaptivePool.RabbitMQ")
                                        ?? (ILogger)NullLogger.Instance;
                     }
-                    return CreateChannelWithSpreadAsync(sp, connectionPoolName, chBuilder, pairing, tracker, ct);
+                    return CreateChannelWithSpreadAsync(sp, connectionPoolName, chBuilder, pairing, sharedConnections, ct);
                 })
                 .BeforeUse((ch, _) =>
                 {
@@ -137,9 +134,9 @@ public static class AdaptiveChannelPoolServiceCollectionExtensions
                     }
 
                     // CR-01: DisposeAsync was unguarded — a throw silently leaked the
-                    // tracker slot, the pairing entry, AND the connection lease (because
+                    // shared lease count, the pairing entry, AND the connection lease (because
                     // Core's Release call sites swallow all hook exceptions, no diagnostic
-                    // ever fired). Guard it so the tracker/pairing/lease cleanup below
+                    // ever fired). Guard it so the pairing/shared-lease cleanup below
                     // ALWAYS runs.
                     try
                     {
@@ -152,9 +149,6 @@ public static class AdaptiveChannelPoolServiceCollectionExtensions
 
                     if (pairing.TryGet(ch, out var connLease) && connLease is not null)
                     {
-                        // Decrement BEFORE returning the lease so a concurrent Factory call
-                        // does not see the connection as still-saturated.
-                        tracker.ReleaseSlot(connLease.Value);
                         pairing.TryRemove(ch);
                         try
                         {
@@ -169,60 +163,43 @@ public static class AdaptiveChannelPoolServiceCollectionExtensions
                     else
                     {
                         // IN-01: pairing missing on Release — invariant violation. The
-                        // tracker slot for the underlying connection cannot be decremented
+                        // shared lease count for the underlying connection cannot be decremented
                         // and the connection lease (if any) is leaked. Should never happen
                         // under normal flow; if it does, log Debug for operator visibility.
                         logger.UnpairedChannelRelease(name);
                     }
                 })
                 .WithBounds(chBuilder.MinSize, chBuilder.MaxSize, chBuilder.InitialSize)
-                .IdleTimeout(chBuilder.IdleTimeout);
+                .IdleTimeout(chBuilder.IdleTimeout)
+                .SweepInterval(chBuilder.SweepInterval)
+                .ShrinkOnUtilizationPercent(chBuilder.ShrinkOnUtilizationPercent)
+                .ShrinkTargetUtilizationPercent(chBuilder.ShrinkTargetUtilizationPercent)
+                .ShrinkBatchSize(chBuilder.ShrinkBatchSize)
+                .ShrinkCooldownWindows(chBuilder.ShrinkCooldownWindows);
         });
 
         return services;
     }
 
     /// <summary>
-    /// Eager-spread Factory helper. Acquires connections from the inner pool until one
-    /// with a free channel slot is found (up to 16 attempts), then creates a channel on
-    /// it, pairs the channel to the lease, and transfers ownership to the pairing table.
-    /// Saturated leases are returned to the pool in the finally block.
+    /// Factory helper. Acquires a shared connection lease with a free channel slot, then
+    /// creates a channel on it and pairs the channel to that shared lease.
     /// </summary>
     private static async ValueTask<IChannel> CreateChannelWithSpreadAsync(
         IServiceProvider sp,
         string connectionPoolName,
         AdaptiveChannelPoolBuilder chBuilder,
         ChannelLeasePairing pairing,
-        ConnectionChannelTracker tracker,
+        SharedConnectionLeaseRegistry sharedConnections,
         CancellationToken ct)
     {
         var connectionPool = sp.GetRequiredKeyedService<IAdaptivePool<IConnection>>(connectionPoolName);
-
-        // T-03-07: bound the retry loop to prevent runaway acquisition if every connection
-        // is saturated. In practice 1–2 attempts suffice; the pool's elasticity provides a
-        // fresh connection (or surfaces PoolExhaustedException) before we hit the bound.
-        const int MaxAttempts = 16;
-        List<IPoolItem<IConnection>>? rejected = null;
-        IPoolItem<IConnection>? selected = null;
+        SharedConnectionLease? selected = null;
         try
         {
-            for (int attempt = 0; attempt < MaxAttempts; attempt++)
-            {
-                var lease = await connectionPool.AcquireAsync(ct).ConfigureAwait(false);
-                if (tracker.TryAcquireSlot(lease.Value, chBuilder.MaxChannelsPerConnection))
-                {
-                    selected = lease;
-                    break;
-                }
-                // Saturated — keep it referenced so we don't immediately re-acquire the same one;
-                // dispose all rejected leases in the finally block.
-                (rejected ??= new()).Add(lease);
-            }
-
-            if (selected is null)
-                throw new InvalidOperationException(
-                    $"AddAdaptiveChannelPool: could not find a connection with a free channel slot in pool '{connectionPoolName}' after {MaxAttempts} attempts. " +
-                    "Increase MaxChannelsPerConnection or the connection pool's MaxSize.");
+            selected = await sharedConnections
+                .AcquireAsync(connectionPool, chBuilder.MaxChannelsPerConnection, ct)
+                .ConfigureAwait(false);
 
             IChannel channel;
             try
@@ -231,26 +208,18 @@ public static class AdaptiveChannelPoolServiceCollectionExtensions
             }
             catch
             {
-                // Channel creation failed — release the slot and let the finally block return the lease.
-                tracker.ReleaseSlot(selected.Value);
+                await selected.DisposeAsync().ConfigureAwait(false);
+                selected = null;
                 throw;
             }
 
             pairing.Add(channel, selected);
-            // Ownership transferred — the pairing table now holds the lease; do NOT dispose it in the finally.
+            // Ownership transferred — the pairing table now holds the shared lease.
             selected = null;
             return channel;
         }
         finally
         {
-            if (rejected is not null)
-            {
-                foreach (var r in rejected)
-                {
-                    try { await r.DisposeAsync().ConfigureAwait(false); }
-                    catch { /* don't mask primary exception */ }
-                }
-            }
             if (selected is not null)
             {
                 try { await selected.DisposeAsync().ConfigureAwait(false); }

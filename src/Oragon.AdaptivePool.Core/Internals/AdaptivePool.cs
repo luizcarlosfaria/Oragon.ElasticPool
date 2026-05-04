@@ -47,8 +47,10 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
 
     public int MaxSize => _options.MaxSize;
     public int MinSize => _options.MinSize;
+    public int Total => Volatile.Read(ref _total);
     public int Available => _idle.Count;
     public int InUse => Volatile.Read(ref _inUse);
+    public int Waiting => Volatile.Read(ref _waitersCount);
 
     internal AdaptivePool(AdaptivePoolOptions<T> options, IServiceProvider services, CancellationToken ct)
     {
@@ -58,7 +60,13 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
         _waiters = Channel.CreateUnbounded<TaskCompletionSource<PoolEntry<T>>>(
             new UnboundedChannelOptions { SingleReader = false, SingleWriter = false });
         _lifetimeCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        _telemetry = new TelemetryEmitter(services, options.PoolName);
+        _telemetry = new TelemetryEmitter(
+            services,
+            options.PoolName,
+            () => Volatile.Read(ref _total),
+            () => _idle.Count,
+            () => Volatile.Read(ref _inUse),
+            () => Volatile.Read(ref _waitersCount));
 
         // Best-effort logger; if Logging is not registered, use NullLogger.
         var loggerFactory = services.GetService<ILoggerFactory>();

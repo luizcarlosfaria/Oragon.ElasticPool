@@ -16,6 +16,7 @@ internal sealed class BackgroundSweeper<T> : IAsyncDisposable where T : notnull
     private readonly SweepBackoffState _backoff;
     private readonly CancellationTokenSource _sweepCts;
     private readonly Task _sweepTask;
+    private DateTimeOffset? _lowPressureSince;
 
     // Test-only probe; resets each tick. NOT exposed via PublicAPI — internal-only signal for
     // Plan 03 tests via [InternalsVisibleTo].
@@ -32,6 +33,7 @@ internal sealed class BackgroundSweeper<T> : IAsyncDisposable where T : notnull
         _pool = pool;
         _options = options;
         _backoff = backoff;
+        _lowPressureSince = options.TimeProvider.GetUtcNow();
         _sweepCts = CancellationTokenSource.CreateLinkedTokenSource(lifetimeToken);
         _sweepTask = Task.Run(SweepLoopAsync);
     }
@@ -95,7 +97,7 @@ internal sealed class BackgroundSweeper<T> : IAsyncDisposable where T : notnull
         // ---- (1) Health-check pass ----
         // Iterate a snapshot — ConcurrentQueue.ToArray is a stable snapshot. Concurrent
         // Acquire/Return on the queue continues unimpeded; we operate read-only here, marking
-        // unhealthy items via LastReturnedAt = MinValue for the shrink pass to evict.
+        // unhealthy items in PendingDiscard so the eviction pass or dequeue paths discard them.
         if (_options.Check is { } check)
         {
             var snapshot = _pool.Idle.ToArray();
@@ -186,44 +188,55 @@ internal sealed class BackgroundSweeper<T> : IAsyncDisposable where T : notnull
         }
 
         // ---- (2b) Shrink pass ----
-        // Cooldown gate: SinceLastGrowTicks must have reached ShrinkCooldownWindows before any
-        // shrink is considered. Floor: never go below MinSize. Gentle decay: at most 1 item/tick.
-        if (_pool.SinceLastGrowTicks >= _options.ShrinkCooldownWindows
-            && _pool.CurrentTotal > _options.MinSize)
+        // Shrink is based on sustained aggregate low pressure, not per-item idle age.
+        // Ring-buffer/FIFO reuse can refresh every item's LastReturnedAt even when the
+        // pool clearly owns excess capacity. The aggregate signals below represent the
+        // actual shape: available vs in-use vs waiters.
+        var now = _options.TimeProvider.GetUtcNow();
+        var currentTotal = _pool.CurrentTotal;
+        var currentInUse = _pool.InUse;
+        var currentWaiting = _pool.Waiting;
+        var currentAvailable = _pool.Available;
+        var utilization = currentTotal == 0 ? 0.0 : (double)currentInUse / currentTotal;
+        var lowPressure =
+            currentWaiting == 0
+            && currentTotal > _options.MinSize
+            && currentAvailable > 0
+            && utilization <= _options.ShrinkOnUtilizationPercent;
+
+        if (!lowPressure)
         {
-            var now = _options.TimeProvider.GetUtcNow();
-            if (_pool.Idle.TryPeek(out var head)
-                && head.LastReturnedAt + _options.IdleTimeout <= now)
+            _lowPressureSince = null;
+        }
+        else
+        {
+            _lowPressureSince ??= now;
+            if (_pool.SinceLastGrowTicks >= _options.ShrinkCooldownWindows
+                && _lowPressureSince.Value + _options.IdleTimeout <= now)
             {
-                // CR-01 fix: ConcurrentQueue<T> has no atomic conditional dequeue. Between TryPeek
-                // and TryDequeue, a consumer can acquire the head and a different (freshly-returned)
-                // entry can move to the head. We MUST validate the dequeued item independently.
-                // IR-01 fix: snapshot pool.size_before BEFORE TryDequeue so a concurrent grow
-                // cannot inflate the tag value reported in the Pool.Shrink span.
-                var oldTotal = _pool.CurrentTotal;
-                if (_pool.Idle.TryDequeue(out var evict))
+                var targetTotal = currentInUse == 0
+                    ? _options.MinSize
+                    : Math.Max(_options.MinSize, (int)Math.Ceiling(currentInUse / _options.ShrinkTargetUtilizationPercent));
+                var removable = Math.Min(_options.ShrinkBatchSize, Math.Min(currentAvailable, currentTotal - targetTotal));
+                for (var i = 0; i < removable; i++)
                 {
-                    if (evict.LastReturnedAt + _options.IdleTimeout <= now)
+                    ct.ThrowIfCancellationRequested();
+                    var oldTotal = _pool.CurrentTotal;
+                    if (oldTotal <= _options.MinSize || oldTotal <= targetTotal) break;
+                    if (!_pool.Idle.TryDequeue(out var evict)) break;
+
+                    _pool.PendingDiscard.TryRemove(evict, out _);
+                    _pool.DecrementTotal();
+                    var newTotal = _pool.CurrentTotal;
+                    using var shrinkSpan = _pool.Telemetry.StartShrinkSpan(_options.PoolName, oldTotal, newTotal);
+                    if (_options.Release is { } release)
                     {
-                        _pool.DecrementTotal();
-                        var newTotal = _pool.CurrentTotal;
-                        using var shrinkSpan = _pool.Telemetry.StartShrinkSpan(_options.PoolName, oldTotal, newTotal);
-                        if (_options.Release is { } release)
-                        {
-                            try { await release(evict.Item, ct).ConfigureAwait(false); } catch { /* swallow */ }
-                        }
-                        _pool.Telemetry.OnShrink();
-                        _pool.Log.Shrunk(_options.PoolName, oldTotal, newTotal);
-                        shrinkSpan?.SetTag(PoolMeterNames.OutcomeTag, "shrunk");
-                        shrunk = 1;
+                        try { await release(evict.Item, ct).ConfigureAwait(false); } catch { /* swallow */ }
                     }
-                    else
-                    {
-                        // Item is fresh (not actually stale) — re-enqueue at tail to preserve it.
-                        // Minor ordering churn at sweep cadence is acceptable; the alternative
-                        // (evicting an item that was just returned) destroys an in-use resource.
-                        _pool.Idle.Enqueue(evict);
-                    }
+                    _pool.Telemetry.OnShrink();
+                    _pool.Log.Shrunk(_options.PoolName, oldTotal, newTotal);
+                    shrinkSpan?.SetTag(PoolMeterNames.OutcomeTag, "shrunk");
+                    shrunk++;
                 }
             }
         }

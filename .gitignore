@@ -116,3 +116,6 @@ desktop.ini
 
 # BenchmarkDotNet artifacts
 BenchmarkDotNet.Artifacts/
+.agents/
+.codex/
+AGENTS.md

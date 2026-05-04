@@ -1,0 +1,38 @@
+<article class="pool-panel">
+    <header>
+        <h2>@Title</h2>
+        <span>@Snapshot.Total / @Snapshot.MaxSize</span>
+    </header>
+    <div class="meter">
+        <span style="width:@Percent(Snapshot.Total, Snapshot.MaxSize)%"></span>
+    </div>
+    <dl>
+        <div>
+            <dt>Total</dt>
+            <dd>@Snapshot.Total</dd>
+        </div>
+        <div>
+            <dt>Available</dt>
+            <dd>@Snapshot.Available</dd>
+        </div>
+        <div>
+            <dt>In use</dt>
+            <dd>@Snapshot.InUse</dd>
+        </div>
+        <div>
+            <dt>Waiting</dt>
+            <dd>@Snapshot.Waiting</dd>
+        </div>
+    </dl>
+</article>
+
+@code {
+    [Parameter, EditorRequired]
+    public required string Title { get; set; }
+
+    [Parameter, EditorRequired]
+    public required PoolSnapshot Snapshot { get; set; }
+
+    private static double Percent(int value, int max) =>
+        max <= 0 ? 0 : Math.Clamp(value * 100d / max, 0, 100);
+}

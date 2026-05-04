@@ -80,7 +80,7 @@ Sync and async overloads coexist — e.g., a sync `BeforeUse` paired with an asy
 |------------------------------------|-----------------------------------|----------------------------|
 | `Min` / `Max` bounds               | ❌ (only `MaximumRetained`)        | ✅                          |
 | Elastic grow under pressure        | ❌                                 | ✅ (composite signal: waiters + utilization + p95 wait) |
-| Auto-shrink when idle              | ❌                                 | ✅ (hysteretic, IdleTimeout-driven) |
+| Auto-shrink when pressure drops    | ❌                                 | ✅ (hysteretic, aggregate-signal driven) |
 | Lifecycle hooks (5 stages)         | ❌                                 | ✅ (`Factory`, `BeforeUse`, `Check`, `AfterUse`, `Release`) |
 | Health check on borrow             | ❌                                 | ✅ (`BeforeUse`)            |
 | Background health sweep            | ❌                                 | ✅ (`Check` + `PeriodicTimer` + exponential backoff) |
@@ -122,11 +122,19 @@ The sample cycles between idle and 100k-simultaneous publish, demonstrating pool
 grow/shrink/heal under real load against a RabbitMQ broker (Testcontainers or
 locally configured via `RABBITMQ_URI`).
 
+## RabbitMQ live dashboard
+
+For visual validation, see the Aspire + Blazor sample at
+[`samples/Oragon.AdaptivePool.RabbitMQ.Sample.LiveDashboard`](samples/Oragon.AdaptivePool.RabbitMQ.Sample.LiveDashboard/README.md).
+It starts RabbitMQ from Aspire, publishes adjustable load, and refreshes connection
+and channel pool state at 10 Hz in a Web UI.
+
 ## Documentation
 
 - Core API + telemetry: [`src/Oragon.AdaptivePool.Core/README.md`](src/Oragon.AdaptivePool.Core/README.md)
 - RabbitMQ adapter (layered IConnection+IChannel): [`src/Oragon.AdaptivePool.RabbitMQ/README.md`](src/Oragon.AdaptivePool.RabbitMQ/README.md)
 - Sample bursty publisher: [`samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/README.md`](samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/README.md)
+- Sample live dashboard: [`samples/Oragon.AdaptivePool.RabbitMQ.Sample.LiveDashboard/README.md`](samples/Oragon.AdaptivePool.RabbitMQ.Sample.LiveDashboard/README.md)
 - Changelog: [`CHANGELOG.md`](CHANGELOG.md)
 
 ## Versioning
