@@ -2,15 +2,13 @@
   <PropertyGroup>
     <TargetFrameworks>net10.0;net9.0;net8.0</TargetFrameworks>
     <IsPackable>false</IsPackable>
-    <!--
-      xUnit v3 test projects are self-executing under Microsoft.Testing.Platform;
-      MTP requires OutputType=Exe (Rule 3 fix — plan snippet omitted this property).
-    -->
+    <!-- xUnit v3 self-executing test project running on Microsoft.Testing.Platform.
+         OutputType=Exe is required by xUnit v3. IsTestProject + IsTestingPlatformApplication
+         enable discovery via `dotnet test` (configured for MTP via global.json). -->
     <OutputType>Exe</OutputType>
     <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
     <IsTestProject>true</IsTestProject>
     <IsTestingPlatformApplication>true</IsTestingPlatformApplication>
-    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
     <!--
       xUnit1051 (advisory) requires every CT-accepting call inside a test to thread
       TestContext.Current.CancellationToken through. Our tests own their CTS lifetimes
@@ -21,11 +19,9 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="xunit.v3" />
-    <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="Microsoft.Testing.Extensions.TrxReport" />
     <PackageReference Include="AwesomeAssertions" />
     <PackageReference Include="Moq" />
-    <PackageReference Include="NSubstitute" />
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" />
@@ -33,7 +29,6 @@
     <PackageReference Include="Microsoft.Extensions.Diagnostics.Testing" />
     <!-- CR-03 regression test for IHostApplicationLifetime detection -->
     <PackageReference Include="Microsoft.Extensions.Hosting" />
-    <PackageReference Include="coverlet.collector" PrivateAssets="all" />
     <PackageReference Include="coverlet.msbuild" PrivateAssets="all" />
   </ItemGroup>
   <ItemGroup>

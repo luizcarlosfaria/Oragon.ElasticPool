@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Test stack migrated to 100% OSS / pure MTP**: removed VSTest-only dependencies (`xunit.runner.visualstudio`, `coverlet.collector`, `Microsoft.NET.Test.Sdk` was never present), replaced `NSubstitute` with `Moq` (BSD-3, community standard, 4.20.72+ to skip the SponsorLink controversy of 4.20.0–4.20.1), pinned `Microsoft.Testing.Extensions.TrxReport` 1.9.1 for MTP-native TRX reports. `dotnet test --solution` now works uniformly on Windows / Linux / macOS via Microsoft.Testing.Platform; tests are discovered natively by VS 2022 17.14+, JetBrains Rider, and VS Code (C# Dev Kit) without VSTest. Coverage gate via `coverlet.msbuild` (`/p:CollectCoverage=true /p:Threshold=90`).
+- Stress test project (`Oragon.AdaptivePool.Core.Stress`) now opt-in via `<IsTestProject>false</IsTestProject>` so `dotnet test --solution` excludes it by default; invoke explicitly via project path or `dotnet run --project tests/Oragon.AdaptivePool.Core.Stress`.
+- Repository now ships a project-local `NuGet.Config` that clears inherited `<fallbackPackageFolders>` (e.g., from machine-wide Visual Studio installs that pin Windows-only paths) to ensure deterministic, OS-agnostic restore.
+- Removed obsolete `<TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>` from test csprojs (superseded by `global.json` `test.runner` on .NET 10 SDK).
+- CI workflow simplified to use `dotnet test --solution` + `coverlet.msbuild` `/p:` properties (no more `coverlet.console` workaround).
+
 ## [1.0.0] - 2026-05-03
 
 ### Added

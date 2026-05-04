@@ -187,7 +187,41 @@ juntos são o produto e nenhum pode ser sacrificado.
 <!-- GSD:conventions-start source:CONVENTIONS.md -->
 ## Conventions
 
-Conventions not yet established. Will populate as patterns emerge during development.
+### Testing (100% OSS test stack — Apache 2.0 / MIT / BSD)
+
+xUnit v3 + Microsoft.Testing.Platform. **Zero VSTest dependencies.**
+
+**Run tests:**
+
+- `dotnet test --solution Oragon.AdaptivePool.sln` — discovers all test projects in the solution and runs them via MTP. Works uniformly on Windows / Linux / macOS. Stress is excluded automatically via `<IsTestProject>false</IsTestProject>`.
+- `dotnet test --project tests/<Project>/<Project>.csproj` — targeted single-project run.
+- `dotnet run --project tests/<Project>` — direct MTP self-exec; fastest for local iteration; accepts MTP-native flags (`--filter-trait`, `--report-trx`, etc.).
+- **In IDE**: VS 2022 17.14+, JetBrains Rider, and VS Code (C# Dev Kit) discover MTP tests natively. No VSTest adapter required.
+
+**Stack pinned in Directory.Packages.props:**
+
+| Package | Version | License |
+|---------|---------|---------|
+| `xunit.v3` | 3.2.2 | Apache-2.0 |
+| `Microsoft.Testing.Extensions.TrxReport` | 1.9.1 | MIT |
+| `AwesomeAssertions` | 9.4.0 | Apache-2.0 |
+| `Moq` | 4.20.72 | BSD-3-Clause |
+| `Microsoft.Extensions.TimeProvider.Testing` | 10.5.0 | MIT |
+| `Microsoft.Extensions.Diagnostics.Testing` | 10.5.0 | MIT |
+| `Testcontainers.RabbitMq` | 4.11.0 | MIT |
+| `coverlet.msbuild` | 10.0.0 | Apache-2.0 |
+
+**Forbidden packages** (VSTest-only, incompatible with MTP — not added to CPM):
+
+- `xunit.runner.visualstudio` (VSTest adapter)
+- `coverlet.collector` (VSTest data collector)
+- `Microsoft.NET.Test.Sdk` (VSTest SDK)
+- `NSubstitute` (replaced by `Moq` for community familiarity)
+
+**Coverage gate:** 90% line on `Oragon.AdaptivePool.Core` only, enforced via `coverlet.msbuild` `/p:Threshold=90 /p:ThresholdType=line`.
+
+**Critical config:** `global.json` MUST have `"test": { "runner": "Microsoft.Testing.Platform" }` to force MTP mode on `dotnet test`. Project root has `NuGet.Config` that clears inherited `<fallbackPackageFolders>` for OS-agnostic restore.
+
 <!-- GSD:conventions-end -->
 
 <!-- GSD:architecture-start source:ARCHITECTURE.md -->

@@ -18,25 +18,17 @@
     <PackageVersion Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="3.3.4" />
     <PackageVersion Include="MinVer" Version="6.0.0" />
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
-    <!-- Test deps -->
+    <!-- Test deps. 100% OSS test stack: xUnit v3 + Microsoft.Testing.Platform.
+         No VSTest dependencies (no xunit.runner.visualstudio, no Microsoft.NET.Test.Sdk,
+         no coverlet.collector). MTP works in dotnet test, Visual Studio 17.14+,
+         JetBrains Rider, and VS Code (C# Dev Kit) uniformly across Windows/Linux/macOS. -->
     <PackageVersion Include="xunit.v3" Version="3.2.2" />
-    <!--
-      Plan 01 originally pinned `xunit.v3.runner.visualstudio` 3.2.2; that package id
-      does not exist on NuGet.org. The unified VS Test Explorer adapter for xUnit v3
-      is `xunit.runner.visualstudio` (v3.x), so we pin 3.1.5 (latest stable as of
-      restore time). Documented as Rule 1 deviation in SUMMARY.
-    -->
-    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
     <PackageVersion Include="AwesomeAssertions" Version="9.4.0" />
     <!--
       Mock library: Moq (BSD-3) — community de facto standard. Pinned 4.20.72+
       to avoid SponsorLink controversy of 4.20.0–4.20.1 (later removed in 4.20.2+).
-      Replaces NSubstitute (which was the previous choice but Moq is more familiar
-      to the broader .NET OSS community).
     -->
     <PackageVersion Include="Moq" Version="4.20.72" />
-    <!-- TODO: Phase B/D — remove NSubstitute after migrating tests to Moq. -->
-    <PackageVersion Include="NSubstitute" Version="5.3.0" />
     <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.5.0" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.6" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.6" />
@@ -56,12 +48,9 @@
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.6" />
     <!--
       Coverage tooling. coverlet.msbuild integrates as MSBuild target (not VSTest data
-      collector), so it works with both VSTest and Microsoft.Testing.Platform runners.
-      coverlet.collector is VSTest-only and will be removed once CI migrates to msbuild path.
+      collector), so it works under MTP via /p:CollectCoverage=true on dotnet test.
     -->
     <PackageVersion Include="coverlet.msbuild" Version="10.0.0" />
-    <!-- TODO: Phase D — remove coverlet.collector after CI migrates to coverlet.msbuild. -->
-    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <!--
       Microsoft.Testing.Platform extension — enables the report-trx flag on MTP runners.
       MIT, maintained at github.com/microsoft/testfx.
