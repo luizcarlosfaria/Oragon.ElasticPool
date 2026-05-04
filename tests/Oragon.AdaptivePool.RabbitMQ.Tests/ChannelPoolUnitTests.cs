@@ -243,12 +243,16 @@ public class ChannelPoolUnitTests
 
         // Channel CloseAsync extension calls the 4-arg overload — receive at least once.
         Mock.Get(ch).Verify(m => m.CloseAsync(It.IsAny<ushort>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
-        // DisposeAsync() comes from IAsyncDisposable (explicit interface implementation
-        // on IChannel/IConnection). Moq records it under the declaring interface, so
-        // verification must use .As<IAsyncDisposable>() to match the recorded invocation.
-        Mock.Get(ch).As<IAsyncDisposable>().Verify(m => m.DisposeAsync(), Times.AtLeastOnce);
-        // Connection eventually closed/disposed during connection-pool drain.
-        Mock.Get(conn).As<IAsyncDisposable>().Verify(m => m.DisposeAsync(), Times.AtLeastOnce);
+        // DisposeAsync() is on IAsyncDisposable as an explicit interface implementation
+        // on both IChannel and IConnection. Moq's .Verify() lambda matching on the
+        // inherited `m => m.DisposeAsync()` is unstable across TFMs (works on net9/10,
+        // breaks intermittently on net8 — Moq 4.20.x bug with explicit interface dispatch
+        // through As<TInterface>()). The Invocations API inspects raw method calls
+        // independently of resolved-method matching and is deterministic across all TFMs.
+        Mock.Get(ch).Invocations.Should().Contain(i => i.Method.Name == nameof(IAsyncDisposable.DisposeAsync),
+            "channel must be disposed by the channel pool's Release hook during drain");
+        Mock.Get(conn).Invocations.Should().Contain(i => i.Method.Name == nameof(IAsyncDisposable.DisposeAsync),
+            "connection must be disposed by the connection pool's Release hook during drain");
     }
 
     [Fact]
