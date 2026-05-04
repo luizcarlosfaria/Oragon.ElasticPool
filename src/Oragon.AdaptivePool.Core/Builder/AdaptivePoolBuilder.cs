@@ -36,15 +36,77 @@ public sealed class AdaptivePoolBuilder<T> where T : notnull
 
     public AdaptivePoolBuilder<T> Factory(FactoryDelegate<T> factory)
     { _factory = factory ?? throw new ArgumentNullException(nameof(factory)); return this; }
-    public AdaptivePoolBuilder<T> BeforeUse(BeforeUseDelegate<T> hook) { _beforeUse = hook; return this; }
+    public AdaptivePoolBuilder<T> BeforeUse(BeforeUseDelegate<T> hook)
+    { _beforeUse = hook ?? throw new ArgumentNullException(nameof(hook)); return this; }
     /// <summary>
     /// Registers a background health-check hook. <b>Phase 1 placeholder:</b> this hook is
     /// recorded on the options but the engine does not invoke it. The Phase 2 sweeper will
     /// activate it. Use <see cref="BeforeUse"/> for on-borrow validation today.
     /// </summary>
-    public AdaptivePoolBuilder<T> Check(CheckDelegate<T> hook) { _check = hook; return this; }
-    public AdaptivePoolBuilder<T> AfterUse(AfterUseDelegate<T> hook) { _afterUse = hook; return this; }
-    public AdaptivePoolBuilder<T> Release(ReleaseDelegate<T> hook) { _release = hook; return this; }
+    public AdaptivePoolBuilder<T> Check(CheckDelegate<T> hook)
+    { _check = hook ?? throw new ArgumentNullException(nameof(hook)); return this; }
+    public AdaptivePoolBuilder<T> AfterUse(AfterUseDelegate<T> hook)
+    { _afterUse = hook ?? throw new ArgumentNullException(nameof(hook)); return this; }
+    public AdaptivePoolBuilder<T> Release(ReleaseDelegate<T> hook)
+    { _release = hook ?? throw new ArgumentNullException(nameof(hook)); return this; }
+
+    /// <summary>
+    /// Synchronous overload of <see cref="Factory(FactoryDelegate{T})"/>. The delegate's result
+    /// is wrapped in a completed <see cref="ValueTask{T}"/> internally — zero allocation on the
+    /// fast path. Use this when constructing the pooled instance is purely in-memory.
+    /// </summary>
+    public AdaptivePoolBuilder<T> Factory(FactorySyncDelegate<T> factory)
+    {
+        ArgumentNullException.ThrowIfNull(factory);
+        _factory = (sp, ct) => new ValueTask<T>(factory(sp, ct));
+        return this;
+    }
+
+    /// <summary>
+    /// Synchronous overload of <see cref="BeforeUse(BeforeUseDelegate{T})"/>. The delegate's result
+    /// is wrapped in a completed <see cref="ValueTask{PoolState}"/> internally.
+    /// </summary>
+    public AdaptivePoolBuilder<T> BeforeUse(BeforeUseSyncDelegate<T> hook)
+    {
+        ArgumentNullException.ThrowIfNull(hook);
+        _beforeUse = (item, ct) => new ValueTask<PoolState>(hook(item, ct));
+        return this;
+    }
+
+    /// <summary>
+    /// Synchronous overload of <see cref="Check(CheckDelegate{T})"/>. The delegate's result
+    /// is wrapped in a completed <see cref="ValueTask{PoolState}"/> internally.
+    /// <b>Phase 1 placeholder:</b> hook stored but not invoked by the engine.
+    /// </summary>
+    public AdaptivePoolBuilder<T> Check(CheckSyncDelegate<T> hook)
+    {
+        ArgumentNullException.ThrowIfNull(hook);
+        _check = (item, ct) => new ValueTask<PoolState>(hook(item, ct));
+        return this;
+    }
+
+    /// <summary>
+    /// Synchronous overload of <see cref="AfterUse(AfterUseDelegate{T})"/>. The delegate's result
+    /// is wrapped in a completed <see cref="ValueTask{PoolState}"/> internally.
+    /// </summary>
+    public AdaptivePoolBuilder<T> AfterUse(AfterUseSyncDelegate<T> hook)
+    {
+        ArgumentNullException.ThrowIfNull(hook);
+        _afterUse = (item, ct) => new ValueTask<PoolState>(hook(item, ct));
+        return this;
+    }
+
+    /// <summary>
+    /// Synchronous overload of <see cref="Release(ReleaseDelegate{T})"/>. The delegate is invoked
+    /// synchronously and a completed <see cref="ValueTask"/> is returned to the engine.
+    /// Use this when cleanup is purely synchronous (e.g., <c>IDisposable.Dispose()</c>).
+    /// </summary>
+    public AdaptivePoolBuilder<T> Release(ReleaseSyncDelegate<T> hook)
+    {
+        ArgumentNullException.ThrowIfNull(hook);
+        _release = (item, ct) => { hook(item, ct); return ValueTask.CompletedTask; };
+        return this;
+    }
     public AdaptivePoolBuilder<T> WithBounds(int minSize, int maxSize, int initialSize) { _minSize = minSize; _maxSize = maxSize; _initialSize = initialSize; return this; }
     public AdaptivePoolBuilder<T> WhenExhausted(WaitBehavior behavior) { _whenExhausted = behavior; return this; }
     public AdaptivePoolBuilder<T> WithFailurePolicy(IItemFailurePolicy<T> policy)

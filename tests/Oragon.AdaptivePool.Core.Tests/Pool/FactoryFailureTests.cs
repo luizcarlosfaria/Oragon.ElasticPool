@@ -4,6 +4,7 @@ using Microsoft.Extensions.Diagnostics.Metrics.Testing;
 using Moq;
 using Oragon.AdaptivePool.Core.Abstractions;
 using Oragon.AdaptivePool.Core.Builder;
+using Oragon.AdaptivePool.Core.Hooks;
 using Oragon.AdaptivePool.Core.Tests.TestSupport;
 using Xunit;
 
@@ -56,7 +57,7 @@ public class FactoryFailureTests
         var boom = new InvalidOperationException("boom");
         var sp = new ServiceCollection().BuildServiceProvider();
         await using var pool = AdaptiveObjectPoolFactory.Build<Resource>(sp)
-            .Factory((s, ct) => throw boom)
+            .Factory((FactoryDelegate<Resource>)((s, ct) => throw boom))
             .WithBounds(0, 1, 0)
             .WithFailurePolicy(policy)
             .Build();
@@ -81,7 +82,7 @@ public class FactoryFailureTests
         using var collector = new MetricCollector<long>(meterFactory, "Oragon.AdaptivePool", "pool.factory.failures");
 
         await using var pool = AdaptiveObjectPoolFactory.Build<Resource>(sp)
-            .Factory((s, ct) => throw new InvalidOperationException("boom"))
+            .Factory((FactoryDelegate<Resource>)((s, ct) => throw new InvalidOperationException("boom")))
             .WithBounds(0, 5, 0)
             .Build();
 

@@ -21,6 +21,12 @@ dotnet add package Oragon.AdaptivePool.Core
 
 ## 30-second quickstart
 
+Every lifecycle hook ships in **two flavors** — a synchronous overload (no
+`ValueTask` wrapping) and the original asynchronous overload. Pick whichever fits
+what each hook actually does; mix sync and async freely in the same pool.
+
+### Sync hooks (no I/O)
+
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -34,9 +40,9 @@ builder.Services.AddAdaptivePool<MyExpensiveClient>("default", pool =>
     pool.WithBounds(minSize: 1, maxSize: 16, initialSize: 2);
     pool.IdleTimeout(TimeSpan.FromMinutes(2));
 
-    pool.Factory((sp, ct) => ValueTask.FromResult(new MyExpensiveClient()));
-    pool.BeforeUse((c, ct) => ValueTask.FromResult(c.IsHealthy ? PoolState.Healthy : PoolState.Unhealthy));
-    pool.Release  ((c, ct) => { c.Dispose(); return ValueTask.CompletedTask; });
+    pool.Factory  ((sp, ct) => new MyExpensiveClient());
+    pool.BeforeUse((c, ct) => c.IsHealthy ? PoolState.Healthy : PoolState.Unhealthy);
+    pool.Release  ((c, ct) => c.Dispose());
 });
 
 using var host = builder.Build();
@@ -54,6 +60,22 @@ public sealed class MyExpensiveClient : IDisposable
     public void Dispose() { /* ... */ }
 }
 ```
+
+### Async hooks (when you need I/O)
+
+```csharp
+builder.Services.AddAdaptivePool<MyExpensiveClient>("default", pool =>
+{
+    pool.WithBounds(minSize: 1, maxSize: 16, initialSize: 2);
+
+    pool.Factory  (async (sp, ct) => await MyExpensiveClient.CreateAsync(ct));
+    pool.BeforeUse(async (c, ct)  => await c.PingAsync(ct) ? PoolState.Healthy : PoolState.Unhealthy);
+    pool.Release  (async (c, ct)  => await c.DisposeAsync());
+});
+```
+
+The sync overload wraps the result in a completed `ValueTask` internally — zero
+allocation on the fast path. Use it whenever the hook doesn't need `await`.
 
 ## Why not `Microsoft.Extensions.ObjectPool`?
 
@@ -128,13 +150,18 @@ by `HasListeners()` so you pay nothing if nobody is listening.
 ```csharp
 builder.Services.AddAdaptivePool<MyClient>("default", pool =>
 {
-    pool.Factory  ((sp, ct) => /* create new T */);                         // required
-    pool.BeforeUse((c, ct) => /* return Healthy / Unhealthy */);            // optional
-    pool.Check    ((c, ct) => /* background sweep — return Healthy / Unhealthy */); // optional
-    pool.AfterUse ((c, ct) => /* validate on return; v1 default no-op */);  // optional
-    pool.Release  ((c, ct) => /* dispose / close — runs on eviction */);    // optional
+    pool.Factory  ((sp, ct) => /* create new T */);                         // required (sync or async)
+    pool.BeforeUse((c, ct) => /* return Healthy / Unhealthy */);            // optional (sync or async)
+    pool.Check    ((c, ct) => /* background sweep — return Healthy / Unhealthy */); // optional (sync or async)
+    pool.AfterUse ((c, ct) => /* validate on return; v1 default no-op */);  // optional (sync or async)
+    pool.Release  ((c, ct) => /* dispose / close — runs on eviction */);    // optional (sync or async)
 });
 ```
+
+Each method has both a synchronous and an asynchronous overload. Returning
+`PoolState.Healthy`/`PoolState.Unhealthy` directly (sync) is equivalent to
+returning `ValueTask.FromResult(...)` (async) but reads cleaner when no `await`
+is involved.
 
 Returning `PoolState.Unhealthy` from any hook invokes the configured
 `IItemFailurePolicy<T>`. The default `DiscardAndReplaceFailurePolicy<T>` discards

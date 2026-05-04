@@ -24,6 +24,13 @@ replaced), and **fluent DX** (async-first, DI-first, builder pattern). Multi-tar
 
 ## 30-second quickstart
 
+Every lifecycle hook (`Factory`, `BeforeUse`, `Check`, `AfterUse`, `Release`) ships
+in **two flavors** — a synchronous overload for in-memory work and an asynchronous
+overload for I/O. Pick whichever matches what each hook actually does; mix freely
+across hooks in the same pool.
+
+### Sync hooks (no I/O)
+
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -37,9 +44,9 @@ builder.Services.AddAdaptivePool<MyExpensiveClient>("default", pool =>
     pool.WithBounds(minSize: 1, maxSize: 16, initialSize: 2);
     pool.IdleTimeout(TimeSpan.FromMinutes(2));
 
-    pool.Factory((sp, ct) => ValueTask.FromResult(new MyExpensiveClient()));
-    pool.BeforeUse((c, ct) => ValueTask.FromResult(c.IsHealthy ? PoolState.Healthy : PoolState.Unhealthy));
-    pool.Release  ((c, ct) => { c.Dispose(); return ValueTask.CompletedTask; });
+    pool.Factory  ((sp, ct) => new MyExpensiveClient());
+    pool.BeforeUse((c, ct) => c.IsHealthy ? PoolState.Healthy : PoolState.Unhealthy);
+    pool.Release  ((c, ct) => c.Dispose());
 });
 
 using var host = builder.Build();
@@ -50,6 +57,22 @@ await using var lease = await pool.AcquireAsync();
 lease.Value.DoWork();
 // On Dispose, the item returns to the pool — or is discarded if BeforeUse said Unhealthy.
 ```
+
+### Async hooks (when you need I/O)
+
+```csharp
+builder.Services.AddAdaptivePool<MyExpensiveClient>("default", pool =>
+{
+    pool.WithBounds(minSize: 1, maxSize: 16, initialSize: 2);
+
+    pool.Factory  (async (sp, ct) => await MyExpensiveClient.CreateAsync(ct));
+    pool.BeforeUse(async (c, ct)  => await c.PingAsync(ct) ? PoolState.Healthy : PoolState.Unhealthy);
+    pool.Release  (async (c, ct)  => await c.DisposeAsync());
+});
+```
+
+Sync and async overloads coexist — e.g., a sync `BeforeUse` paired with an async
+`Factory` is idiomatic and zero-cost on the fast path.
 
 ## Why not `Microsoft.Extensions.ObjectPool`?
 

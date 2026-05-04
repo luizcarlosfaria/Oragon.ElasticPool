@@ -103,8 +103,8 @@ public static class AdaptiveConnectionPoolServiceCollectionExtensions
                     var safeFactory = ConnectionFactoryResolver.ApplyAutomaticRecoveryOverride(factory, logger, name);
                     return await safeFactory.CreateConnectionAsync(ct).ConfigureAwait(false);
                 })
-                .BeforeUse((conn, _) => ValueTask.FromResult(conn.IsOpen ? PoolState.Healthy : PoolState.Unhealthy))
-                .Check((conn, _) => ValueTask.FromResult(conn.IsOpen ? PoolState.Healthy : PoolState.Unhealthy))
+                .BeforeUse((conn, _) => conn.IsOpen ? PoolState.Healthy : PoolState.Unhealthy)
+                .Check((conn, _) => conn.IsOpen ? PoolState.Healthy : PoolState.Unhealthy)
                 .Release(async (conn, ct) =>
                 {
                     try

@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Synchronous overloads for every builder hook.** `AdaptivePoolBuilder<T>.Factory`, `BeforeUse`, `Check`, `AfterUse`, and `Release` now accept either an asynchronous delegate (existing behavior) or a synchronous delegate with the same name. Sync overloads wrap the result in a completed `ValueTask`/`ValueTask<T>` internally — zero allocation on the fast path. Hooks can be mixed freely (e.g., async `Factory` + sync `BeforeUse` + sync `Release`). Five new public delegate types: `FactorySyncDelegate<T>`, `BeforeUseSyncDelegate<T>`, `CheckSyncDelegate<T>`, `AfterUseSyncDelegate<T>`, `ReleaseSyncDelegate<T>`.
+
 ### Changed
+
+- **Fail-fast `ArgumentNullException` for hook-builder methods.** `AdaptivePoolBuilder<T>.BeforeUse`, `Check`, `AfterUse`, and `Release` (asynchronous overloads) now throw `ArgumentNullException` when a `null` delegate is passed. Previously they silently stored `null`, deferring the failure to a later `NullReferenceException` deep inside the engine. `Factory` already failed fast; this aligns the other four hooks with that behavior.
+- **RabbitMQ adapter cleaned up via the new sync overloads.** `BeforeUse` and `Check` of the connection pool and channel pool no longer wrap pure `IsOpen` checks in `ValueTask.FromResult(...)` — they use the new synchronous overloads directly. `Factory` and `Release` continue to be async (genuine I/O via `CreateConnectionAsync` / `CloseAsync` / `DisposeAsync`).
 
 - **Test stack migrated to 100% OSS / pure MTP**: removed VSTest-only dependencies (`xunit.runner.visualstudio`, `coverlet.collector`, `Microsoft.NET.Test.Sdk` was never present), replaced `NSubstitute` with `Moq` (BSD-3, community standard, 4.20.72+ to skip the SponsorLink controversy of 4.20.0–4.20.1), pinned `Microsoft.Testing.Extensions.TrxReport` 1.9.1 for MTP-native TRX reports. `dotnet test --solution` now works uniformly on Windows / Linux / macOS via Microsoft.Testing.Platform; tests are discovered natively by VS 2022 17.14+, JetBrains Rider, and VS Code (C# Dev Kit) without VSTest. Coverage gate via `coverlet.msbuild` (`/p:CollectCoverage=true /p:Threshold=90`).
 - Stress test project (`Oragon.AdaptivePool.Core.Stress`) now opt-in via `<IsTestProject>false</IsTestProject>` so `dotnet test --solution` excludes it by default; invoke explicitly via project path or `dotnet run --project tests/Oragon.AdaptivePool.Core.Stress`.

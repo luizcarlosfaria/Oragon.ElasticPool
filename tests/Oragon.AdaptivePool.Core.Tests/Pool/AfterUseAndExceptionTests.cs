@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Oragon.AdaptivePool.Core.Abstractions;
 using Oragon.AdaptivePool.Core.Builder;
 using Oragon.AdaptivePool.Core.Exceptions;
+using Oragon.AdaptivePool.Core.Hooks;
 using Oragon.AdaptivePool.Core.Tests.TestSupport;
 using Xunit;
 
@@ -64,7 +65,7 @@ public class AfterUseAndExceptionTests
         var sp = new ServiceCollection().BuildServiceProvider();
         await using var pool = AdaptiveObjectPoolFactory.Build<Resource>(sp)
             .Factory((s, ct) => ValueTask.FromResult(new Resource()))
-            .AfterUse((r, ct) => throw new InvalidOperationException("AfterUse boom"))
+            .AfterUse((AfterUseDelegate<Resource>)((r, ct) => throw new InvalidOperationException("AfterUse boom")))
             .WithBounds(0, 1, 1)
             .Build();
 

@@ -114,13 +114,12 @@ public static class AdaptiveChannelPoolServiceCollectionExtensions
                 .BeforeUse((ch, _) =>
                 {
                     if (!ch.IsOpen)
-                        return ValueTask.FromResult(PoolState.Unhealthy);
+                        return PoolState.Unhealthy;
                     if (pairing.TryGet(ch, out var connLease) && connLease is not null && !connLease.Value.IsOpen)
-                        return ValueTask.FromResult(PoolState.Unhealthy);
-                    return ValueTask.FromResult(PoolState.Healthy);
+                        return PoolState.Unhealthy;
+                    return PoolState.Healthy;
                 })
-                .Check((ch, _) =>
-                    ValueTask.FromResult(ch.IsOpen ? PoolState.Healthy : PoolState.Unhealthy))
+                .Check((ch, _) => ch.IsOpen ? PoolState.Healthy : PoolState.Unhealthy)
                 .Release(async (ch, ct) =>
                 {
                     // Release runs after at least one Factory call (an item must exist to be

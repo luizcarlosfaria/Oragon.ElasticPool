@@ -23,3 +23,37 @@ public delegate ValueTask<PoolState> AfterUseDelegate<T>(T item, CancellationTok
 
 /// <summary>Cleanup hook for evicted/discarded items (e.g., connection.CloseAsync()).</summary>
 public delegate ValueTask ReleaseDelegate<T>(T item, CancellationToken cancellationToken);
+
+/// <summary>
+/// Synchronous variant of <see cref="FactoryDelegate{T}"/>. Use when creating a new instance is
+/// purely in-memory (no I/O). The builder wraps the result in a completed <see cref="ValueTask{T}"/>
+/// before storing — zero allocation on the fast path.
+/// </summary>
+public delegate T FactorySyncDelegate<T>(IServiceProvider services, CancellationToken cancellationToken);
+
+/// <summary>
+/// Synchronous variant of <see cref="BeforeUseDelegate{T}"/>. Use when the on-borrow validation
+/// is a cheap in-memory check (e.g., <c>connection.IsOpen</c>) and no <c>await</c> is needed.
+/// The builder wraps the result in a completed <see cref="ValueTask{PoolState}"/>.
+/// </summary>
+public delegate PoolState BeforeUseSyncDelegate<T>(T item, CancellationToken cancellationToken);
+
+/// <summary>
+/// Synchronous variant of <see cref="CheckDelegate{T}"/>. Use when the background sweep probe
+/// is a cheap in-memory check that doesn't need <c>await</c>. Phase-1 hook is recorded but not
+/// invoked by the engine; this overload exists for API parity.
+/// </summary>
+public delegate PoolState CheckSyncDelegate<T>(T item, CancellationToken cancellationToken);
+
+/// <summary>
+/// Synchronous variant of <see cref="AfterUseDelegate{T}"/>. Use when the on-return validation
+/// is a cheap in-memory check that doesn't need <c>await</c>.
+/// </summary>
+public delegate PoolState AfterUseSyncDelegate<T>(T item, CancellationToken cancellationToken);
+
+/// <summary>
+/// Synchronous variant of <see cref="ReleaseDelegate{T}"/>. Use when cleanup is purely synchronous
+/// (e.g., <c>IDisposable.Dispose()</c>). The builder wraps the call in a completed
+/// <see cref="ValueTask"/> before storing.
+/// </summary>
+public delegate void ReleaseSyncDelegate<T>(T item, CancellationToken cancellationToken);

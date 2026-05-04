@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Oragon.AdaptivePool.Core.Abstractions;
 using Oragon.AdaptivePool.Core.Builder;
+using Oragon.AdaptivePool.Core.Hooks;
 using Oragon.AdaptivePool.Core.Tests.TestSupport;
 using Xunit;
 
@@ -34,7 +35,7 @@ public class WarmupAndBoundsTests
     {
         var sp = new ServiceCollection().BuildServiceProvider();
         await using var pool = AdaptiveObjectPoolFactory.Build<Resource>(sp)
-            .Factory((s, ct) => throw new InvalidOperationException("warmup boom"))
+            .Factory((FactoryDelegate<Resource>)((s, ct) => throw new InvalidOperationException("warmup boom")))
             .WithBounds(0, 5, 2)
             .Build();
 

@@ -1,1 +1,11 @@
 #nullable enable
+Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.AfterUse(Oragon.AdaptivePool.Core.Hooks.AfterUseSyncDelegate<T>! hook) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
+Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.BeforeUse(Oragon.AdaptivePool.Core.Hooks.BeforeUseSyncDelegate<T>! hook) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
+Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.Check(Oragon.AdaptivePool.Core.Hooks.CheckSyncDelegate<T>! hook) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
+Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.Factory(Oragon.AdaptivePool.Core.Hooks.FactorySyncDelegate<T>! factory) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
+Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.Release(Oragon.AdaptivePool.Core.Hooks.ReleaseSyncDelegate<T>! hook) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
+Oragon.AdaptivePool.Core.Hooks.AfterUseSyncDelegate<T>
+Oragon.AdaptivePool.Core.Hooks.BeforeUseSyncDelegate<T>
+Oragon.AdaptivePool.Core.Hooks.CheckSyncDelegate<T>
+Oragon.AdaptivePool.Core.Hooks.FactorySyncDelegate<T>
+Oragon.AdaptivePool.Core.Hooks.ReleaseSyncDelegate<T>

@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Oragon.AdaptivePool.Core.Builder;
+using Oragon.AdaptivePool.Core.Hooks;
 using Oragon.AdaptivePool.Core.Tests.TestSupport;
 using Xunit;
 
@@ -66,7 +67,9 @@ public class BuilderValidationTests
         var sp = EmptyProvider();
         var builder = AdaptiveObjectPoolFactory.Build<Resource>(sp);
 
-        Action act = () => builder.Factory(null!);
+        // Cast disambiguates the sync vs async Factory overloads — both throw ArgumentNullException
+        // on null, this test pins the async overload's behavior.
+        Action act = () => builder.Factory((FactoryDelegate<Resource>)null!);
 
         act.Should().Throw<ArgumentNullException>();
     }
