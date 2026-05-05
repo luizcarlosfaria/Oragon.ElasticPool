@@ -93,6 +93,38 @@ Sync and async overloads coexist — e.g., a sync `BeforeUse` paired with an asy
 pooling (e.g., `StringBuilder`). `Oragon.AdaptivePool.Core` is for expensive,
 stateful, lifecycle-sensitive resources where elasticity and health matter.
 
+## Elasticity benchmark
+
+The benchmark suite includes a heavy-resource scenario designed to make
+elasticity visible, not just raw throughput. Each instance costs 10 MB, takes
+50 ms to create, and is held for 5 ms per request. The demand curve ramps from
+`1 -> 10 -> 100 -> 1k -> 10k -> 1k -> 100 -> 10 -> 1 req/s`.
+
+```bash
+dotnet run --project tests/Oragon.AdaptivePool.Core.Benchmarks -c Release -f net10.0 -- elasticity --profile readme
+```
+
+Latest local run with `MinSize=0` and `MaxSize=256`:
+
+| Strategy | Peak throughput | Peak p95 | Final retained logical memory |
+|----------|----------------:|---------:|------------------------------:|
+| No pool | 1,225 req/s | 444.84 ms | 0 MB |
+| `AdaptivePool<T>` | 9,764 req/s | 11.85 ms | 0 MB after cooldown |
+| `Microsoft.Extensions.ObjectPool` | 9,719 req/s | 11.86 ms | 1,750 MB |
+
+Key interpretation: `AdaptivePool<T>` is not positioned as a faster warmed-up
+peak-throughput replacement for ObjectPool. Its value is reusing expensive
+objects under pressure and shrinking back to zero retained resources when the
+workload goes idle. If you want zero idle footprint, configure
+`WithBounds(minSize: 0, maxSize: ..., initialSize: 0)`; the tradeoff is that the
+first request after idle pays creation cost again.
+
+Reports:
+
+- Visual report: [`BenchmarkReports/heavy-resource-elasticity-insights.html`](BenchmarkReports/heavy-resource-elasticity-insights.html)
+- Raw CSV: [`BenchmarkReports/heavy-resource-elasticity.csv`](BenchmarkReports/heavy-resource-elasticity.csv)
+- Markdown summary: [`BenchmarkReports/heavy-resource-elasticity.md`](BenchmarkReports/heavy-resource-elasticity.md)
+
 ## OpenTelemetry in 5 lines
 
 `Oragon.AdaptivePool` exposes a `Meter` and `ActivitySource` both named
@@ -135,6 +167,7 @@ and channel pool state at 10 Hz in a Web UI.
 - RabbitMQ adapter (layered IConnection+IChannel): [`src/Oragon.AdaptivePool.RabbitMQ/README.md`](src/Oragon.AdaptivePool.RabbitMQ/README.md)
 - Sample bursty publisher: [`samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/README.md`](samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/README.md)
 - Sample live dashboard: [`samples/Oragon.AdaptivePool.RabbitMQ.Sample.LiveDashboard/README.md`](samples/Oragon.AdaptivePool.RabbitMQ.Sample.LiveDashboard/README.md)
+- Elasticity benchmark report: [`BenchmarkReports/heavy-resource-elasticity-insights.html`](BenchmarkReports/heavy-resource-elasticity-insights.html)
 - Changelog: [`CHANGELOG.md`](CHANGELOG.md)
 
 ## Versioning

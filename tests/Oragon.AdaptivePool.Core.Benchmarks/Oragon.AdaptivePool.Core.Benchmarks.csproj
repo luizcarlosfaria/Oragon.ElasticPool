@@ -15,6 +15,7 @@
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.ObjectPool" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Oragon.AdaptivePool.Core\Oragon.AdaptivePool.Core.csproj" />

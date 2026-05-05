@@ -43,8 +43,17 @@ public class PoolDiagnosticsLogBenchmarks
     [Benchmark] public void CheckUnhealthy()
         => _logger.CheckUnhealthy(PoolName, "TimeoutException");
 
-    public static void Main(string[] args) =>
+    public static async Task Main(string[] args)
+    {
+        if (args.Length > 0 && (string.Equals(args[0], "elasticity", StringComparison.OrdinalIgnoreCase)
+                                || string.Equals(args[0], "--elasticity", StringComparison.OrdinalIgnoreCase)))
+        {
+            await HeavyResourceElasticityRunner.RunAsync(args.Skip(1).ToArray()).ConfigureAwait(false);
+            return;
+        }
+
         BenchmarkSwitcher.FromAssembly(typeof(PoolDiagnosticsLogBenchmarks).Assembly).Run(args);
+    }
 }
 
 /// <summary>
