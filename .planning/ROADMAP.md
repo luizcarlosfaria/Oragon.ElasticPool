@@ -10,6 +10,7 @@
 - [ ] **Phase 2: Elasticity & Health** - Background sweeper, composite-signal grow, hysteretic shrink, health checks, full Meter/ActivitySource/ILogger telemetry, stress validation
 - [x] **Phase 3: RabbitMQ Adapter** - Layered IConnection/IChannel pools validating Core abstractions against a real lifecycle-sensitive scenario, bursty publisher sample (completed 2026-05-03)
 - [ ] **Phase 4: Polish & v1.0 Release** - OSS hardening, CI matrix, README + OTel example, MinVer + SourceLink + snupkg, PublicApiAnalyzers baseline, NuGet publish
+- [ ] **Phase 5: Elastic Production Hardening** - Close the production gaps found in the 0-to-100 burst analysis: bounded waiters/backpressure, burst ramp-up, faster shrink-to-zero presets, return-path self-healing, and RabbitMQ tuning DX
 
 ## Phase Details
 
@@ -71,6 +72,23 @@
 - [ ] 04-01-PLAN.md — NuGet metadata + per-package READMEs + LICENSE + CHANGELOG + icon (OSS-02, OSS-03, OSS-04 metadata half)
 - [ ] 04-02-PLAN.md — CI evolution (RabbitMQ unit+integration) + release.yml + PublicAPI.Shipped freeze + final acceptance (OSS-01, OSS-03, OSS-04, OSS-05)
 
+### Phase 5: Elastic Production Hardening
+**Goal**: Make the pool credible for highly variable workloads that move from zero idle objects to large bursts and back down again without unbounded memory pressure, slow ramp-up, or misleading health guarantees.
+**Depends on**: Phase 4
+**Requirements**: ELASTIC-03, ELASTIC-04, FAIL-03, RMQ-05, QUAL-04
+**Success Criteria** (what must be TRUE):
+  1. `AcquireAsync` can reject excess waiters through a configured queue cap, preserving the current unbounded behavior by default for source compatibility.
+  2. Cold bursts can ramp from zero toward the configured ceiling without relying only on one successful CAS per caller race.
+  3. Idle shrink can be tuned through documented presets for "always warm", "bursty", and "shrink to zero" workloads.
+  4. Return-path health is consistent across `Dispose` and `DisposeAsync`; a failed `AfterUse` verdict cannot silently return a broken item.
+  5. RabbitMQ builders expose the Core elasticity/backpressure knobs and document how `MaxChannelsPerConnection` controls connection spread.
+**Plans**: 5 plans
+- [ ] 05-01-PLAN.md - Bounded waiter backpressure (`MaxWaiterCount`) in Core
+- [ ] 05-02-PLAN.md - Burst ramp-up strategy based on waiter debt / batch grow
+- [ ] 05-03-PLAN.md - Shrink-to-zero presets and documentation
+- [ ] 05-04-PLAN.md - Return-path self-healing consistency
+- [ ] 05-05-PLAN.md - RabbitMQ adapter elasticity DX
+
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
@@ -79,6 +97,7 @@
 | 2. Elasticity & Health | 3/3 | Complete | 2026-05-03 |
 | 3. RabbitMQ Adapter | 3/3 | Complete | 2026-05-03 |
 | 4. Polish & v1.0 Release | 2/2 | Complete | 2026-05-03 |
+| 5. Elastic Production Hardening | 0/5 | Active | - |
 
 ## Coverage
 

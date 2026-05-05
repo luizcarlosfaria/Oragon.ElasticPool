@@ -97,6 +97,17 @@ public class BuilderValidationTests
     }
 
     [Fact]
+    public void MaxWaiterCount_Negative_ThrowsArgumentOutOfRangeException()
+    {
+        var sp = EmptyProvider();
+        var builder = AdaptiveObjectPoolFactory.Build<Resource>(sp);
+
+        Action act = () => builder.MaxWaiterCount(-1);
+
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
     public void Factory_NullServiceProvider_Throws()
     {
         Action act = () => AdaptiveObjectPoolFactory.Build<Resource>(null!);

@@ -105,6 +105,20 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
     /// <summary>Sweeper-only helper: decrements the live-item counter by one (shrink pass owns dequeue+decrement).</summary>
     internal void DecrementTotal() => Interlocked.Decrement(ref _total);
 
+    private bool TryReserveWaiterSlot()
+    {
+        while (true)
+        {
+            var current = Volatile.Read(ref _waitersCount);
+            if (_options.MaxWaiterCount is int maxWaiters && current >= maxWaiters)
+                return false;
+            if (Interlocked.CompareExchange(ref _waitersCount, current + 1, current) == current)
+                return true;
+        }
+    }
+
+    private void ReleaseWaiterSlot() => Interlocked.Decrement(ref _waitersCount);
+
     /// <summary>
     /// CR-03 fix: dequeue from idle, transparently skipping entries the sweep has flagged as
     /// pending-discard. For each pending-discard hit: remove from the discard set, decrement
@@ -287,14 +301,15 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
         // histogram (used by PressureSampler.P95) and the OTel histogram on every parked wait.
         var tcs = new TaskCompletionSource<PoolEntry<T>>(TaskCreationOptions.RunContinuationsAsynchronously);
         var waitStart = _time.GetTimestamp();
-        Interlocked.Increment(ref _waitersCount);
+        if (!TryReserveWaiterSlot())
+            throw new PoolExhaustedException(_options.MaxSize);
         try
         {
             await _waiters.Writer.WriteAsync(tcs, ct).ConfigureAwait(false);
         }
         catch
         {
-            Interlocked.Decrement(ref _waitersCount);
+            ReleaseWaiterSlot();
             var elapsedOnError = _time.GetElapsedTime(waitStart);
             _waitHistogram.Record(elapsedOnError);
             _telemetry.OnAcquireWait(elapsedOnError);
@@ -323,7 +338,7 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
         }
         finally
         {
-            Interlocked.Decrement(ref _waitersCount);
+            ReleaseWaiterSlot();
             var elapsed = _time.GetElapsedTime(waitStart);
             _waitHistogram.Record(elapsed);
             _telemetry.OnAcquireWait(elapsed);

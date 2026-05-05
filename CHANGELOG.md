@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **RabbitMQ live dashboard sample.** Added an isolated .NET 10 Aspire + Blazor sample under `samples/Oragon.AdaptivePool.RabbitMQ.Sample.LiveDashboard`. The AppHost starts RabbitMQ, the Web UI refreshes at 10 Hz, and a concurrency slider lets users visually validate grow/shrink behavior.
 - **RabbitMQ adapter sweep tuning.** `AdaptiveConnectionPoolBuilder` and `AdaptiveChannelPoolBuilder` now expose `WithSweepInterval(...)` and `WithShrinkCooldownWindows(...)`, allowing demos and fast-feedback environments to shrink faster than the production-oriented defaults.
 - **Aggregate-pressure shrink.** Core shrink now uses sustained aggregate pressure (`Available` vs `InUse` vs `Waiting`) instead of per-item idle age, with new shrink utilization and batch-size knobs. RabbitMQ builders expose the same controls.
+- **Bounded waiter backpressure.** Core now exposes `AdaptivePoolBuilder<T>.MaxWaiterCount(int)` / `AdaptivePoolOptions<T>.MaxWaiterCount`, allowing `AcquireAsync` to reject excess parked waiters with `PoolExhaustedException` instead of growing an unbounded wait queue under burst pressure. Default remains unbounded.
 
 ### Changed
 

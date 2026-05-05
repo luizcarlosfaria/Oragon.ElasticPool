@@ -3,6 +3,7 @@ Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.AfterUse(Oragon.Adaptive
 Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.BeforeUse(Oragon.AdaptivePool.Core.Hooks.BeforeUseSyncDelegate<T>! hook) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
 Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.Check(Oragon.AdaptivePool.Core.Hooks.CheckSyncDelegate<T>! hook) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
 Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.Factory(Oragon.AdaptivePool.Core.Hooks.FactorySyncDelegate<T>! factory) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
+Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.MaxWaiterCount(int n) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
 Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.Release(Oragon.AdaptivePool.Core.Hooks.ReleaseSyncDelegate<T>! hook) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
 Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.ShrinkBatchSize(int n) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
 Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.ShrinkOnUtilizationPercent(double p) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
@@ -13,6 +14,8 @@ Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.ShrinkOnUtilizationPerce
 Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.ShrinkOnUtilizationPercent.init -> void
 Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.ShrinkTargetUtilizationPercent.get -> double
 Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.ShrinkTargetUtilizationPercent.init -> void
+Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.MaxWaiterCount.get -> int?
+Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.MaxWaiterCount.init -> void
 Oragon.AdaptivePool.Core.Hooks.AfterUseSyncDelegate<T>
 Oragon.AdaptivePool.Core.Hooks.BeforeUseSyncDelegate<T>
 Oragon.AdaptivePool.Core.Hooks.CheckSyncDelegate<T>

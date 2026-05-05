@@ -39,6 +39,7 @@ builder.Services.AddAdaptivePool<MyExpensiveClient>("default", pool =>
 {
     pool.WithBounds(minSize: 1, maxSize: 16, initialSize: 2);
     pool.IdleTimeout(TimeSpan.FromMinutes(2));
+    pool.MaxWaiterCount(256); // optional backpressure cap; default is unbounded
 
     pool.Factory  ((sp, ct) => new MyExpensiveClient());
     pool.BeforeUse((c, ct) => c.IsHealthy ? PoolState.Healthy : PoolState.Unhealthy);

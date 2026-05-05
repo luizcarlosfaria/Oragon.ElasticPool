@@ -43,4 +43,6 @@ public sealed record AdaptivePoolOptions<T>
     public TimeSpan SweepInterval { get; init; } = TimeSpan.FromSeconds(30);
     /// <summary>Maximum sweep interval after exponential backoff on consecutive failure windows. Default: 5 minutes.</summary>
     public TimeSpan MaxBackoff { get; init; } = TimeSpan.FromMinutes(5);
+    /// <summary>Maximum number of parked AcquireAsync waiters. Null means unbounded. Default: null.</summary>
+    public int? MaxWaiterCount { get; init; }
 }

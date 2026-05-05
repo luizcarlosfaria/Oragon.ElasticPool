@@ -33,6 +33,7 @@ public sealed class AdaptivePoolBuilder<T> where T : notnull
     private int _shrinkCooldownWindows = 3;
     private TimeSpan _sweepInterval = TimeSpan.FromSeconds(30);
     private TimeSpan _maxBackoff = TimeSpan.FromMinutes(5);
+    private int? _maxWaiterCount;
 
     internal AdaptivePoolBuilder(IServiceProvider services, CancellationToken ct)
     { _services = services; _ct = ct; }
@@ -207,6 +208,16 @@ public sealed class AdaptivePoolBuilder<T> where T : notnull
         _maxBackoff = t; return this;
     }
 
+    /// <summary>
+    /// Configures the maximum number of parked <c>AcquireAsync</c> waiters.
+    /// Default is unbounded. Use 0 to reject instead of parking when the pool is exhausted.
+    /// </summary>
+    public AdaptivePoolBuilder<T> MaxWaiterCount(int n)
+    {
+        if (n < 0) throw new ArgumentOutOfRangeException(nameof(n), "MaxWaiterCount must be >= 0.");
+        _maxWaiterCount = n; return this;
+    }
+
     public IAdaptivePool<T> Build()
     {
         if (_factory is null)
@@ -251,6 +262,7 @@ public sealed class AdaptivePoolBuilder<T> where T : notnull
             ShrinkCooldownWindows = _shrinkCooldownWindows,
             SweepInterval = _sweepInterval,
             MaxBackoff = _maxBackoff,
+            MaxWaiterCount = _maxWaiterCount,
         };
 
         return new AdaptivePool<T>(options, _services, _ct);

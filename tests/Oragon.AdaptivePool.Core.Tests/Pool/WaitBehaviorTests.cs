@@ -11,14 +11,17 @@ namespace Oragon.AdaptivePool.Core.Tests.Pool;
 
 public class WaitBehaviorTests
 {
-    private static IAdaptivePool<Resource> Build(WaitBehavior behavior)
+    private static IAdaptivePool<Resource> Build(
+        WaitBehavior behavior,
+        Action<AdaptivePoolBuilder<Resource>>? configure = null)
     {
         var sp = new ServiceCollection().BuildServiceProvider();
-        return AdaptiveObjectPoolFactory.Build<Resource>(sp)
+        var builder = AdaptiveObjectPoolFactory.Build<Resource>(sp)
             .Factory((s, ct) => ValueTask.FromResult(new Resource()))
             .WithBounds(minSize: 0, maxSize: 1, initialSize: 1)
-            .WhenExhausted(behavior)
-            .Build();
+            .WhenExhausted(behavior);
+        configure?.Invoke(builder);
+        return builder.Build();
     }
 
     [Fact]
@@ -67,5 +70,39 @@ public class WaitBehaviorTests
         sw.Stop();
 
         sw.ElapsedMilliseconds.Should().BeLessThan(500);
+    }
+
+    [Fact]
+    public async Task WaitBehaviorWait_MaxWaiterCountZero_ThrowsInsteadOfParking()
+    {
+        await using var pool = Build(WaitBehavior.Wait, b => b.MaxWaiterCount(0));
+        await pool.ReadyAsync();
+        await using var first = await pool.AcquireAsync();
+
+        var ex = await Assert.ThrowsAsync<PoolExhaustedException>(async () => await pool.AcquireAsync());
+
+        ex.MaxSize.Should().Be(1);
+        pool.Waiting.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task WaitBehaviorWait_MaxWaiterCountRejectsExcessWaiters()
+    {
+        await using var pool = Build(WaitBehavior.Wait, b => b.MaxWaiterCount(1));
+        await pool.ReadyAsync();
+        await using var first = await pool.AcquireAsync();
+
+        var secondTask = pool.AcquireAsync().AsTask();
+        for (var i = 0; i < 50 && pool.Waiting == 0; i++)
+            await Task.Delay(10);
+
+        pool.Waiting.Should().Be(1);
+
+        var ex = await Assert.ThrowsAsync<PoolExhaustedException>(async () => await pool.AcquireAsync());
+        ex.MaxSize.Should().Be(1);
+        pool.Waiting.Should().Be(1);
+
+        await first.DisposeAsync();
+        await using var second = await secondTask.WaitAsync(TimeSpan.FromSeconds(5));
     }
 }
