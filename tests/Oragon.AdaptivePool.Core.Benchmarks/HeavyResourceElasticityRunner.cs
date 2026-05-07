@@ -13,10 +13,10 @@ internal static class HeavyResourceElasticityRunner
 {
     private const int DefaultResourceMegabytes = 10;
     private const int DefaultCreationDelayMilliseconds = 50;
-    private const int DefaultWorkMilliseconds = 5;
+    private const int DefaultWorkMilliseconds = 15;
     private const int DefaultMaxResources = 256;
 
-    private static readonly int[] DemandCurve = [1, 10, 100, 1_000, 10_000, 1_000, 100, 10, 1];
+    private static readonly int[] DemandCurve = [1, 10, 100, 1_000, 10_000, 20_000, 30_000, 20_000, 10_000, 1_000, 100, 10, 1];
 
     public static async Task RunAsync(string[] args)
     {
@@ -101,6 +101,8 @@ internal static class HeavyResourceElasticityRunner
     private static async Task<PhaseReport> RunPhaseAsync(IResourceStrategy strategy, ElasticityProfile profile, int phaseIndex, int requestedRate)
     {
         var phaseStats = new PhaseStats();
+        var beforeResources = strategy.Tracker.Snapshot();
+        var sampler = new PhaseSampler(profile.ResourceMegabytes, Stopwatch.GetTimestamp(), strategy.Snapshot());
         var limiter = new SemaphoreSlim(profile.MaxInFlight, profile.MaxInFlight);
         var tasks = new ConcurrentBag<Task>();
         var startedAt = Stopwatch.GetTimestamp();
@@ -112,12 +114,14 @@ internal static class HeavyResourceElasticityRunner
             var targetArrivals = (long)Math.Floor(requestedRate * Math.Min(elapsed.TotalSeconds, profile.PhaseDuration.TotalSeconds));
             LaunchArrivals(targetArrivals - attemptedArrivals);
             attemptedArrivals = targetArrivals;
+            sampler.Sample(Stopwatch.GetTimestamp(), strategy.Snapshot());
 
             await Task.Delay(1).ConfigureAwait(false);
         }
 
         var finalTargetArrivals = (long)Math.Round(requestedRate * profile.PhaseDuration.TotalSeconds);
         LaunchArrivals(finalTargetArrivals - attemptedArrivals);
+        sampler.Sample(Stopwatch.GetTimestamp(), strategy.Snapshot());
 
         void LaunchArrivals(long toStart)
         {
@@ -156,6 +160,7 @@ internal static class HeavyResourceElasticityRunner
         var process = CaptureProcessSnapshot();
         var resources = strategy.Tracker.Snapshot();
         var pool = strategy.Snapshot();
+        sampler.Sample(Stopwatch.GetTimestamp(), pool);
         var latencies = phaseStats.GetLatencies();
 
         return new PhaseReport(
@@ -172,6 +177,8 @@ internal static class HeavyResourceElasticityRunner
             Percentile(latencies, 0.99),
             resources.Created,
             resources.Disposed,
+            resources.Created - beforeResources.Created,
+            resources.Disposed - beforeResources.Disposed,
             resources.Live,
             resources.PeakLive,
             process.ManagedBytes,
@@ -182,7 +189,12 @@ internal static class HeavyResourceElasticityRunner
             pool.Total,
             pool.Available,
             pool.InUse,
-            pool.Waiting);
+            pool.Waiting,
+            sampler.PeakPoolTotal,
+            sampler.PeakPoolInUse,
+            sampler.PeakPoolWaiting,
+            sampler.RetainedMegabyteSeconds,
+            sampler.SampledSeconds);
     }
 
     private static ProcessSnapshot CaptureProcessSnapshot()
@@ -226,7 +238,7 @@ internal static class HeavyResourceElasticityRunner
     {
         var sb = new StringBuilder();
         var adaptiveByPhase = GetAdaptivePhasesByIndex(reports);
-        sb.AppendLine("strategy,phase_index,requested_rps,achieved_rps,started,completed,errors,skipped,p50_ms,p95_ms,p99_ms,created,disposed,live,peak_live,logical_retained_mb,logical_peak_mb,logical_disposed_mb,pool_retained_mb,adaptive_pool_retained_mb,objectpool_vs_adaptive_retained_factor,objectpool_excess_retained_mb,managed_mb,working_set_mb,gen0,gen1,gen2,pool_total,pool_available,pool_in_use,pool_waiting");
+        sb.AppendLine("strategy,phase_index,requested_rps,achieved_rps,started,completed,errors,skipped,p50_ms,p95_ms,p99_ms,created,disposed,created_during_phase,disposed_during_phase,live,peak_live,logical_retained_mb,logical_peak_mb,logical_disposed_mb,pool_retained_mb,retained_mb_seconds,sampled_seconds,avg_pool_retained_mb,peak_pool_total,peak_pool_in_use,peak_pool_waiting,adaptive_pool_retained_mb,objectpool_vs_adaptive_retained_factor,objectpool_excess_retained_mb,managed_mb,working_set_mb,gen0,gen1,gen2,pool_total,pool_available,pool_in_use,pool_waiting");
         foreach (var report in reports)
         {
             foreach (var phase in report.Phases)
@@ -255,12 +267,20 @@ internal static class HeavyResourceElasticityRunner
                     .Append(Invariant(phase.P99Milliseconds)).Append(',')
                     .Append(phase.CreatedResources).Append(',')
                     .Append(phase.DisposedResources).Append(',')
+                    .Append(phase.CreatedDuringPhase).Append(',')
+                    .Append(phase.DisposedDuringPhase).Append(',')
                     .Append(phase.LiveResources).Append(',')
                     .Append(phase.PeakLiveResources).Append(',')
                     .Append(Invariant(phase.LogicalRetainedMegabytes)).Append(',')
                     .Append(Invariant(phase.LogicalPeakMegabytes)).Append(',')
                     .Append(Invariant(phase.LogicalDisposedMegabytes)).Append(',')
                     .Append(Invariant(phase.PoolRetainedMegabytes)).Append(',')
+                    .Append(Invariant(phase.RetainedMegabyteSeconds)).Append(',')
+                    .Append(Invariant(phase.SampledSeconds)).Append(',')
+                    .Append(Invariant(phase.AveragePoolRetainedMegabytes)).Append(',')
+                    .Append(phase.PeakPoolTotal).Append(',')
+                    .Append(phase.PeakPoolInUse).Append(',')
+                    .Append(phase.PeakPoolWaiting).Append(',')
                     .Append(Invariant(adaptiveRetained)).Append(',')
                     .Append(retainedFactor.HasValue ? Invariant(retainedFactor.Value) : string.Empty).Append(',')
                     .Append(excessRetained.HasValue ? Invariant(excessRetained.Value) : string.Empty).Append(',')
@@ -294,8 +314,8 @@ internal static class HeavyResourceElasticityRunner
         sb.AppendLine();
         sb.AppendLine("Primary metric: `logical retained MB = live instances x resource MB`. Managed heap and working set are process-level hints and may lag behind object disposal.");
         sb.AppendLine();
-        sb.AppendLine("| Strategy | Phase | Requested req/s | Achieved req/s | p95 ms | Created | Live | Logical retained MB | Pool retained MB | Managed MB | Working set MB | Skipped |");
-        sb.AppendLine("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|");
+        sb.AppendLine("| Strategy | Phase | Requested req/s | Achieved req/s | p95 ms | Created in phase | Disposed in phase | Live | Pool retained MB | Avg retained MB | MB*s retained | Peak pool total | Skipped |");
+        sb.AppendLine("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|");
         foreach (var report in reports)
         {
             foreach (var phase in report.Phases)
@@ -306,16 +326,18 @@ internal static class HeavyResourceElasticityRunner
                     .Append(phase.RequestedRequestsPerSecond.ToString("N0", CultureInfo.InvariantCulture)).Append(" | ")
                     .Append(phase.AchievedRequestsPerSecond.ToString("N0", CultureInfo.InvariantCulture)).Append(" | ")
                     .Append(phase.P95Milliseconds.ToString("N2", CultureInfo.InvariantCulture)).Append(" | ")
-                    .Append(phase.CreatedResources.ToString("N0", CultureInfo.InvariantCulture)).Append(" | ")
+                    .Append(phase.CreatedDuringPhase.ToString("N0", CultureInfo.InvariantCulture)).Append(" | ")
+                    .Append(phase.DisposedDuringPhase.ToString("N0", CultureInfo.InvariantCulture)).Append(" | ")
                     .Append(phase.LiveResources.ToString("N0", CultureInfo.InvariantCulture)).Append(" | ")
-                    .Append(phase.LogicalRetainedMegabytes.ToString("N0", CultureInfo.InvariantCulture)).Append(" | ")
                     .Append(phase.PoolRetainedMegabytes.ToString("N0", CultureInfo.InvariantCulture)).Append(" | ")
-                    .Append(ToMegabytes(phase.ManagedBytes).ToString("N1", CultureInfo.InvariantCulture)).Append(" | ")
-                    .Append(ToMegabytes(phase.WorkingSetBytes).ToString("N1", CultureInfo.InvariantCulture)).Append(" | ")
+                    .Append(phase.AveragePoolRetainedMegabytes.ToString("N0", CultureInfo.InvariantCulture)).Append(" | ")
+                    .Append(phase.RetainedMegabyteSeconds.ToString("N0", CultureInfo.InvariantCulture)).Append(" | ")
+                    .Append(phase.PeakPoolTotal.ToString("N0", CultureInfo.InvariantCulture)).Append(" | ")
                     .Append(phase.Skipped.ToString("N0", CultureInfo.InvariantCulture)).AppendLine(" |");
             }
         }
 
+        AppendMeasuredElasticitySummary(sb, reports);
         AppendAdaptiveVsObjectPoolSummary(sb, reports);
 
         sb.AppendLine();
@@ -354,6 +376,37 @@ internal static class HeavyResourceElasticityRunner
 
     private static bool IsMicrosoftObjectPool(string strategy) =>
         string.Equals(strategy, "Microsoft.Extensions.ObjectPool", StringComparison.Ordinal);
+
+    private static void AppendMeasuredElasticitySummary(StringBuilder sb, IReadOnlyList<StrategyReport> reports)
+    {
+        sb.AppendLine();
+        sb.AppendLine("## Measured elasticity");
+        sb.AppendLine();
+        sb.AppendLine("| Strategy | Created during run | Disposed during run | Peak pool total | Retained MB*s | Average retained MB | Final retained MB |");
+        sb.AppendLine("|---|---:|---:|---:|---:|---:|---:|");
+
+        foreach (var report in reports)
+        {
+            var retainedMegabyteSeconds = report.Phases.Sum(static phase => phase.RetainedMegabyteSeconds);
+            var elapsedSeconds = report.Phases.Sum(static phase => phase.SampledSeconds);
+            var averageRetainedMegabytes = elapsedSeconds > 0
+                ? retainedMegabyteSeconds / elapsedSeconds
+                : 0;
+            var peakPoolTotal = report.Phases.Count > 0
+                ? report.Phases.Max(static phase => phase.PeakPoolTotal)
+                : 0;
+            var finalRetainedMegabytes = report.Resources.Live * report.Phases[^1].ResourceMegabytes;
+
+            sb.Append("| ")
+                .Append(report.Strategy).Append(" | ")
+                .Append(report.Resources.Created.ToString("N0", CultureInfo.InvariantCulture)).Append(" | ")
+                .Append(report.Resources.Disposed.ToString("N0", CultureInfo.InvariantCulture)).Append(" | ")
+                .Append(peakPoolTotal.ToString("N0", CultureInfo.InvariantCulture)).Append(" | ")
+                .Append(retainedMegabyteSeconds.ToString("N0", CultureInfo.InvariantCulture)).Append(" | ")
+                .Append(averageRetainedMegabytes.ToString("N0", CultureInfo.InvariantCulture)).Append(" | ")
+                .Append(finalRetainedMegabytes.ToString("N0", CultureInfo.InvariantCulture)).AppendLine(" |");
+        }
+    }
 
     private static void AppendAdaptiveVsObjectPoolSummary(StringBuilder sb, IReadOnlyList<StrategyReport> reports)
     {
@@ -667,6 +720,41 @@ internal static class HeavyResourceElasticityRunner
         }
     }
 
+    private sealed class PhaseSampler
+    {
+        private readonly int _resourceMegabytes;
+        private long _lastTimestamp;
+        private PoolSnapshot _lastSnapshot;
+
+        public PhaseSampler(int resourceMegabytes, long timestamp, PoolSnapshot snapshot)
+        {
+            _resourceMegabytes = resourceMegabytes;
+            _lastTimestamp = timestamp;
+            _lastSnapshot = snapshot;
+            PeakPoolTotal = snapshot.Total;
+            PeakPoolInUse = snapshot.InUse;
+            PeakPoolWaiting = snapshot.Waiting;
+        }
+
+        public int PeakPoolTotal { get; private set; }
+        public int PeakPoolInUse { get; private set; }
+        public int PeakPoolWaiting { get; private set; }
+        public double RetainedMegabyteSeconds { get; private set; }
+        public double SampledSeconds { get; private set; }
+
+        public void Sample(long timestamp, PoolSnapshot snapshot)
+        {
+            var elapsed = Stopwatch.GetElapsedTime(_lastTimestamp, timestamp);
+            SampledSeconds += elapsed.TotalSeconds;
+            RetainedMegabyteSeconds += _lastSnapshot.Total * _resourceMegabytes * elapsed.TotalSeconds;
+            PeakPoolTotal = Math.Max(PeakPoolTotal, snapshot.Total);
+            PeakPoolInUse = Math.Max(PeakPoolInUse, snapshot.InUse);
+            PeakPoolWaiting = Math.Max(PeakPoolWaiting, snapshot.Waiting);
+            _lastTimestamp = timestamp;
+            _lastSnapshot = snapshot;
+        }
+    }
+
     private readonly record struct ResourceSnapshot(long Created, long Disposed, long Live, long PeakLive);
     private readonly record struct ProcessSnapshot(long ManagedBytes, long WorkingSetBytes);
     private readonly record struct PoolSnapshot(int Total, int Available, int InUse, int Waiting)
@@ -695,6 +783,8 @@ internal static class HeavyResourceElasticityRunner
         double P99Milliseconds,
         long CreatedResources,
         long DisposedResources,
+        long CreatedDuringPhase,
+        long DisposedDuringPhase,
         long LiveResources,
         long PeakLiveResources,
         long ManagedBytes,
@@ -705,12 +795,18 @@ internal static class HeavyResourceElasticityRunner
         int PoolTotal,
         int PoolAvailable,
         int PoolInUse,
-        int PoolWaiting)
+        int PoolWaiting,
+        int PeakPoolTotal,
+        int PeakPoolInUse,
+        int PeakPoolWaiting,
+        double RetainedMegabyteSeconds,
+        double SampledSeconds)
     {
         public double AchievedRequestsPerSecond => Completed / Math.Max(Elapsed.TotalSeconds, 0.001);
         public double LogicalRetainedMegabytes => LiveResources * ResourceMegabytes;
         public double LogicalPeakMegabytes => PeakLiveResources * ResourceMegabytes;
         public double LogicalDisposedMegabytes => DisposedResources * ResourceMegabytes;
         public double PoolRetainedMegabytes => PoolTotal * ResourceMegabytes;
+        public double AveragePoolRetainedMegabytes => RetainedMegabyteSeconds / Math.Max(SampledSeconds, 0.001);
     }
 }

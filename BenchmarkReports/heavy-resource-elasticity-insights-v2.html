@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Oragon.AdaptivePool - Elasticity Benchmark Brief</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #18212f;
+      --muted: #647084;
+      --line: #dbe3ed;
+      --paper: #ffffff;
+      --wash: #f5f7fa;
+      --adaptive: #087f73;
+      --adaptive-soft: #d9f5ef;
+      --objectpool: #5b5bd6;
+      --objectpool-soft: #e7e7ff;
+      --nopool: #c43a31;
+      --amber: #b26b00;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--wash);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+
+    .shell {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    aside {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      border-right: 1px solid var(--line);
+      background: #111827;
+      color: #f8fafc;
+      padding: 28px 24px;
+    }
+
+    .brand {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 36px;
+    }
+
+    .brand strong {
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+
+    .brand span,
+    .meta span {
+      color: #b9c3d3;
+      font-size: 13px;
+    }
+
+    nav {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 36px;
+    }
+
+    nav a {
+      color: #dbeafe;
+      font-size: 14px;
+      text-decoration: none;
+      padding: 9px 11px;
+      border-radius: 8px;
+    }
+
+    nav a:hover { background: rgba(255, 255, 255, .08); }
+
+    .meta {
+      display: grid;
+      gap: 12px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255,255,255,.14);
+    }
+
+    .meta div {
+      display: grid;
+      gap: 2px;
+    }
+
+    .meta strong {
+      color: #ffffff;
+      font-size: 15px;
+      font-weight: 650;
+    }
+
+    main {
+      padding: 34px clamp(20px, 4vw, 56px) 56px;
+    }
+
+    .hero {
+      display: grid;
+      gap: 30px;
+      grid-template-columns: minmax(0, 1.15fr) minmax(300px, .85fr);
+      align-items: stretch;
+      margin-bottom: 28px;
+    }
+
+    .eyebrow {
+      margin: 0 0 14px;
+      color: var(--adaptive);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+
+    h1 {
+      max-width: 980px;
+      margin-bottom: 20px;
+      font-size: clamp(38px, 5vw, 72px);
+      line-height: .96;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin-bottom: 14px;
+      font-size: clamp(24px, 3vw, 36px);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin-bottom: 8px;
+      font-size: 17px;
+      letter-spacing: 0;
+    }
+
+    .lead {
+      max-width: 860px;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    .scoreboard {
+      display: grid;
+      gap: 1px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--line);
+    }
+
+    .score-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 22px;
+      align-items: center;
+      background: var(--paper);
+      padding: 18px 20px;
+    }
+
+    .score-row span {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .score-row strong {
+      font-size: clamp(28px, 4vw, 44px);
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .adaptive { color: var(--adaptive); }
+    .objectpool { color: var(--objectpool); }
+    .nopool { color: var(--nopool); }
+
+    .band {
+      margin: 28px 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      padding: 24px;
+    }
+
+    .tiles {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 1px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--line);
+    }
+
+    .tile {
+      background: var(--paper);
+      padding: 22px;
+      min-height: 150px;
+    }
+
+    .tile small,
+    .metric-label {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .tile strong {
+      display: block;
+      margin: 12px 0 8px;
+      font-size: clamp(28px, 4vw, 42px);
+      line-height: 1;
+    }
+
+    .tile p,
+    .note,
+    td {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(320px, .72fr);
+      gap: 28px;
+      margin-top: 28px;
+    }
+
+    .chart-wrap {
+      overflow-x: auto;
+      padding: 10px 0 2px;
+    }
+
+    svg {
+      display: block;
+      min-width: 780px;
+      width: 100%;
+      height: auto;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .swatch {
+      width: 22px;
+      height: 3px;
+      border-radius: 999px;
+      background: currentColor;
+    }
+
+    .decision-list {
+      display: grid;
+      gap: 14px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .decision-list li {
+      border-left: 4px solid var(--adaptive);
+      background: #f8fbfa;
+      padding: 14px 16px;
+    }
+
+    .decision-list strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+    }
+
+    table {
+      width: 100%;
+      min-width: 760px;
+      border-collapse: collapse;
+      text-align: right;
+    }
+
+    th {
+      color: #334155;
+      background: #eef3f8;
+      font-size: 12px;
+      letter-spacing: .06em;
+      padding: 12px 14px;
+      text-transform: uppercase;
+    }
+
+    td {
+      border-top: 1px solid var(--line);
+      padding: 12px 14px;
+    }
+
+    th:first-child,
+    td:first-child {
+      text-align: left;
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    .phase {
+      display: grid;
+      grid-template-columns: repeat(13, minmax(48px, 1fr));
+      gap: 6px;
+      align-items: end;
+      min-width: 780px;
+      height: 190px;
+      padding-top: 18px;
+    }
+
+    .phase div {
+      display: grid;
+      gap: 8px;
+      align-content: end;
+      height: 100%;
+    }
+
+    .phase i {
+      display: block;
+      border-radius: 6px 6px 0 0;
+      background: linear-gradient(180deg, #1f2937, #94a3b8);
+    }
+
+    .phase span {
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .callout {
+      border: 1px solid #b7e4db;
+      border-left: 5px solid var(--adaptive);
+      border-radius: 8px;
+      background: var(--adaptive-soft);
+      padding: 18px;
+    }
+
+    @media (max-width: 980px) {
+      .shell { display: block; }
+      aside {
+        position: static;
+        height: auto;
+      }
+      nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .hero,
+      .split,
+      .tiles { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside>
+      <div class="brand">
+        <strong>Oragon.AdaptivePool</strong>
+        <span>Elasticity benchmark brief</span>
+      </div>
+      <nav aria-label="Seções do relatório">
+        <a href="#resultado">Resultado</a>
+        <a href="#economia">Economia</a>
+        <a href="#curva">Curva</a>
+        <a href="#decisao">Decisão</a>
+      </nav>
+      <div class="meta">
+        <div><span>Perfil</span><strong>readme</strong></div>
+        <div><span>Carga máxima</span><strong>30k req/s</strong></div>
+        <div><span>Instância pesada</span><strong>10 MB</strong></div>
+        <div><span>Uso por request</span><strong>15 ms</strong></div>
+        <div><span>Pool</span><strong>Min 0 / Max 256</strong></div>
+      </div>
+    </aside>
+
+    <main>
+      <section class="hero" id="resultado">
+        <div>
+          <p class="eyebrow">Benchmark de elasticidade - 2026-05-07</p>
+          <h1>O throughput empata no pico. A diferença aparece quando a pressão cai.</h1>
+          <p class="lead">
+            AdaptivePool e ObjectPool atingem o mesmo limite prático com 256 recursos. Depois da rampa,
+            o AdaptivePool retorna para <strong>0 MB</strong> retidos, enquanto ObjectPool mantém
+            <strong>2.560 MB</strong> vivos no pool.
+          </p>
+        </div>
+
+        <div class="scoreboard" aria-label="Placar principal">
+          <div class="score-row">
+            <span>AdaptivePool em 30k</span>
+            <strong class="adaptive">12.804/s</strong>
+          </div>
+          <div class="score-row">
+            <span>ObjectPool em 30k</span>
+            <strong class="objectpool">12.808/s</strong>
+          </div>
+          <div class="score-row">
+            <span>Sem pool em 30k</span>
+            <strong class="nopool">3.343/s</strong>
+          </div>
+          <div class="score-row">
+            <span>Retenção pós-cooldown</span>
+            <strong class="adaptive">0 MB</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="tiles" id="economia" aria-label="Métricas de elasticidade">
+        <article class="tile">
+          <small>Memória liberada</small>
+          <strong class="adaptive">2.560 MB</strong>
+          <p>capacidade que AdaptivePool removeu após idle e ObjectPool manteve.</p>
+        </article>
+        <article class="tile">
+          <small>Retenção acumulada</small>
+          <strong class="adaptive">59.888 MB*s</strong>
+          <p>contra 70.797 MB*s do ObjectPool ao longo da jornada.</p>
+        </article>
+        <article class="tile">
+          <small>Média retida</small>
+          <strong class="adaptive">1.525 MB</strong>
+          <p>ObjectPool ficou em 1.804 MB médios.</p>
+        </article>
+        <article class="tile">
+          <small>Ciclo de vida</small>
+          <strong class="adaptive">260/260</strong>
+          <p>instâncias criadas e descartadas pelo AdaptivePool.</p>
+        </article>
+      </section>
+
+      <section class="split" id="curva">
+        <article class="band">
+          <p class="eyebrow">Curva operacional</p>
+          <h2>Memória lógica por fase</h2>
+          <p class="note">
+            A curva usa o total do pool multiplicado por 10 MB. O plateau em 2,56 GB é esperado no pico;
+            o sinal de elasticidade está na descida.
+          </p>
+          <div class="chart-wrap">
+            <svg viewBox="0 0 860 360" role="img" aria-label="Memória retida por fase">
+              <rect x="0" y="0" width="860" height="360" fill="#ffffff"></rect>
+              <g stroke="#dbe3ed" stroke-width="1">
+                <line x1="72" y1="42" x2="820" y2="42"></line>
+                <line x1="72" y1="103" x2="820" y2="103"></line>
+                <line x1="72" y1="164" x2="820" y2="164"></line>
+                <line x1="72" y1="225" x2="820" y2="225"></line>
+                <line x1="72" y1="286" x2="820" y2="286"></line>
+              </g>
+              <g fill="#647084" font-size="12">
+                <text x="18" y="46">2,56 GB</text>
+                <text x="22" y="168">1,28 GB</text>
+                <text x="52" y="290">0</text>
+              </g>
+              <path d="M72 285 L130 285 L188 283 L245 211 L303 42 L361 42 L418 42 L476 42 L533 42 L591 42 L649 134 L706 225 L764 285 L820 286" fill="none" stroke="#087f73" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></path>
+              <path d="M72 285 L130 285 L188 281 L245 227 L303 52 L361 42 L418 42 L476 42 L533 42 L591 42 L649 42 L706 42 L764 42 L820 42" fill="none" stroke="#5b5bd6" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></path>
+              <path d="M72 286 L820 286" fill="none" stroke="#c43a31" stroke-width="3" stroke-linecap="round"></path>
+              <g fill="#647084" font-size="12" text-anchor="middle">
+                <text x="72" y="326">1</text><text x="130" y="326">10</text><text x="188" y="326">100</text><text x="245" y="326">1k</text><text x="303" y="326">10k</text><text x="361" y="326">20k</text><text x="418" y="326">30k</text><text x="476" y="326">20k</text><text x="533" y="326">10k</text><text x="591" y="326">1k</text><text x="649" y="326">100</text><text x="706" y="326">10</text><text x="764" y="326">1</text><text x="820" y="326">idle</text>
+              </g>
+            </svg>
+          </div>
+          <div class="legend">
+            <span class="adaptive"><i class="swatch"></i>AdaptivePool</span>
+            <span class="objectpool"><i class="swatch"></i>ObjectPool</span>
+            <span class="nopool"><i class="swatch"></i>Sem pool</span>
+          </div>
+        </article>
+
+        <article class="band">
+          <p class="eyebrow">Leitura executiva</p>
+          <h2>O que melhora na narrativa</h2>
+          <ul class="decision-list">
+            <li>
+              <strong>Separar pico de elasticidade</strong>
+              <span class="note">Throughput no pico é equivalente; a vantagem real é recuperação de capacidade.</span>
+            </li>
+            <li>
+              <strong>Usar MB*s como custo acumulado</strong>
+              <span class="note">Retenção final mostra destino; MB*s mostra custo durante toda a jornada.</span>
+            </li>
+            <li>
+              <strong>Mostrar ciclo de vida explicitamente</strong>
+              <span class="note">260 criadas e 260 descartadas prova que o pool não só cresce: ele fecha o ciclo.</span>
+            </li>
+            <li>
+              <strong>Tratar MinSize=0 como escolha</strong>
+              <span class="note">Cold start aparece em baixa demanda, em troca de retenção zero após repouso.</span>
+            </li>
+          </ul>
+        </article>
+      </section>
+
+      <section class="band">
+        <p class="eyebrow">Rampa de demanda</p>
+        <h2>Fases testadas</h2>
+        <div class="chart-wrap">
+          <svg viewBox="0 0 860 250" role="img" aria-label="Rampa de demanda por fase">
+            <rect x="0" y="0" width="860" height="250" fill="#ffffff"></rect>
+            <g stroke="#dbe3ed" stroke-width="1">
+              <line x1="44" y1="28" x2="828" y2="28"></line>
+              <line x1="44" y1="78" x2="828" y2="78"></line>
+              <line x1="44" y1="128" x2="828" y2="128"></line>
+              <line x1="44" y1="178" x2="828" y2="178"></line>
+            </g>
+            <g fill="#1f2937">
+              <rect x="58" y="168" width="42" height="18" rx="6"></rect>
+              <rect x="116" y="148" width="42" height="38" rx="6"></rect>
+              <rect x="174" y="120" width="42" height="66" rx="6"></rect>
+              <rect x="232" y="84" width="42" height="102" rx="6"></rect>
+              <rect x="290" y="40" width="42" height="146" rx="6"></rect>
+              <rect x="348" y="22" width="42" height="164" rx="6"></rect>
+              <rect x="406" y="10" width="42" height="176" rx="6"></rect>
+              <rect x="464" y="22" width="42" height="164" rx="6"></rect>
+              <rect x="522" y="40" width="42" height="146" rx="6"></rect>
+              <rect x="580" y="84" width="42" height="102" rx="6"></rect>
+              <rect x="638" y="120" width="42" height="66" rx="6"></rect>
+              <rect x="696" y="148" width="42" height="38" rx="6"></rect>
+              <rect x="754" y="168" width="42" height="18" rx="6"></rect>
+            </g>
+            <g fill="#647084" font-size="12" text-anchor="middle">
+              <text x="79" y="218">1</text>
+              <text x="137" y="218">10</text>
+              <text x="195" y="218">100</text>
+              <text x="253" y="218">1k</text>
+              <text x="311" y="218">10k</text>
+              <text x="369" y="218">20k</text>
+              <text x="427" y="218">30k</text>
+              <text x="485" y="218">20k</text>
+              <text x="543" y="218">10k</text>
+              <text x="601" y="218">1k</text>
+              <text x="659" y="218">100</text>
+              <text x="717" y="218">10</text>
+              <text x="775" y="218">1</text>
+            </g>
+          </svg>
+        </div>
+      </section>
+
+      <section class="split" id="decisao">
+        <article class="band">
+          <p class="eyebrow">Comparativo final</p>
+          <h2>Resultado por estratégia</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Estratégia</th>
+                  <th>30k req/s</th>
+                  <th>p95 no pico</th>
+                  <th>MB*s</th>
+                  <th>Final</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>AdaptivePool</td>
+                  <td class="adaptive">12.804/s</td>
+                  <td>20,37 ms</td>
+                  <td>59.888</td>
+                  <td class="adaptive">0 MB</td>
+                </tr>
+                <tr>
+                  <td>ObjectPool</td>
+                  <td class="objectpool">12.808/s</td>
+                  <td>20,36 ms</td>
+                  <td>70.797</td>
+                  <td class="objectpool">2.560 MB</td>
+                </tr>
+                <tr>
+                  <td>Sem pool</td>
+                  <td class="nopool">3.343/s</td>
+                  <td>87,64 ms</td>
+                  <td>0</td>
+                  <td>0 MB</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="band">
+          <p class="eyebrow">Conclusão</p>
+          <h2>Mensagem recomendada</h2>
+          <div class="callout">
+            <p>
+              AdaptivePool não promete ultrapassar ObjectPool em throughput bruto no pico. Ele entrega
+              o mesmo teto operacional com política de ciclo de vida: cresce até 256 recursos quando a
+              carga exige, reduz para 0 MB após repouso, e diminui a retenção acumulada de memória.
+            </p>
+          </div>
+        </article>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

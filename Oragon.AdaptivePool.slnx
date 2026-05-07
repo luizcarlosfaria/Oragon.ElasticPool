@@ -1,0 +1,21 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/samples/">
+    <Project Path="samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Oragon.AdaptivePool.Core/Oragon.AdaptivePool.Core.csproj" />
+    <Project Path="src/Oragon.AdaptivePool.RabbitMQ/Oragon.AdaptivePool.RabbitMQ.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Oragon.AdaptivePool.Core.Benchmarks/Oragon.AdaptivePool.Core.Benchmarks.csproj" />
+    <Project Path="tests/Oragon.AdaptivePool.Core.Stress/Oragon.AdaptivePool.Core.Stress.csproj" />
+    <Project Path="tests/Oragon.AdaptivePool.Core.Tests/Oragon.AdaptivePool.Core.Tests.csproj" />
+    <Project Path="tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests.csproj" />
+    <Project Path="tests/Oragon.AdaptivePool.RabbitMQ.Tests/Oragon.AdaptivePool.RabbitMQ.Tests.csproj" />
+  </Folder>
+</Solution>

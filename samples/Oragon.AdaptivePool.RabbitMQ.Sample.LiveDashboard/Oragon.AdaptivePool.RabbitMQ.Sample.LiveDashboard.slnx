@@ -1,0 +1,12 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="../../src/Oragon.AdaptivePool.Core/Oragon.AdaptivePool.Core.csproj" />
+  <Project Path="../../src/Oragon.AdaptivePool.RabbitMQ/Oragon.AdaptivePool.RabbitMQ.csproj" />
+  <Project Path="Oragon.AdaptivePool.RabbitMQ.Sample.LiveDashboard.AppHost/Oragon.AdaptivePool.RabbitMQ.Sample.LiveDashboard.AppHost.csproj" />
+  <Project Path="Oragon.AdaptivePool.RabbitMQ.Sample.LiveDashboard.ServiceDefaults/Oragon.AdaptivePool.RabbitMQ.Sample.LiveDashboard.ServiceDefaults.csproj" />
+  <Project Path="Oragon.AdaptivePool.RabbitMQ.Sample.LiveDashboard.Web/Oragon.AdaptivePool.RabbitMQ.Sample.LiveDashboard.Web.csproj" />
+</Solution>

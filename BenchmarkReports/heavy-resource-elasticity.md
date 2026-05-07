@@ -1,40 +1,60 @@
 ﻿# Heavy Resource Elasticity Benchmark
 
 - Profile: `readme`
-- Resource cost: `10 MB` per instance, `50 ms` creation delay, `5 ms` request hold time
+- Resource cost: `10 MB` per instance, `50 ms` creation delay, `15 ms` request hold time
 - Max in-flight requests: `256`
 
 Primary metric: `logical retained MB = live instances x resource MB`. Managed heap and working set are process-level hints and may lag behind object disposal.
 
-| Strategy | Phase | Requested req/s | Achieved req/s | p95 ms | Created | Live | Logical retained MB | Pool retained MB | Managed MB | Working set MB | Skipped |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| NoPool | 0 | 1 | 1 | 60.59 | 3 | 0 | 0 | 0 | 20.1 | 54.0 | 0 |
-| NoPool | 1 | 10 | 10 | 63.89 | 33 | 0 | 0 | 0 | 20.1 | 66.6 | 0 |
-| NoPool | 2 | 100 | 100 | 64.12 | 333 | 0 | 0 | 0 | 20.2 | 57.7 | 0 |
-| NoPool | 3 | 1,000 | 1,000 | 64.22 | 3,333 | 0 | 0 | 0 | 700.6 | 769.1 | 0 |
-| NoPool | 4 | 10,000 | 1,225 | 444.84 | 7,008 | 0 | 0 | 0 | 1,800.9 | 15,840.7 | 26,325 |
-| NoPool | 5 | 1,000 | 1,000 | 63.26 | 10,008 | 0 | 0 | 0 | 80.7 | 14,984.9 | 0 |
-| NoPool | 6 | 100 | 100 | 62.56 | 10,308 | 0 | 0 | 0 | 41.8 | 14,221.2 | 0 |
-| NoPool | 7 | 10 | 10 | 64.30 | 10,338 | 0 | 0 | 0 | 11.8 | 13,310.6 | 0 |
-| NoPool | 8 | 1 | 1 | 72.00 | 10,341 | 0 | 0 | 0 | 21.9 | 12,990.5 | 0 |
-| AdaptivePool | 0 | 1 | 1 | 63.14 | 1 | 1 | 10 | 10 | 10.4 | 11,379.2 | 0 |
-| AdaptivePool | 1 | 10 | 10 | 12.94 | 2 | 1 | 10 | 10 | 10.2 | 10,577.8 | 0 |
-| AdaptivePool | 2 | 100 | 100 | 11.89 | 11 | 7 | 70 | 70 | 100.5 | 10,409.7 | 0 |
-| AdaptivePool | 3 | 1,000 | 1,000 | 11.85 | 41 | 19 | 190 | 190 | 372.6 | 9,930.6 | 0 |
-| AdaptivePool | 4 | 10,000 | 9,764 | 11.85 | 278 | 192 | 1,920 | 1,920 | 2,582.9 | 9,472.8 | 708 |
-| AdaptivePool | 5 | 1,000 | 1,000 | 11.76 | 278 | 96 | 960 | 960 | 2,585.6 | 9,475.8 | 0 |
-| AdaptivePool | 6 | 100 | 100 | 11.62 | 278 | 2 | 20 | 20 | 2,586.0 | 9,477.3 | 0 |
-| AdaptivePool | 7 | 10 | 10 | 55.88 | 280 | 1 | 10 | 10 | 2,606.2 | 9,477.5 | 0 |
-| AdaptivePool | 8 | 1 | 1 | 60.66 | 281 | 1 | 10 | 10 | 2,616.4 | 9,477.5 | 0 |
-| Microsoft.Extensions.ObjectPool | 0 | 1 | 1 | 55.26 | 1 | 1 | 10 | 10 | 10.9 | 7,889.5 | 0 |
-| Microsoft.Extensions.ObjectPool | 1 | 10 | 10 | 11.69 | 1 | 1 | 10 | 10 | 11.1 | 7,889.5 | 0 |
-| Microsoft.Extensions.ObjectPool | 2 | 100 | 100 | 11.73 | 6 | 6 | 60 | 60 | 61.1 | 6,895.5 | 0 |
-| Microsoft.Extensions.ObjectPool | 3 | 1,000 | 1,000 | 11.75 | 30 | 30 | 300 | 300 | 302.9 | 6,415.6 | 0 |
-| Microsoft.Extensions.ObjectPool | 4 | 10,000 | 9,719 | 11.86 | 175 | 175 | 1,750 | 1,750 | 1,770.2 | 5,936.6 | 842 |
-| Microsoft.Extensions.ObjectPool | 5 | 1,000 | 1,000 | 11.76 | 175 | 175 | 1,750 | 1,750 | 1,772.6 | 5,938.3 | 0 |
-| Microsoft.Extensions.ObjectPool | 6 | 100 | 100 | 11.80 | 175 | 175 | 1,750 | 1,750 | 1,773.0 | 5,938.8 | 0 |
-| Microsoft.Extensions.ObjectPool | 7 | 10 | 10 | 11.89 | 175 | 175 | 1,750 | 1,750 | 1,773.2 | 5,939.1 | 0 |
-| Microsoft.Extensions.ObjectPool | 8 | 1 | 1 | 8.82 | 175 | 175 | 1,750 | 1,750 | 1,773.4 | 5,939.1 | 0 |
+| Strategy | Phase | Requested req/s | Achieved req/s | p95 ms | Created in phase | Disposed in phase | Live | Pool retained MB | Avg retained MB | MB*s retained | Peak pool total | Skipped |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| NoPool | 0 | 1 | 1 | 73.64 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 |
+| NoPool | 1 | 10 | 10 | 75.69 | 30 | 30 | 0 | 0 | 0 | 0 | 0 | 0 |
+| NoPool | 2 | 100 | 100 | 72.90 | 300 | 300 | 0 | 0 | 0 | 0 | 0 | 0 |
+| NoPool | 3 | 1,000 | 1,000 | 72.85 | 3,000 | 3,000 | 0 | 0 | 0 | 0 | 0 | 0 |
+| NoPool | 4 | 10,000 | 2,560 | 229.56 | 7,681 | 7,681 | 0 | 0 | 0 | 0 | 0 | 22,319 |
+| NoPool | 5 | 20,000 | 3,285 | 92.29 | 9,854 | 9,854 | 0 | 0 | 0 | 0 | 0 | 50,146 |
+| NoPool | 6 | 30,000 | 3,343 | 87.64 | 10,028 | 10,028 | 0 | 0 | 0 | 0 | 0 | 79,972 |
+| NoPool | 7 | 20,000 | 3,415 | 83.61 | 10,246 | 10,246 | 0 | 0 | 0 | 0 | 0 | 49,754 |
+| NoPool | 8 | 10,000 | 3,413 | 84.83 | 10,240 | 10,240 | 0 | 0 | 0 | 0 | 0 | 19,760 |
+| NoPool | 9 | 1,000 | 1,000 | 72.57 | 3,000 | 3,000 | 0 | 0 | 0 | 0 | 0 | 0 |
+| NoPool | 10 | 100 | 100 | 72.55 | 300 | 300 | 0 | 0 | 0 | 0 | 0 | 0 |
+| NoPool | 11 | 10 | 10 | 76.00 | 30 | 30 | 0 | 0 | 0 | 0 | 0 | 0 |
+| NoPool | 12 | 1 | 1 | 78.98 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 |
+| AdaptivePool | 0 | 1 | 1 | 71.55 | 1 | 0 | 1 | 10 | 7 | 20 | 1 | 0 |
+| AdaptivePool | 1 | 10 | 10 | 20.50 | 1 | 1 | 1 | 10 | 10 | 30 | 1 | 0 |
+| AdaptivePool | 2 | 100 | 100 | 20.35 | 4 | 2 | 3 | 30 | 42 | 128 | 5 | 0 |
+| AdaptivePool | 3 | 1,000 | 1,000 | 20.43 | 77 | 0 | 80 | 800 | 786 | 2,373 | 80 | 0 |
+| AdaptivePool | 4 | 10,000 | 9,842 | 20.36 | 176 | 0 | 256 | 2,560 | 2,545 | 7,681 | 256 | 474 |
+| AdaptivePool | 5 | 20,000 | 12,593 | 19.77 | 0 | 0 | 256 | 2,560 | 2,560 | 7,732 | 256 | 22,222 |
+| AdaptivePool | 6 | 30,000 | 12,804 | 20.37 | 0 | 0 | 256 | 2,560 | 2,560 | 7,734 | 256 | 51,589 |
+| AdaptivePool | 7 | 20,000 | 12,568 | 20.33 | 0 | 0 | 256 | 2,560 | 2,560 | 7,729 | 256 | 22,295 |
+| AdaptivePool | 8 | 10,000 | 9,969 | 20.26 | 0 | 0 | 256 | 2,560 | 2,560 | 7,738 | 256 | 94 |
+| AdaptivePool | 9 | 1,000 | 1,000 | 20.32 | 0 | 0 | 256 | 2,560 | 2,560 | 7,728 | 256 | 0 |
+| AdaptivePool | 10 | 100 | 100 | 19.44 | 0 | 96 | 160 | 1,600 | 2,169 | 6,553 | 256 | 0 |
+| AdaptivePool | 11 | 10 | 10 | 20.34 | 0 | 96 | 64 | 640 | 1,203 | 3,633 | 160 | 0 |
+| AdaptivePool | 12 | 1 | 1 | 67.95 | 1 | 64 | 1 | 10 | 268 | 811 | 64 | 0 |
+| Microsoft.Extensions.ObjectPool | 0 | 1 | 1 | 67.92 | 1 | 0 | 1 | 10 | 7 | 20 | 1 | 0 |
+| Microsoft.Extensions.ObjectPool | 1 | 10 | 10 | 20.17 | 0 | 0 | 1 | 10 | 10 | 30 | 1 | 0 |
+| Microsoft.Extensions.ObjectPool | 2 | 100 | 100 | 20.31 | 5 | 0 | 6 | 60 | 58 | 176 | 6 | 0 |
+| Microsoft.Extensions.ObjectPool | 3 | 1,000 | 1,000 | 20.35 | 56 | 0 | 62 | 620 | 600 | 1,811 | 62 | 0 |
+| Microsoft.Extensions.ObjectPool | 4 | 10,000 | 9,428 | 20.39 | 182 | 0 | 244 | 2,440 | 2,291 | 6,919 | 244 | 1,715 |
+| Microsoft.Extensions.ObjectPool | 5 | 20,000 | 12,690 | 20.29 | 12 | 0 | 256 | 2,560 | 2,557 | 7,733 | 256 | 21,929 |
+| Microsoft.Extensions.ObjectPool | 6 | 30,000 | 12,808 | 20.36 | 0 | 0 | 256 | 2,560 | 2,560 | 7,717 | 256 | 51,575 |
+| Microsoft.Extensions.ObjectPool | 7 | 20,000 | 12,656 | 20.28 | 0 | 0 | 256 | 2,560 | 2,560 | 7,726 | 256 | 22,033 |
+| Microsoft.Extensions.ObjectPool | 8 | 10,000 | 9,966 | 20.29 | 0 | 0 | 256 | 2,560 | 2,560 | 7,725 | 256 | 103 |
+| Microsoft.Extensions.ObjectPool | 9 | 1,000 | 1,000 | 20.25 | 0 | 0 | 256 | 2,560 | 2,560 | 7,741 | 256 | 0 |
+| Microsoft.Extensions.ObjectPool | 10 | 100 | 100 | 20.30 | 0 | 0 | 256 | 2,560 | 2,560 | 7,743 | 256 | 0 |
+| Microsoft.Extensions.ObjectPool | 11 | 10 | 10 | 20.24 | 0 | 0 | 256 | 2,560 | 2,560 | 7,727 | 256 | 0 |
+| Microsoft.Extensions.ObjectPool | 12 | 1 | 1 | 15.92 | 0 | 0 | 256 | 2,560 | 2,560 | 7,731 | 256 | 0 |
+
+## Measured elasticity
+
+| Strategy | Created during run | Disposed during run | Peak pool total | Retained MB*s | Average retained MB | Final retained MB |
+|---|---:|---:|---:|---:|---:|---:|
+| NoPool | 54,715 | 54,715 | 0 | 0 | 0 | 0 |
+| AdaptivePool | 260 | 260 | 256 | 59,888 | 1,525 | 0 |
+| Microsoft.Extensions.ObjectPool | 256 | 0 | 256 | 70,797 | 1,804 | 2,560 |
 
 ## AdaptivePool vs ObjectPool logical retention
 
@@ -42,18 +62,22 @@ Primary metric: `logical retained MB = live instances x resource MB`. Managed he
 |---:|---:|---:|---:|---:|---:|
 | 0 | 1 | 10 | 10 | 0 | 1.0x |
 | 1 | 10 | 10 | 10 | 0 | 1.0x |
-| 2 | 100 | 70 | 60 | -10 | 0.9x |
-| 3 | 1,000 | 190 | 300 | 110 | 1.6x |
-| 4 | 10,000 | 1,920 | 1,750 | -170 | 0.9x |
-| 5 | 1,000 | 960 | 1,750 | 790 | 1.8x |
-| 6 | 100 | 20 | 1,750 | 1,730 | 87.5x |
-| 7 | 10 | 10 | 1,750 | 1,740 | 175.0x |
-| 8 | 1 | 10 | 1,750 | 1,740 | 175.0x |
+| 2 | 100 | 30 | 60 | 30 | 2.0x |
+| 3 | 1,000 | 800 | 620 | -180 | 0.8x |
+| 4 | 10,000 | 2,560 | 2,440 | -120 | 1.0x |
+| 5 | 20,000 | 2,560 | 2,560 | 0 | 1.0x |
+| 6 | 30,000 | 2,560 | 2,560 | 0 | 1.0x |
+| 7 | 20,000 | 2,560 | 2,560 | 0 | 1.0x |
+| 8 | 10,000 | 2,560 | 2,560 | 0 | 1.0x |
+| 9 | 1,000 | 2,560 | 2,560 | 0 | 1.0x |
+| 10 | 100 | 1,600 | 2,560 | 960 | 1.6x |
+| 11 | 10 | 640 | 2,560 | 1,920 | 4.0x |
+| 12 | 1 | 10 | 2,560 | 2,550 | 256.0x |
 
 ## Post-cooldown summary
 
 | Strategy | Created | Disposed | Live | Logical retained MB | Logical disposed MB | Final managed MB | Final working set MB | Final pool total |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| NoPool | 10,341 | 10,341 | 0 | 0 | 103,410 | 22.0 | 12,990.5 | 0 |
-| AdaptivePool | 281 | 281 | 0 | 0 | 2,810 | 2,616.5 | 9,476.0 | 0 |
-| Microsoft.Extensions.ObjectPool | 175 | 0 | 175 | 1,750 | 0 | 1,773.5 | 5,939.3 | 175 |
+| NoPool | 54,715 | 54,715 | 0 | 0 | 547,150 | 11.5 | 7,619.0 | 0 |
+| AdaptivePool | 260 | 260 | 0 | 0 | 2,600 | 2,625.9 | 2,696.7 | 0 |
+| Microsoft.Extensions.ObjectPool | 256 | 0 | 256 | 2,560 | 0 | 2,601.9 | 2,693.6 | 256 |
