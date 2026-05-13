@@ -19,7 +19,8 @@ pipeline {
                 }
                 agent {
                     dockerfile {
-                        args '-u root:root -v /gago/nuget-cache:/root/.nuget/packages'
+                        args '-u root:root'
+                        //args '-u root:root -v /gago/nuget-cache:/root/.nuget/packages'
                     }
                 }
                 stages {
@@ -133,7 +134,8 @@ pipeline {
         stage('Publish') {
             agent {
                 dockerfile {
-                    args '-u root:root -v /gago/nuget-cache:/root/.nuget/packages'
+                    args '-u root:root'
+                    //args '-u root:root -v /gago/nuget-cache:/root/.nuget/packages'
                 }
             }
             when { buildingTag() }
