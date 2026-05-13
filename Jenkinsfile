@@ -56,9 +56,25 @@ pipeline {
                         {
                            // reservado nesses nesses casos não é necessário
 
-                        } else {
+                        } else if (env.BRANCH_NAME == "develop")
+                        {
+                            sonarParams << '/d:sonar.branch.target=main'
+
+                        } else if (env.BRANCH_NAME.startsWith('feature/')) {
+
+                            sonarParams << '/d:sonar.branch.target=develop'
+
+                        } else if (env.BRANCH_NAME.startsWith('hotfix/')) {
 
                             sonarParams << '/d:sonar.branch.target=main'
+
+                        } else if (env.BRANCH_NAME.startsWith('release/')) {
+
+                            sonarParams << '/d:sonar.branch.target=main'
+
+                        } else {
+
+                            // Não sabemos o que fazer
 
                         }
 
