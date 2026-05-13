@@ -2,9 +2,6 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0
 
 USER root
 
-sudo apt-get update && \
-  sudo apt-get install -y dotnet-sdk-10.0
-
 ENV DOTNET_NOLOGO=true \
     DOTNET_CLI_TELEMETRY_OPTOUT=true \
     DOTNET_SKIP_FIRST_TIME_EXPERIENCE=true \
