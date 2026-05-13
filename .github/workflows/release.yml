@@ -50,10 +50,10 @@ jobs:
             10.0.x
 
       - name: dotnet restore
-        run: dotnet restore Oragon.AdaptivePool.sln
+        run: dotnet restore Oragon.AdaptivePool.slnx
 
       - name: dotnet build (Release, ${{ matrix.tfm }})
-        run: dotnet build Oragon.AdaptivePool.sln -c Release --no-restore -f ${{ matrix.tfm }}
+        run: dotnet build Oragon.AdaptivePool.slnx -c Release --no-restore -f ${{ matrix.tfm }}
 
       - name: dotnet test (Core.Tests)
         run: >
@@ -93,14 +93,14 @@ jobs:
             10.0.x
 
       - name: dotnet restore
-        run: dotnet restore Oragon.AdaptivePool.sln
+        run: dotnet restore Oragon.AdaptivePool.slnx
 
       # Build all TFMs (no -f flag) so pack produces a multi-target package.
       - name: dotnet build (Release, all TFMs)
-        run: dotnet build Oragon.AdaptivePool.sln -c Release --no-restore
+        run: dotnet build Oragon.AdaptivePool.slnx -c Release --no-restore
 
       # Pack only the two packable projects. IsPackable=true is set per Phase 1
-      # convention only on Core and RabbitMQ csproj; pack on the .sln would also
+      # convention only on Core and RabbitMQ csproj; pack on the .slnx would also
       # work but explicit per-project is faster and clearer in the log.
       - name: dotnet pack - Core
         run: >
