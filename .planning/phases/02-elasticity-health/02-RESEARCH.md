@@ -6,13 +6,13 @@
 
 ## Summary
 
-Phase 2 layers four cooperating subsystems onto the proven Phase 1 fixed-size engine: a **utilization sampler** (ring-buffer over time-bucketed samples), a **`PeriodicTimer`-driven sweep loop** (`TimeProvider`-injected for tests, with adaptive backoff under failure storms), a **composite-signal grow evaluator** (waiter-queue depth OR sustained utilization OR p95 acquire-wait, OR-combined per CONTEXT decisions), and a **hysteretic shrink** (cooldown counter decremented per tick since last grow, gentle 1-item-per-tick decay). All four hang off the existing `AdaptivePool<T>` engine without modifying its public surface. Telemetry expands from 2 counters in Phase 1 to a full set: 5 ActivitySource spans (`Acquire`, `Release`, `HealthCheck`, `Grow`, `Shrink`), 4 new counters + 1 histogram (`pool.acquire.wait.duration`), and 6 new `[LoggerMessage]` source-generated entries.
+Phase 2 layers four cooperating subsystems onto the proven Phase 1 fixed-size engine: a **utilization sampler** (ring-buffer over time-bucketed samples), a **`PeriodicTimer`-driven sweep loop** (`TimeProvider`-injected for tests, with adaptive backoff under failure storms), a **composite-signal grow evaluator** (waiter-queue depth OR sustained utilization OR p95 acquire-wait, OR-combined per CONTEXT decisions), and a **hysteretic shrink** (cooldown counter decremented per tick since last grow, gentle 1-item-per-tick decay). All four hang off the existing `ElasticPool<T>` engine without modifying its public surface. Telemetry expands from 2 counters in Phase 1 to a full set: 5 ActivitySource spans (`Acquire`, `Release`, `HealthCheck`, `Grow`, `Shrink`), 4 new counters + 1 histogram (`pool.acquire.wait.duration`), and 6 new `[LoggerMessage]` source-generated entries.
 
-The architectural shape is **deliberately conservative**: every new internal type (`UtilizationSampler`, `BackgroundSweeper`, `PressureSampler`) is `internal sealed`, exposes a small surface, takes `TimeProvider` and the existing `AdaptivePoolOptions<T>` record, and is constructed once from the pool ctor. The `Channel<TCS>` direct-handoff waiter queue from Phase 1 stays — grow decisions reserve slots via the existing `Interlocked.CompareExchange(ref _total, ...)` CAS pattern. The sweep loop runs as a single long-running `Task.Run(SweepLoopAsync)` started from the ctor; `DisposeAsync` already cancels `_lifetimeCts`, which terminates the sweep loop naturally.
+The architectural shape is **deliberately conservative**: every new internal type (`UtilizationSampler`, `BackgroundSweeper`, `PressureSampler`) is `internal sealed`, exposes a small surface, takes `TimeProvider` and the existing `ElasticPoolOptions<T>` record, and is constructed once from the pool ctor. The `Channel<TCS>` direct-handoff waiter queue from Phase 1 stays — grow decisions reserve slots via the existing `Interlocked.CompareExchange(ref _total, ...)` CAS pattern. The sweep loop runs as a single long-running `Task.Run(SweepLoopAsync)` started from the ctor; `DisposeAsync` already cancels `_lifetimeCts`, which terminates the sweep loop naturally.
 
 Determinism is the single most important Phase 2 design constraint. **Every** test that exercises grow/shrink/sweep MUST use `FakeTimeProvider` from `Microsoft.Extensions.TimeProvider.Testing` — no wall-clock-based timing is permitted. The well-known `FakeTimeProvider`+`PeriodicTimer` race (continuation runs on the threadpool, not the test thread) is mitigated by the `await Task.Yield()` pattern between `Advance(...)` calls, and where stronger determinism is needed, by an internal `TaskCompletionSource`-based "sweep tick fired" probe wired only in DEBUG/test builds [VERIFIED: dotnet/runtime#125077].
 
-**Primary recommendation:** Implement four independent `internal sealed` components (`UtilizationSampler`, `PressureSampler`, `BackgroundSweeper`, plus a small `SweepBackoffState`) wired through `AdaptivePoolOptions<T>` (extended with the new tunables) and constructed once in the `AdaptivePool<T>` ctor. Reuse the Phase 1 CAS-on-`_total` slot reservation for grow; add a `_sinceLastGrowTicks` counter for hysteresis. Test every time-dependent path with `FakeTimeProvider` + `Task.Yield()`; assert telemetry via `MetricCollector<long>` and an `ActivityListener` configured with `Sample = (ref _) => ActivitySamplingResult.AllData`.
+**Primary recommendation:** Implement four independent `internal sealed` components (`UtilizationSampler`, `PressureSampler`, `BackgroundSweeper`, plus a small `SweepBackoffState`) wired through `ElasticPoolOptions<T>` (extended with the new tunables) and constructed once in the `ElasticPool<T>` ctor. Reuse the Phase 1 CAS-on-`_total` slot reservation for grow; add a `_sinceLastGrowTicks` counter for hysteresis. Test every time-dependent path with `FakeTimeProvider` + `Task.Yield()`; assert telemetry via `MetricCollector<long>` and an `ActivityListener` configured with `Sample = (ref _) => ActivitySamplingResult.AllData`.
 
 ## User Constraints (from CONTEXT.md)
 
@@ -75,14 +75,14 @@ No project-local CLAUDE.md was found at the repository root — only the user's 
 
 | Capability | Primary Tier | Secondary Tier | Rationale |
 |------------|-------------|----------------|-----------|
-| Composite-signal grow decision | API/Backend (engine internal) | — | Lives in `AdaptivePool<T>` slow path — the engine already owns `_total`/`_inUse`/`_waiters` state; signal evaluation is a pure function over those + samples |
+| Composite-signal grow decision | API/Backend (engine internal) | — | Lives in `ElasticPool<T>` slow path — the engine already owns `_total`/`_inUse`/`_waiters` state; signal evaluation is a pure function over those + samples |
 | Utilization rolling window | API/Backend (engine internal) | — | Updated on every Acquire/Release transition; sampled by the grow evaluator and the shrink decider |
 | Background sweep loop | API/Backend (engine internal) | — | Owns its own long-running `Task` started from the engine ctor and cancelled by `_lifetimeCts`; never crosses public surface |
 | Hysteretic shrink | API/Backend (engine internal) | — | Reads idle queue + cooldown counter set by grow; runs on sweep tick |
 | Telemetry emission | API/Backend (engine internal) | — | `TelemetryEmitter` is internal sealed; consumers observe via `Meter` name + `ActivitySource` name only |
 | Test orchestration | Test framework | — | xUnit v3 + `FakeTimeProvider`; deterministic time injection — no wall-clock dependencies |
 
-**No client/UI tier exists for this library.** It is a single-package backend primitive consumed by .NET applications. The "tier" question reduces to "engine internal vs public API surface", and every Phase 2 addition is internal. Public surface change is limited to additive `AdaptivePoolBuilder<T>` fluent methods (the locked decisions section above).
+**No client/UI tier exists for this library.** It is a single-package backend primitive consumed by .NET applications. The "tier" question reduces to "engine internal vs public API surface", and every Phase 2 addition is internal. Public surface change is limited to additive `ElasticPoolBuilder<T>` fluent methods (the locked decisions section above).
 
 ## Standard Stack
 
@@ -91,7 +91,7 @@ No project-local CLAUDE.md was found at the repository root — only the user's 
 | Library | Version | Purpose | Why Standard |
 |---------|---------|---------|--------------|
 | `System.Threading.PeriodicTimer` | BCL net8+ in-box | Drift-free sweep loop | Single-consumer model; `(TimeSpan, TimeProvider)` ctor on net8+ enables `FakeTimeProvider` injection [CITED: learn.microsoft.com/dotnet/api/system.threading.periodictimer] |
-| `System.TimeProvider` | BCL net8+ in-box | Time abstraction for tests | Wired through `AdaptivePoolOptions<T>.TimeProvider` in Phase 1; `FakeTimeProvider` plugs in directly |
+| `System.TimeProvider` | BCL net8+ in-box | Time abstraction for tests | Wired through `ElasticPoolOptions<T>.TimeProvider` in Phase 1; `FakeTimeProvider` plugs in directly |
 | `System.Diagnostics.ActivitySource` | BCL in-box (net5+) | Distributed tracing spans | Single `internal static readonly` per assembly, never disposed (process lifetime); `HasListeners()` guard skips work when no listener attached [CITED: learn.microsoft.com/dotnet/core/diagnostics/distributed-tracing-instrumentation-walkthroughs] |
 | `System.Diagnostics.Metrics.Meter` + `IMeterFactory` | BCL net8+ in-box | Counters, histograms, gauges | Phase 1 already wires `IMeterFactory`-or-fallback in `TelemetryEmitter`; Phase 2 just adds instruments |
 | `Microsoft.Extensions.Logging.Abstractions` | 10.0.6 (CPM) | `ILogger` + `[LoggerMessage]` source-gen | Already pinned; source-gen is allocation-free hot-path logging [CITED: learn.microsoft.com/dotnet/core/extensions/logging/high-performance-logging] |
@@ -136,7 +136,7 @@ No project-local CLAUDE.md was found at the repository root — only the user's 
 
 ```
                         ┌─────────────────────────────────────────────┐
-   AcquireAsync ───────▶│             AdaptivePool<T>  (sealed)        │
+   AcquireAsync ───────▶│             ElasticPool<T>  (sealed)        │
                         │                                              │
                         │   _idle (ConcurrentQueue<PoolEntry>)         │
                         │   _waiters (Channel<TCS>) — direct handoff   │
@@ -173,7 +173,7 @@ No project-local CLAUDE.md was found at the repository root — only the user's 
                         │                                              │
                         │   ┌────────────────────────────────────────┐ │
    span+counter+log ◀───┤   │   TelemetryEmitter  (extended)        │ │
-                        │   │   ActivitySource "Oragon.AdaptivePool"│ │
+                        │   │   ActivitySource "Oragon.ElasticPool"│ │
                         │   │   Counter: grow/shrink/health.fails   │ │
                         │   │   Histogram: acquire.wait.duration    │ │
                         │   │   Histogram: sweep.duration            │ │
@@ -190,9 +190,9 @@ Data flow primary path: a caller's `AcquireAsync` either succeeds fast (idle ite
 ### Recommended Project Structure (additions)
 
 ```
-src/Oragon.AdaptivePool.Core/
+src/Oragon.ElasticPool.Core/
 ├── Internals/
-│   ├── AdaptivePool.cs              [MODIFIED — wire new components]
+│   ├── ElasticPool.cs              [MODIFIED — wire new components]
 │   ├── PoolEntry.cs                 [MODIFIED — add LastReturnedAt]
 │   ├── PoolItem.cs                  [unchanged]
 │   ├── PoolLifecycle.cs             [unchanged]
@@ -201,8 +201,8 @@ src/Oragon.AdaptivePool.Core/
 │   ├── BackgroundSweeper.cs         [NEW — internal sealed]
 │   └── SweepBackoffState.cs         [NEW — internal sealed]
 ├── Builder/
-│   ├── AdaptivePoolBuilder.cs       [MODIFIED — add 7 fluent methods]
-│   └── AdaptivePoolOptions.cs       [MODIFIED — add 7 init-only props]
+│   ├── ElasticPoolBuilder.cs       [MODIFIED — add 7 fluent methods]
+│   └── ElasticPoolOptions.cs       [MODIFIED — add 7 init-only props]
 ├── Telemetry/
 │   ├── TelemetryEmitter.cs          [MODIFIED — add ActivitySource + new instruments]
 │   ├── PoolDiagnosticsLog.cs        [MODIFIED — add 6 [LoggerMessage] entries]
@@ -210,7 +210,7 @@ src/Oragon.AdaptivePool.Core/
 └── Hooks/
     └── HookDelegates.cs             [unchanged — Check signature already exists]
 
-tests/Oragon.AdaptivePool.Core.Tests/
+tests/Oragon.ElasticPool.Core.Tests/
 └── Pool/
     ├── ElasticGrowTests.cs          [NEW — composite-signal grow]
     ├── HystereticShrinkTests.cs     [NEW — cooldown + IdleTimeout]
@@ -219,7 +219,7 @@ tests/Oragon.AdaptivePool.Core.Tests/
     ├── UtilizationSamplerTests.cs   [NEW — ring buffer correctness]
     └── ActivitySourceSpanTests.cs   [NEW — span emission per outcome]
 
-tests/Oragon.AdaptivePool.Core.Stress/
+tests/Oragon.ElasticPool.Core.Stress/
 └── BurstIdleBurstStressTest.cs      [NEW — Phase 2 anchor stress test]
 ```
 
@@ -235,13 +235,13 @@ tests/Oragon.AdaptivePool.Core.Stress/
 // Source: ARCHITECTURE.md §"Background Sweep Mechanism" + learn.microsoft.com/dotnet/api/system.threading.periodictimer
 internal sealed class BackgroundSweeper
 {
-    private readonly AdaptivePool<T> _pool;
-    private readonly AdaptivePoolOptions<T> _options;
+    private readonly ElasticPool<T> _pool;
+    private readonly ElasticPoolOptions<T> _options;
     private readonly CancellationTokenSource _sweepCts;
     private readonly Task _sweepTask;
     private readonly SweepBackoffState _backoff;
 
-    public BackgroundSweeper(AdaptivePool<T> pool, AdaptivePoolOptions<T> options, CancellationToken lifetimeToken)
+    public BackgroundSweeper(ElasticPool<T> pool, ElasticPoolOptions<T> options, CancellationToken lifetimeToken)
     {
         _pool = pool;
         _options = options;
@@ -379,7 +379,7 @@ internal readonly record struct GrowDecision(
 
 internal sealed class PressureSampler
 {
-    private readonly AdaptivePoolOptions<T> _options;
+    private readonly ElasticPoolOptions<T> _options;
     private readonly UtilizationSampler _util;
     private readonly WaitDurationHistogram _waitHistogram;
 
@@ -498,7 +498,7 @@ Default `MaxBackoff` = 5 min (per ROADMAP success criterion 3); exposed via `.Ma
 
 ### Pattern 6: ActivitySource Spans with `HasListeners()` Guard
 
-**What:** `internal static readonly ActivitySource _activitySource = new("Oragon.AdaptivePool")` declared once per assembly, never disposed. Every span site is preceded by either a `HasListeners()` check (when there's preparatory work to skip) OR uses the standard `using var activity = _activitySource.StartActivity(...)` pattern (which itself returns null when no listener is registered, so the null-conditional `?.` operator handles the no-listener case at zero cost).
+**What:** `internal static readonly ActivitySource _activitySource = new("Oragon.ElasticPool")` declared once per assembly, never disposed. Every span site is preceded by either a `HasListeners()` check (when there's preparatory work to skip) OR uses the standard `using var activity = _activitySource.StartActivity(...)` pattern (which itself returns null when no listener is registered, so the null-conditional `?.` operator handles the no-listener case at zero cost).
 
 **Why both:** `StartActivity` returns null cheaply when there's no listener [CITED: learn.microsoft.com/dotnet/core/diagnostics/distributed-tracing-instrumentation-walkthroughs §"Notes" — "If there are no registered listeners or there are listeners that are not interested, StartActivity() will return null and avoid creating the Activity object. This is a performance optimization so that the code pattern can still be used in functions that are called frequently."]. `HasListeners()` adds value only when you have preparatory work that's expensive (e.g., constructing tag dictionaries, computing fingerprint strings) and you want to skip it entirely.
 
@@ -506,7 +506,7 @@ Default `MaxBackoff` = 5 min (per ROADMAP success criterion 3); exposed via `.Ma
 // Source: ARCHITECTURE.md + learn.microsoft.com/dotnet/core/diagnostics/distributed-tracing-instrumentation-walkthroughs
 internal sealed class TelemetryEmitter
 {
-    internal static readonly ActivitySource ActivitySource = new("Oragon.AdaptivePool");
+    internal static readonly ActivitySource ActivitySource = new("Oragon.ElasticPool");
 
     public Activity? StartGrowSpan(string poolName, GrowDecision decision)
     {
@@ -543,7 +543,7 @@ sweepSpan?.AddEvent(new ActivityEvent("item-checked", default,
 
 ### Pattern 7: ActivityListener Test Pattern
 
-**What:** Tests register an `ActivityListener` that captures every started/stopped Activity for the `Oragon.AdaptivePool` source. Lifetime is scoped to the test via `using var listener = ...`.
+**What:** Tests register an `ActivityListener` that captures every started/stopped Activity for the `Oragon.ElasticPool` source. Lifetime is scoped to the test via `using var listener = ...`.
 
 **Source for pattern:** dotnet/runtime test code [VERIFIED: github.com/dotnet/runtime/blob/main/src/libraries/System.Diagnostics.DiagnosticSource/tests/ActivitySourceTests.cs] + Jimmy Bogard "A Lap Around ActivitySource and ActivityListener" [CITED].
 
@@ -573,7 +573,7 @@ private sealed class CapturedActivities : IDisposable
 [Fact]
 public async Task GrowEmitsActivitySpan()
 {
-    using var captured = new CapturedActivities("Oragon.AdaptivePool");
+    using var captured = new CapturedActivities("Oragon.ElasticPool");
     // ... drive the pool to grow ...
     captured.Stopped.ShouldContain(a => a.OperationName == "Pool.Grow");
     var grow = captured.Stopped.Single(a => a.OperationName == "Pool.Grow");
@@ -599,12 +599,12 @@ public async Task GrowIncrementsCounter()
 
     using var growCounter = new MetricCollector<long>(
         meterFactory,
-        meterName: "Oragon.AdaptivePool",
+        meterName: "Oragon.ElasticPool",
         instrumentName: "pool.grow.count",
         timeProvider: TimeProvider.System);  // counter doesn't need fake time
 
     var fake = new FakeTimeProvider();
-    var pool = AdaptiveObjectPoolFactory.Build<Resource>(sp)
+    var pool = ElasticObjectPoolFactory.Build<Resource>(sp)
         .Factory((_, _) => ValueTask.FromResult(new Resource()))
         .WithBounds(0, 10, 0)
         .WithTimeProvider(fake)
@@ -635,7 +635,7 @@ For histogram bucket distribution assertions, use `MetricCollector<double>` and 
 public async Task SweepFiresOnAdvance()
 {
     var fake = new FakeTimeProvider();
-    var pool = AdaptiveObjectPoolFactory.Build<Resource>(sp)
+    var pool = ElasticObjectPoolFactory.Build<Resource>(sp)
         .Factory(...)
         .WithBounds(0, 5, 0)
         .WithTimeProvider(fake)
@@ -717,7 +717,7 @@ For high-determinism tests (sweep failure backoff, multi-tick scenarios), expose
 ### Pitfall F: ActivitySource lifetime mismatch
 **What goes wrong:** `new ActivitySource(...)` per pool instance, then `Dispose()` on pool dispose. Listeners attached to the source name receive no events from later pools; tests interfere with each other.
 **Why it happens:** Treating ActivitySource like Meter.
-**How to avoid:** `internal static readonly ActivitySource _activitySource = new("Oragon.AdaptivePool")` per assembly. Never disposed. Meter is per-pool (already Phase 1); ActivitySource is per-assembly.
+**How to avoid:** `internal static readonly ActivitySource _activitySource = new("Oragon.ElasticPool")` per assembly. Never disposed. Meter is per-pool (already Phase 1); ActivitySource is per-assembly.
 **Source:** [CITED: PITFALLS.md Pitfall 16/17 + ARCHITECTURE.md "Meter & ActivitySource Names"]
 
 ### Pitfall G: BeforeUse / Check hook pulled into hot Acquire path
@@ -731,7 +731,7 @@ For high-determinism tests (sweep failure backoff, multi-tick scenarios), expose
 ### Example 1: AcquireAsync slow path with composite-signal grow (Phase 2 modification)
 
 ```csharp
-// Source: design — extends Phase 1 AdaptivePool<T>.AcquireAsyncCore
+// Source: design — extends Phase 1 ElasticPool<T>.AcquireAsyncCore
 private async ValueTask<IPoolItem<T>> AcquireAsyncCore(CancellationToken cancellationToken, int retryCount)
 {
     ThrowIfDisposed();
@@ -836,8 +836,8 @@ internal static partial class PoolDiagnosticsLog
 ### Example 3: Builder fluent additions (Phase 2)
 
 ```csharp
-// Source: design — extends Phase 1 AdaptivePoolBuilder<T>
-public sealed class AdaptivePoolBuilder<T> where T : notnull
+// Source: design — extends Phase 1 ElasticPoolBuilder<T>
+public sealed class ElasticPoolBuilder<T> where T : notnull
 {
     // ... existing Phase 1 fields ...
     private int _growOnWaiterCount = 1;
@@ -848,35 +848,35 @@ public sealed class AdaptivePoolBuilder<T> where T : notnull
     private TimeSpan _sweepInterval = TimeSpan.FromSeconds(30);
     private TimeSpan _maxBackoff = TimeSpan.FromMinutes(5);
 
-    public AdaptivePoolBuilder<T> GrowOnWaiterCount(int n)
+    public ElasticPoolBuilder<T> GrowOnWaiterCount(int n)
     { if (n < 1) throw new ArgumentOutOfRangeException(nameof(n)); _growOnWaiterCount = n; return this; }
 
-    public AdaptivePoolBuilder<T> GrowOnUtilizationPercent(double p)
+    public ElasticPoolBuilder<T> GrowOnUtilizationPercent(double p)
     { if (p <= 0 || p > 1.0) throw new ArgumentOutOfRangeException(nameof(p), "0 < p <= 1"); _growOnUtilizationPercent = p; return this; }
 
-    public AdaptivePoolBuilder<T> GrowOnWaitTimeP95(TimeSpan t)
+    public ElasticPoolBuilder<T> GrowOnWaitTimeP95(TimeSpan t)
     { if (t <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(t)); _growOnWaitTimeP95 = t; return this; }
 
-    public AdaptivePoolBuilder<T> IdleTimeout(TimeSpan t)
+    public ElasticPoolBuilder<T> IdleTimeout(TimeSpan t)
     { if (t <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(t)); _idleTimeout = t; return this; }
 
-    public AdaptivePoolBuilder<T> ShrinkCooldownWindows(int n)
+    public ElasticPoolBuilder<T> ShrinkCooldownWindows(int n)
     { if (n < 0) throw new ArgumentOutOfRangeException(nameof(n)); _shrinkCooldownWindows = n; return this; }
 
-    public AdaptivePoolBuilder<T> SweepInterval(TimeSpan t)
+    public ElasticPoolBuilder<T> SweepInterval(TimeSpan t)
     { if (t <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(t)); _sweepInterval = t; return this; }
 
-    public AdaptivePoolBuilder<T> MaxBackoff(TimeSpan t)
+    public ElasticPoolBuilder<T> MaxBackoff(TimeSpan t)
     { if (t <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(t)); _maxBackoff = t; return this; }
 
-    public IAdaptivePool<T> Build()
+    public IElasticPool<T> Build()
     {
         // ... existing Phase 1 validation ...
         if (_growOnWaiterCount > _maxSize)
             throw new InvalidOperationException("GrowOnWaiterCount must not exceed MaxSize.");
         if (_sweepInterval > _maxBackoff)
             throw new InvalidOperationException("SweepInterval must not exceed MaxBackoff.");
-        // ... build options + new AdaptivePool<T> ...
+        // ... build options + new ElasticPool<T> ...
     }
 }
 ```
@@ -894,7 +894,7 @@ public async Task BurstIdleBurst_PoolGrowsShrinksGrowsAgain_WithoutDeadlocks()
     services.AddLogging();
     using var sp = services.BuildServiceProvider();
 
-    using var pool = (AdaptivePool<Resource>)AdaptiveObjectPoolFactory.Build<Resource>(sp)
+    using var pool = (ElasticPool<Resource>)ElasticObjectPoolFactory.Build<Resource>(sp)
         .Factory((_, _) => ValueTask.FromResult(new Resource()))
         .Release((r, _) => { r.Dispose(); return ValueTask.CompletedTask; })
         .WithBounds(min: 5, max: 100, initial: 5)

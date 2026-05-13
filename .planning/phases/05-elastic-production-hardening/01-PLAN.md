@@ -6,8 +6,8 @@ Add a Core-level backpressure guard so `AcquireAsync` can reject excess parked w
 
 ## Scope
 
-- Add a nullable `MaxWaiterCount` option to `AdaptivePoolOptions<T>`.
-- Add `AdaptivePoolBuilder<T>.MaxWaiterCount(int n)`.
+- Add a nullable `MaxWaiterCount` option to `ElasticPoolOptions<T>`.
+- Add `ElasticPoolBuilder<T>.MaxWaiterCount(int n)`.
 - Preserve current behavior by default: `null` means unbounded waiters.
 - Enforce the limit with an atomic reserve path before parking an `AcquireAsync` caller.
 - Throw `PoolExhaustedException` when the waiter cap is reached.
@@ -21,5 +21,5 @@ Add a Core-level backpressure guard so `AcquireAsync` can reject excess parked w
 
 ## Verification
 
-- `dotnet test --project tests/Oragon.AdaptivePool.Core.Tests/Oragon.AdaptivePool.Core.Tests.csproj -f net10.0 --no-restore -p:SuppressNETCoreSdkPreviewMessage=true`
+- `dotnet test --project tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj -f net10.0 --no-restore -p:SuppressNETCoreSdkPreviewMessage=true`
 - Broader solution test if the local SDK/test runner is healthy.

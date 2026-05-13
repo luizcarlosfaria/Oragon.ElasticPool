@@ -48,15 +48,15 @@ Adicionar sobre o engine fixed-size do Phase 1 a camada de **elasticidade adapta
 ## Existing Code Insights
 
 ### Reusable Assets (from Phase 1)
-- `Internals/AdaptivePool.cs` — engine sealed que precisará receber:
+- `Internals/ElasticPool.cs` — engine sealed que precisará receber:
   - `_growLock` ou similar para coordenar decisões de grow
   - `UtilizationSampler` field (novo)
   - `_lastGrowAt` timestamp ou `_growCooldownRemaining` counter para hysteresis
   - `RunSweepLoopAsync()` background task fired em `StartAsync()` (que pode precisar ser adicionado se ainda não existe)
-- `Telemetry/TelemetryEmitter.cs` — extender com novos counters e ActivitySource (ainda não criada na Phase 1, era só Meter); precisa adicionar `private static readonly ActivitySource _activitySource = new("Oragon.AdaptivePool")`
+- `Telemetry/TelemetryEmitter.cs` — extender com novos counters e ActivitySource (ainda não criada na Phase 1, era só Meter); precisa adicionar `private static readonly ActivitySource _activitySource = new("Oragon.ElasticPool")`
 - `Telemetry/PoolDiagnosticsLog.cs` — adicionar `[LoggerMessage]` para Grew (1005), Shrunk (1006), SweepStarted (1007), SweepCompleted (1008), SweepFailureBackoff (1009)
 - `Hooks/HookDelegates.cs` — `CheckDelegate<T>` já existe; agora será **invocado** pelo sweep (Phase 1 documentou como "placeholder")
-- `Builder/AdaptivePoolBuilder.cs` — adicionar métodos fluent: `GrowOnWaiterCount`, `GrowOnUtilizationPercent`, `GrowOnWaitTimeP95`, `IdleTimeout`, `ShrinkCooldownWindows`, `SweepInterval`, `MaxBackoff`
+- `Builder/ElasticPoolBuilder.cs` — adicionar métodos fluent: `GrowOnWaiterCount`, `GrowOnUtilizationPercent`, `GrowOnWaitTimeP95`, `IdleTimeout`, `ShrinkCooldownWindows`, `SweepInterval`, `MaxBackoff`
 - `Internals/PoolEntry.cs` — adicionar `LastReturnedAt` timestamp se não existe; `LastValidatedAt` para skip-if-recently-validated em sweep
 - `TimeProvider` injetado via builder no Phase 1 — já é o ponto de extensão para `FakeTimeProvider` em testes determinísticos
 - `WaitBehavior` enum — sem mudanças
@@ -66,7 +66,7 @@ Adicionar sobre o engine fixed-size do Phase 1 a camada de **elasticidade adapta
 - `[LoggerMessage]` source-gen para logging allocation-free — extender
 - `Meter` via `IMeterFactory` com fallback `new Meter` — pattern já estabelecido
 - xUnit v3 + AwesomeAssertions + NSubstitute + `FakeTimeProvider` — o stack de testes
-- Stress tests separados em `Oragon.AdaptivePool.Core.Stress` excluídos da CI default
+- Stress tests separados em `Oragon.ElasticPool.Core.Stress` excluídos da CI default
 
 ### Integration Points
 - `PeriodicTimer.WaitForNextTickAsync(ct)` para sweep loop (BCL net6+, drift-free)

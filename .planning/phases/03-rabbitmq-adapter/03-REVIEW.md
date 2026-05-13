@@ -4,30 +4,30 @@ reviewed: 2026-05-02T00:00:00Z
 depth: standard
 files_reviewed: 24
 files_reviewed_list:
-  - src/Oragon.AdaptivePool.RabbitMQ/Builder/AdaptiveConnectionPoolBuilder.cs
-  - src/Oragon.AdaptivePool.RabbitMQ/Builder/AdaptiveChannelPoolBuilder.cs
-  - src/Oragon.AdaptivePool.RabbitMQ/DependencyInjection/AdaptiveConnectionPoolServiceCollectionExtensions.cs
-  - src/Oragon.AdaptivePool.RabbitMQ/DependencyInjection/AdaptiveChannelPoolServiceCollectionExtensions.cs
-  - src/Oragon.AdaptivePool.RabbitMQ/Internals/AdapterDiagnosticsLog.cs
-  - src/Oragon.AdaptivePool.RabbitMQ/Internals/ChannelLeasePairing.cs
-  - src/Oragon.AdaptivePool.RabbitMQ/Internals/ConnectionChannelTracker.cs
-  - src/Oragon.AdaptivePool.RabbitMQ/Internals/ConnectionFactoryResolver.cs
-  - src/Oragon.AdaptivePool.RabbitMQ/Options/AdaptiveConnectionPoolOptions.cs
-  - tests/Oragon.AdaptivePool.RabbitMQ.Tests/ChannelPoolUnitTests.cs
-  - tests/Oragon.AdaptivePool.RabbitMQ.Tests/ConnectionChannelTrackerTests.cs
-  - tests/Oragon.AdaptivePool.RabbitMQ.Tests/ConnectionFactoryResolverTests.cs
-  - tests/Oragon.AdaptivePool.RabbitMQ.Tests/ConnectionPoolUnitTests.cs
-  - tests/Oragon.AdaptivePool.RabbitMQ.Tests/TestSupport/CapturedLogEntries.cs
-  - tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/AutomaticRecoveryOverrideTests.cs
-  - tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/BurstyPublisherIntegrationTests.cs
-  - tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/ChannelPoolIntegrationTests.cs
-  - tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/ChannelSpreadIntegrationTests.cs
-  - tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/ConnectionPoolIntegrationTests.cs
-  - tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/Fixtures/LowChannelMaxFixture.cs
-  - tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/Fixtures/RabbitMqContainerFixture.cs
-  - tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/TestSupport/CapturedLogEntries.cs
-  - samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/Program.cs
-  - samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/BurstyPublisherWorker.cs
+  - src/Oragon.ElasticPool.RabbitMQ/Builder/ElasticConnectionPoolBuilder.cs
+  - src/Oragon.ElasticPool.RabbitMQ/Builder/ElasticChannelPoolBuilder.cs
+  - src/Oragon.ElasticPool.RabbitMQ/DependencyInjection/ElasticConnectionPoolServiceCollectionExtensions.cs
+  - src/Oragon.ElasticPool.RabbitMQ/DependencyInjection/ElasticChannelPoolServiceCollectionExtensions.cs
+  - src/Oragon.ElasticPool.RabbitMQ/Internals/AdapterDiagnosticsLog.cs
+  - src/Oragon.ElasticPool.RabbitMQ/Internals/ChannelLeasePairing.cs
+  - src/Oragon.ElasticPool.RabbitMQ/Internals/ConnectionChannelTracker.cs
+  - src/Oragon.ElasticPool.RabbitMQ/Internals/ConnectionFactoryResolver.cs
+  - src/Oragon.ElasticPool.RabbitMQ/Options/ElasticConnectionPoolOptions.cs
+  - tests/Oragon.ElasticPool.RabbitMQ.Tests/ChannelPoolUnitTests.cs
+  - tests/Oragon.ElasticPool.RabbitMQ.Tests/ConnectionChannelTrackerTests.cs
+  - tests/Oragon.ElasticPool.RabbitMQ.Tests/ConnectionFactoryResolverTests.cs
+  - tests/Oragon.ElasticPool.RabbitMQ.Tests/ConnectionPoolUnitTests.cs
+  - tests/Oragon.ElasticPool.RabbitMQ.Tests/TestSupport/CapturedLogEntries.cs
+  - tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/AutomaticRecoveryOverrideTests.cs
+  - tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/BurstyPublisherIntegrationTests.cs
+  - tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/ChannelPoolIntegrationTests.cs
+  - tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/ChannelSpreadIntegrationTests.cs
+  - tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/ConnectionPoolIntegrationTests.cs
+  - tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/Fixtures/LowChannelMaxFixture.cs
+  - tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/Fixtures/RabbitMqContainerFixture.cs
+  - tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/TestSupport/CapturedLogEntries.cs
+  - samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/Program.cs
+  - samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/BurstyPublisherWorker.cs
 findings:
   critical: 1
   warning: 4
@@ -57,7 +57,7 @@ One blocker stands out: `ch.DisposeAsync()` in the channel Release hook is ungua
 
 ### CR-01: `ch.DisposeAsync()` unguarded in channel Release hook — connection lease permanently leaked on throw
 
-**File:** `src/Oragon.AdaptivePool.RabbitMQ/DependencyInjection/AdaptiveChannelPoolServiceCollectionExtensions.cs:107`
+**File:** `src/Oragon.ElasticPool.RabbitMQ/DependencyInjection/ElasticChannelPoolServiceCollectionExtensions.cs:107`
 
 **Issue:** The Release hook calls `await ch.DisposeAsync()` directly (no try/catch). If that call throws — possible when the channel's underlying TCP stream is already in an error state — all subsequent cleanup is skipped:
 
@@ -94,7 +94,7 @@ This is exacerbated by Core's behaviour: all call sites that invoke the Release 
 })
 ```
 
-The same gap exists for the connection pool's `conn.DisposeAsync()` at line 97 of `AdaptiveConnectionPoolServiceCollectionExtensions.cs`, but the impact is lower there (no tracker or pairing to corrupt).
+The same gap exists for the connection pool's `conn.DisposeAsync()` at line 97 of `ElasticConnectionPoolServiceCollectionExtensions.cs`, but the impact is lower there (no tracker or pairing to corrupt).
 
 ---
 
@@ -102,7 +102,7 @@ The same gap exists for the connection pool's `conn.DisposeAsync()` at line 97 o
 
 ### WR-01: `TryAcquireSlot` dead-code branch contains a potential livelock path
 
-**File:** `src/Oragon.AdaptivePool.RabbitMQ/Internals/ConnectionChannelTracker.cs:40-43`
+**File:** `src/Oragon.ElasticPool.RabbitMQ/Internals/ConnectionChannelTracker.cs:40-43`
 
 **Issue:** The condition `!hasEntry || current == 0` routes to `TryAdd` for both the "no entry" and "entry exists with value 0" cases. The latter is unreachable under the current invariant (entries are only ever inserted with value 1 and removed at count 1, never updated to 0), but the code compiles and runs. If the invariant were ever violated — for example by a future code change to `ReleaseSlot` that does `TryUpdate(conn, 0, 1)` before `Remove` — the `TryAdd` call would fail indefinitely (key already present) and the CAS loop would spin forever, as `TryUpdate` is never tried for the `current == 0` case.
 
@@ -133,7 +133,7 @@ This eliminates the unreachable-but-dangerous `current == 0` branch and makes th
 
 ### WR-02: `ForceAutomaticRecoveryDisabled` permanently mutates a shared keyed-singleton `ConnectionFactory`
 
-**File:** `src/Oragon.AdaptivePool.RabbitMQ/Internals/ConnectionFactoryResolver.cs:83-87`
+**File:** `src/Oragon.ElasticPool.RabbitMQ/Internals/ConnectionFactoryResolver.cs:83-87`
 
 **Issue:** When the 3-mode probe resolves a keyed-singleton `IConnectionFactory` (Mode 1) that is a concrete `ConnectionFactory`, `ForceAutomaticRecoveryDisabled` sets `cf.AutomaticRecoveryEnabled = false` on the shared singleton. This mutation is:
 
@@ -156,20 +156,20 @@ if (keyed is ConnectionFactory sharedCf)
 return keyed;
 ```
 
-If cloning is not feasible without breaking the factory's full configuration surface, at minimum document the mutation explicitly in `AddAdaptiveConnectionPool`'s remarks and emit a separate EventId warning each time the override fires (not just on first acquire).
+If cloning is not feasible without breaking the factory's full configuration surface, at minimum document the mutation explicitly in `AddElasticConnectionPool`'s remarks and emit a separate EventId warning each time the override fires (not just on first acquire).
 
 ### WR-03: `DeadConnectionMarksChannelsUnhealthy_LazyInvalidation` tests channel closure, not connection-side lazy invalidation
 
-**File:** `tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/ChannelPoolIntegrationTests.cs:92-151`
+**File:** `tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/ChannelPoolIntegrationTests.cs:92-151`
 
 **Issue:** The test is named and documented as empirical validation of RESEARCH Q1 (lazy invalidation when a *connection* dies). However, the test never closes a connection — it calls `lease2.Value.CloseAsync()` on the *channel*, then returns the lease, and re-acquires. The re-acquire exercises only the `ch.IsOpen == false` branch of `BeforeUse`, not the `connLease.Value.IsOpen == false` branch.
 
-The pairing-based connection check (`if (pairing.TryGet(ch, out var connLease) && connLease is not null && !connLease.Value.IsOpen)` at line 91 of `AdaptiveChannelPoolServiceCollectionExtensions.cs`) is thus not covered by any integration test. If that branch were deleted or broken, all integration tests would still pass.
+The pairing-based connection check (`if (pairing.TryGet(ch, out var connLease) && connLease is not null && !connLease.Value.IsOpen)` at line 91 of `ElasticChannelPoolServiceCollectionExtensions.cs`) is thus not covered by any integration test. If that branch were deleted or broken, all integration tests would still pass.
 
 **Fix:** Add a test that closes the *connection* backing an idle channel and then re-acquires from the channel pool. The simplest approach with `RabbitMqContainerFixture`:
 
 1. Acquire a channel lease and return it to the idle queue.
-2. Acquire the connection lease directly from the connection pool using `GetRequiredKeyedService<IAdaptivePool<IConnection>>`.
+2. Acquire the connection lease directly from the connection pool using `GetRequiredKeyedService<IElasticPool<IConnection>>`.
 3. Call `conn.CloseAsync()` on the connection that backs the idle channel.
 4. Re-acquire from the channel pool. The BeforeUse hook must observe `connLease.Value.IsOpen == false` and mark Unhealthy, producing a fresh channel on a new connection.
 
@@ -177,7 +177,7 @@ The current test should be renamed or its docstring corrected to reflect that it
 
 ### WR-04: `ChannelSpreadIntegrationTests` assertion is trivially satisfied and does not prove spread
 
-**File:** `tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/ChannelSpreadIntegrationTests.cs:67-71`
+**File:** `tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/ChannelSpreadIntegrationTests.cs:67-71`
 
 **Issue:** The test acquires 50 channel leases. Each lease holds its own `IPoolItem<IConnection>`, so `connPool.InUse` is 50. The assertion is:
 
@@ -196,11 +196,11 @@ totalConnections.Should().BeGreaterThanOrEqualTo(5, ...);
 
 ### IN-01: `pairing.TryGet` failure in Release hook is silent — tracker/lease leak goes unlogged
 
-**File:** `src/Oragon.AdaptivePool.RabbitMQ/DependencyInjection/AdaptiveChannelPoolServiceCollectionExtensions.cs:109`
+**File:** `src/Oragon.ElasticPool.RabbitMQ/DependencyInjection/ElasticChannelPoolServiceCollectionExtensions.cs:109`
 
 **Issue:** If `pairing.TryGet(ch, ...)` returns `false` in the Release hook (meaning the channel has no paired connection lease in the CWT), the code takes no action. The tracker slot for that connection is never decremented, and the connection lease is never returned. There is no log entry to alert an operator that this invariant was violated. In normal operation this should never occur (the CWT is only cleared in this Release hook), but if it does — due to a future code path that removes entries without going through the standard Release — the leak is invisible.
 
-**Fix:** Add an `ILogger` to the `AddAdaptiveChannelPool` extension (or pass the logger factory) and emit a structured Error log:
+**Fix:** Add an `ILogger` to the `AddElasticChannelPool` extension (or pass the logger factory) and emit a structured Error log:
 
 ```csharp
 if (pairing.TryGet(ch, out var connLease) && connLease is not null)
@@ -216,27 +216,27 @@ else
 }
 ```
 
-### IN-02: `AddAdaptiveConnectionPool` called twice with the same name is silently inconsistent
+### IN-02: `AddElasticConnectionPool` called twice with the same name is silently inconsistent
 
-**File:** `src/Oragon.AdaptivePool.RabbitMQ/DependencyInjection/AdaptiveConnectionPoolServiceCollectionExtensions.cs:58-104`
+**File:** `src/Oragon.ElasticPool.RabbitMQ/DependencyInjection/ElasticConnectionPoolServiceCollectionExtensions.cs:58-104`
 
-**Issue:** Core's `AddAdaptivePool` uses `TryAddKeyedSingleton` for the pool instance (singleton wins first registration) but uses `AddOptions<AdaptivePoolBuilderConfigurator>.Configure` (additive, last-write-wins on the `Configure` property) for the builder configuration. Calling `AddAdaptiveConnectionPool` twice with the same `name` results in:
+**Issue:** Core's `AddElasticPool` uses `TryAddKeyedSingleton` for the pool instance (singleton wins first registration) but uses `AddOptions<ElasticPoolBuilderConfigurator>.Configure` (additive, last-write-wins on the `Configure` property) for the builder configuration. Calling `AddElasticConnectionPool` twice with the same `name` results in:
 
 - The pool factory lambda being called only once (TryAdd semantics), using the first registration's `sp`.
-- The `AdaptivePoolBuilderConfigurator` receiving both lambdas, with the second overwriting the first (last-write-wins on the `Configure` property assignment).
+- The `ElasticPoolBuilderConfigurator` receiving both lambdas, with the second overwriting the first (last-write-wins on the `Configure` property assignment).
 - The effective pool configuration is the second call's `configurePool` callback but the outer DI singleton infrastructure is the first call's.
 
 No exception is thrown. The first `configureFactory` closure is silently discarded. This is a misconfiguration trap with no diagnostic.
 
-**Fix:** Add a guard at the start of `AddAdaptiveConnectionPool` and `AddAdaptiveChannelPool`:
+**Fix:** Add a guard at the start of `AddElasticConnectionPool` and `AddElasticChannelPool`:
 
 ```csharp
-if (services.Any(d => d.ServiceType == typeof(IAdaptivePool<IConnection>)
+if (services.Any(d => d.ServiceType == typeof(IElasticPool<IConnection>)
                       && d.ServiceKey is string k && k == name))
 {
     throw new InvalidOperationException(
         $"An adaptive connection pool named '{name}' is already registered. " +
-        "Call AddAdaptiveConnectionPool once per name.");
+        "Call AddElasticConnectionPool once per name.");
 }
 ```
 
@@ -244,7 +244,7 @@ Alternatively, align with ASP.NET Core conventions and document that double-regi
 
 ### IN-03: Container image tags in fixtures unpinned — non-reproducible builds
 
-**File:** `tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/Fixtures/RabbitMqContainerFixture.cs:15`, `Fixtures/LowChannelMaxFixture.cs:21`
+**File:** `tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/Fixtures/RabbitMqContainerFixture.cs:15`, `Fixtures/LowChannelMaxFixture.cs:21`
 
 **Issue:** Both fixtures use `"rabbitmq:4-management"` without a specific patch tag. The `4-management` tag is a floating tag — it is reassigned on every upstream RabbitMQ 4.x release. A CI run on Tuesday and one on Thursday may use different broker binaries, potentially exposing different bugs or behaviour differences (e.g. a change to the default `channel_max` or the AMQP negotiation). For an OSS library whose key test matrix includes broker compatibility, this is a reproducibility risk.
 

@@ -1,4 +1,4 @@
-# Requirements: Oragon.AdaptivePool
+# Requirements: Oragon.ElasticPool
 
 **Defined:** 2026-05-03
 **Core Value:** Pool genérico .NET que entrega simultaneamente elasticidade real, auto-cura via lifecycle pluggável, e DX fluente — os três pilares juntos são o produto.
@@ -9,9 +9,9 @@ Requirements for initial release (v1.0). Each maps to roadmap phases.
 
 ### API — Public Surface (Core)
 
-- [x] **API-01**: Pool expõe interface `IAdaptivePool<T>` com `Acquire()` síncrono (retorno imediato quando há item livre) e `AcquireAsync(CancellationToken)` retornando `ValueTask<IPoolItem<T>>`
+- [x] **API-01**: Pool expõe interface `IElasticPool<T>` com `Acquire()` síncrono (retorno imediato quando há item livre) e `AcquireAsync(CancellationToken)` retornando `ValueTask<IPoolItem<T>>`
 - [x] **API-02**: Wrapper `IPoolItem<T>` disposable expõe `.Object` e devolve ao pool em `Dispose()` / `DisposeAsync()`, com idempotência e detecção de double-dispose
-- [x] **API-03**: Builder fluente `AdaptiveObjectPoolFactory.Build<T>(IServiceProvider, CancellationToken)` produz pool selado a partir de configuração imutável; `.Build()` valida configuração obrigatória e lança em config inválida
+- [x] **API-03**: Builder fluente `ElasticObjectPoolFactory.Build<T>(IServiceProvider, CancellationToken)` produz pool selado a partir de configuração imutável; `.Build()` valida configuração obrigatória e lança em config inválida
 
 ### HOOK — Lifecycle Hook Surface
 
@@ -38,13 +38,13 @@ Requirements for initial release (v1.0). Each maps to roadmap phases.
 
 ### TELEM — Observability
 
-- [x] **TELEM-01**: `Meter` nomeado `"Oragon.AdaptivePool"` obtido via `IMeterFactory`, expondo gauges (`pool.size`, `pool.available`, `pool.in_use`, `pool.waiting`) e counters (`pool.acquire.count`, `pool.acquire.duration`, `pool.factory.failures`, `pool.grow.count`, `pool.shrink.count`, `pool.health.failures`); tags com cardinalidade limitada (`pool.name`)
-- [x] **TELEM-02**: `ActivitySource` nomeado `"Oragon.AdaptivePool"` com spans em `Acquire`, `Release`, `HealthCheck`, `Grow`, `Shrink`; uso de `HasListeners()` para evitar custo quando ninguém escuta
+- [x] **TELEM-01**: `Meter` nomeado `"Oragon.ElasticPool"` obtido via `IMeterFactory`, expondo gauges (`pool.size`, `pool.available`, `pool.in_use`, `pool.waiting`) e counters (`pool.acquire.count`, `pool.acquire.duration`, `pool.factory.failures`, `pool.grow.count`, `pool.shrink.count`, `pool.health.failures`); tags com cardinalidade limitada (`pool.name`)
+- [x] **TELEM-02**: `ActivitySource` nomeado `"Oragon.ElasticPool"` com spans em `Acquire`, `Release`, `HealthCheck`, `Grow`, `Shrink`; uso de `HasListeners()` para evitar custo quando ninguém escuta
 - [x] **TELEM-03**: Logging via `ILogger<T>` usando `[LoggerMessage]` source-generated (allocation-free) para transições de estado, falhas de factory, evictions, decisões de política
 
 ### DI — Dependency Injection
 
-- [x] **DI-01**: Extensão `services.AddAdaptivePool<T>(name, configure)` para Microsoft.Extensions.DependencyInjection com pools nomeados (named options pattern), resolução de hooks via `IServiceProvider`, e auto-registro de health checks opcional
+- [x] **DI-01**: Extensão `services.AddElasticPool<T>(name, configure)` para Microsoft.Extensions.DependencyInjection com pools nomeados (named options pattern), resolução de hooks via `IServiceProvider`, e auto-registro de health checks opcional
 
 ### QUAL — Cross-cutting Quality
 
@@ -54,8 +54,8 @@ Requirements for initial release (v1.0). Each maps to roadmap phases.
 
 ### RMQ — RabbitMQ Adapter
 
-- [x] **RMQ-01**: Extensão `services.AddAdaptiveConnectionPool(name, configure)` configurando pool de `IConnection` com `BeforeUse`/`Check` baseados em `IsOpen`, `Release` chamando `CloseAsync()`, e `AutomaticRecoveryEnabled = false` por padrão (evita conflito com gestão de lifecycle do pool)
-- [x] **RMQ-02**: Extensão `services.AddAdaptiveChannelPool(name, configure)` configurando pool de `IChannel` em camada sobre o pool de `IConnection` (factory adquire connection do pool interno via `ConditionalWeakTable` para pareamento, release fecha channel e devolve connection)
+- [x] **RMQ-01**: Extensão `services.AddElasticConnectionPool(name, configure)` configurando pool de `IConnection` com `BeforeUse`/`Check` baseados em `IsOpen`, `Release` chamando `CloseAsync()`, e `AutomaticRecoveryEnabled = false` por padrão (evita conflito com gestão de lifecycle do pool)
+- [x] **RMQ-02**: Extensão `services.AddElasticChannelPool(name, configure)` configurando pool de `IChannel` em camada sobre o pool de `IConnection` (factory adquire connection do pool interno via `ConditionalWeakTable` para pareamento, release fecha channel e devolve connection)
 - [x] **RMQ-03**: Sample executável publicador-bursty demonstrando ciclo "algumas/hora → centenas-de-milhares simultâneas → ocioso" usando o pool em camadas
 - [x] **RMQ-04**: Convenções de nomenclatura, builder, e DI consistentes com `Oragon.RabbitMQ` (sister library para o lado consumidor)
 
@@ -83,7 +83,7 @@ Deferred to future release. Tracked but not in current roadmap.
 
 ### Integrations (Extended)
 
-- **INT-V2-01**: Pacote `Oragon.AdaptivePool.Polly` com sample/glue de retry+circuit-breaker em volta do `AcquireAsync`
+- **INT-V2-01**: Pacote `Oragon.ElasticPool.Polly` com sample/glue de retry+circuit-breaker em volta do `AcquireAsync`
 
 ## Out of Scope
 
@@ -97,7 +97,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | Adapters além de RabbitMQ na v1 | HttpClient já tem IHttpClientFactory; ADO.NET já pool internamente; v1 prova com RabbitMQ apenas |
 | Retry/circuit-breaker embutido (Polly inline) | Resilience é layer ortogonal; embed leakaria versão; documentar a receita de composição |
 | Auto-tuning ML/heurístico de Min/Max | Comportamento oculto, debug pesadelo; expor métricas e deixar humano tunar |
-| Sub-pools keyed (per-tenant/per-key) | Complexidade extra; cliente compõe `Dictionary<TKey, IAdaptivePool<T>>` |
+| Sub-pools keyed (per-tenant/per-key) | Complexidade extra; cliente compõe `Dictionary<TKey, IElasticPool<T>>` |
 | API exclusivamente síncrona (modo legacy) | Forçaria bloqueio em recursos async (RabbitMQ v7 é async-only); cria deadlocks |
 | Compartilhamento de IChannel entre threads | RabbitMQ docs explicitamente desencorajam; pool dimensiona por concorrência |
 | Re-enqueue silencioso de itens quebrados | Defeats auto-cura; falha de health-check sempre dispara política |

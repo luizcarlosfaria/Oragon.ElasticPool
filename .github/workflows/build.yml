@@ -32,12 +32,20 @@ jobs:
             10.0.x
 
       - name: dotnet restore
-        run: dotnet restore Oragon.AdaptivePool.slnx
+        run: dotnet restore Oragon.ElasticPool.slnx
+
+      - name: dotnet restore (LiveDashboard sample)
+        run: dotnet restore samples/Oragon.ElasticPool.RabbitMQ.Sample.LiveDashboard/Oragon.ElasticPool.RabbitMQ.Sample.LiveDashboard.slnx
 
       - name: dotnet build (Release, ${{ matrix.tfm }})
-        run: dotnet build Oragon.AdaptivePool.slnx -c Release --no-restore -f ${{ matrix.tfm }}
+        run: dotnet build Oragon.ElasticPool.slnx -c Release --no-restore -f ${{ matrix.tfm }}
         # Directory.Build.props sets TreatWarningsAsErrors=true. CI sets CI=true,
         # which activates ContinuousIntegrationBuild and DeterministicSourcePaths.
+
+      - name: dotnet build LiveDashboard sample (Release, ${{ matrix.tfm }})
+        run: >
+          dotnet build samples/Oragon.ElasticPool.RabbitMQ.Sample.LiveDashboard/Oragon.ElasticPool.RabbitMQ.Sample.LiveDashboard.slnx
+          -c Release --no-restore -f ${{ matrix.tfm }}
 
       # 100% OSS test stack: xUnit v3 + Microsoft.Testing.Platform.
       # global.json sets test.runner=Microsoft.Testing.Platform → dotnet test runs in MTP mode.
@@ -45,22 +53,22 @@ jobs:
       # IntegrationTests use Testcontainers (Docker is preinstalled on ubuntu-latest runners).
       - name: dotnet test (solution-wide; Stress excluded by IsTestProject=false)
         run: >
-          dotnet test --solution Oragon.AdaptivePool.slnx
+          dotnet test --solution Oragon.ElasticPool.slnx
           --configuration Release --no-build -f ${{ matrix.tfm }}
           -- --report-trx --results-directory $GITHUB_WORKSPACE/TestResults/${{ matrix.tfm }}
         env:
           DOCKER_HOST: unix:///var/run/docker.sock
 
-      # Coverage gate per CONTEXT.md: 90% line coverage on Oragon.AdaptivePool.Core only.
+      # Coverage gate per CONTEXT.md: 90% line coverage on Oragon.ElasticPool.Core only.
       # coverlet.msbuild integrates as MSBuild target — works under MTP without VSTest collectors.
       - name: coverage on Core (cobertura via coverlet.msbuild)
         run: >
-          dotnet test --project tests/Oragon.AdaptivePool.Core.Tests/Oragon.AdaptivePool.Core.Tests.csproj
+          dotnet test --project tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj
           --configuration Release --no-build -f ${{ matrix.tfm }}
           /p:CollectCoverage=true
           /p:CoverletOutputFormat=cobertura
           /p:CoverletOutput=$GITHUB_WORKSPACE/TestResults/${{ matrix.tfm }}/coverage.cobertura.xml
-          /p:Include='[Oragon.AdaptivePool.Core]*'
+          /p:Include='[Oragon.ElasticPool.Core]*'
           /p:Threshold=90
           /p:ThresholdType=line
           /p:ThresholdStat=total
@@ -82,7 +90,7 @@ jobs:
             -reports:"$REPORT" \
             -targetdir:"$GITHUB_WORKSPACE/TestResults/${{ matrix.tfm }}/coverage-report" \
             -reporttypes:'Html;TextSummary' \
-            -assemblyfilters:"+Oragon.AdaptivePool.Core"
+            -assemblyfilters:"+Oragon.ElasticPool.Core"
           cat "$GITHUB_WORKSPACE/TestResults/${{ matrix.tfm }}/coverage-report/Summary.txt"
 
       - name: upload coverage report (artifact)

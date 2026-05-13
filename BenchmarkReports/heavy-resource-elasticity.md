@@ -21,19 +21,19 @@ Primary metric: `logical retained MB = live instances x resource MB`. Managed he
 | NoPool | 10 | 100 | 100 | 72.55 | 300 | 300 | 0 | 0 | 0 | 0 | 0 | 0 |
 | NoPool | 11 | 10 | 10 | 76.00 | 30 | 30 | 0 | 0 | 0 | 0 | 0 | 0 |
 | NoPool | 12 | 1 | 1 | 78.98 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 |
-| AdaptivePool | 0 | 1 | 1 | 71.55 | 1 | 0 | 1 | 10 | 7 | 20 | 1 | 0 |
-| AdaptivePool | 1 | 10 | 10 | 20.50 | 1 | 1 | 1 | 10 | 10 | 30 | 1 | 0 |
-| AdaptivePool | 2 | 100 | 100 | 20.35 | 4 | 2 | 3 | 30 | 42 | 128 | 5 | 0 |
-| AdaptivePool | 3 | 1,000 | 1,000 | 20.43 | 77 | 0 | 80 | 800 | 786 | 2,373 | 80 | 0 |
-| AdaptivePool | 4 | 10,000 | 9,842 | 20.36 | 176 | 0 | 256 | 2,560 | 2,545 | 7,681 | 256 | 474 |
-| AdaptivePool | 5 | 20,000 | 12,593 | 19.77 | 0 | 0 | 256 | 2,560 | 2,560 | 7,732 | 256 | 22,222 |
-| AdaptivePool | 6 | 30,000 | 12,804 | 20.37 | 0 | 0 | 256 | 2,560 | 2,560 | 7,734 | 256 | 51,589 |
-| AdaptivePool | 7 | 20,000 | 12,568 | 20.33 | 0 | 0 | 256 | 2,560 | 2,560 | 7,729 | 256 | 22,295 |
-| AdaptivePool | 8 | 10,000 | 9,969 | 20.26 | 0 | 0 | 256 | 2,560 | 2,560 | 7,738 | 256 | 94 |
-| AdaptivePool | 9 | 1,000 | 1,000 | 20.32 | 0 | 0 | 256 | 2,560 | 2,560 | 7,728 | 256 | 0 |
-| AdaptivePool | 10 | 100 | 100 | 19.44 | 0 | 96 | 160 | 1,600 | 2,169 | 6,553 | 256 | 0 |
-| AdaptivePool | 11 | 10 | 10 | 20.34 | 0 | 96 | 64 | 640 | 1,203 | 3,633 | 160 | 0 |
-| AdaptivePool | 12 | 1 | 1 | 67.95 | 1 | 64 | 1 | 10 | 268 | 811 | 64 | 0 |
+| ElasticPool | 0 | 1 | 1 | 71.55 | 1 | 0 | 1 | 10 | 7 | 20 | 1 | 0 |
+| ElasticPool | 1 | 10 | 10 | 20.50 | 1 | 1 | 1 | 10 | 10 | 30 | 1 | 0 |
+| ElasticPool | 2 | 100 | 100 | 20.35 | 4 | 2 | 3 | 30 | 42 | 128 | 5 | 0 |
+| ElasticPool | 3 | 1,000 | 1,000 | 20.43 | 77 | 0 | 80 | 800 | 786 | 2,373 | 80 | 0 |
+| ElasticPool | 4 | 10,000 | 9,842 | 20.36 | 176 | 0 | 256 | 2,560 | 2,545 | 7,681 | 256 | 474 |
+| ElasticPool | 5 | 20,000 | 12,593 | 19.77 | 0 | 0 | 256 | 2,560 | 2,560 | 7,732 | 256 | 22,222 |
+| ElasticPool | 6 | 30,000 | 12,804 | 20.37 | 0 | 0 | 256 | 2,560 | 2,560 | 7,734 | 256 | 51,589 |
+| ElasticPool | 7 | 20,000 | 12,568 | 20.33 | 0 | 0 | 256 | 2,560 | 2,560 | 7,729 | 256 | 22,295 |
+| ElasticPool | 8 | 10,000 | 9,969 | 20.26 | 0 | 0 | 256 | 2,560 | 2,560 | 7,738 | 256 | 94 |
+| ElasticPool | 9 | 1,000 | 1,000 | 20.32 | 0 | 0 | 256 | 2,560 | 2,560 | 7,728 | 256 | 0 |
+| ElasticPool | 10 | 100 | 100 | 19.44 | 0 | 96 | 160 | 1,600 | 2,169 | 6,553 | 256 | 0 |
+| ElasticPool | 11 | 10 | 10 | 20.34 | 0 | 96 | 64 | 640 | 1,203 | 3,633 | 160 | 0 |
+| ElasticPool | 12 | 1 | 1 | 67.95 | 1 | 64 | 1 | 10 | 268 | 811 | 64 | 0 |
 | Microsoft.Extensions.ObjectPool | 0 | 1 | 1 | 67.92 | 1 | 0 | 1 | 10 | 7 | 20 | 1 | 0 |
 | Microsoft.Extensions.ObjectPool | 1 | 10 | 10 | 20.17 | 0 | 0 | 1 | 10 | 10 | 30 | 1 | 0 |
 | Microsoft.Extensions.ObjectPool | 2 | 100 | 100 | 20.31 | 5 | 0 | 6 | 60 | 58 | 176 | 6 | 0 |
@@ -53,12 +53,12 @@ Primary metric: `logical retained MB = live instances x resource MB`. Managed he
 | Strategy | Created during run | Disposed during run | Peak pool total | Retained MB*s | Average retained MB | Final retained MB |
 |---|---:|---:|---:|---:|---:|---:|
 | NoPool | 54,715 | 54,715 | 0 | 0 | 0 | 0 |
-| AdaptivePool | 260 | 260 | 256 | 59,888 | 1,525 | 0 |
+| ElasticPool | 260 | 260 | 256 | 59,888 | 1,525 | 0 |
 | Microsoft.Extensions.ObjectPool | 256 | 0 | 256 | 70,797 | 1,804 | 2,560 |
 
-## AdaptivePool vs ObjectPool logical retention
+## ElasticPool vs ObjectPool logical retention
 
-| Phase | Requested req/s | AdaptivePool retained MB | ObjectPool retained MB | ObjectPool excess MB | Retention factor |
+| Phase | Requested req/s | ElasticPool retained MB | ObjectPool retained MB | ObjectPool excess MB | Retention factor |
 |---:|---:|---:|---:|---:|---:|
 | 0 | 1 | 10 | 10 | 0 | 1.0x |
 | 1 | 10 | 10 | 10 | 0 | 1.0x |
@@ -79,5 +79,5 @@ Primary metric: `logical retained MB = live instances x resource MB`. Managed he
 | Strategy | Created | Disposed | Live | Logical retained MB | Logical disposed MB | Final managed MB | Final working set MB | Final pool total |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | NoPool | 54,715 | 54,715 | 0 | 0 | 547,150 | 11.5 | 7,619.0 | 0 |
-| AdaptivePool | 260 | 260 | 0 | 0 | 2,600 | 2,625.9 | 2,696.7 | 0 |
+| ElasticPool | 260 | 260 | 0 | 0 | 2,600 | 2,625.9 | 2,696.7 | 0 |
 | Microsoft.Extensions.ObjectPool | 256 | 0 | 256 | 2,560 | 0 | 2,601.9 | 2,693.6 | 256 |

@@ -1,0 +1,16 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.2.1">
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.RabbitMQ" Version="13.2.1" />
+    <ProjectReference Include="..\Oragon.ElasticPool.RabbitMQ.Sample.LiveDashboard.Web\Oragon.ElasticPool.RabbitMQ.Sample.LiveDashboard.Web.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworks>net10.0;net9.0;net8.0</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UserSecretsId>5ed10e3a-b070-4739-bfb4-c1e4d0bca7dc</UserSecretsId>
+  </PropertyGroup>
+
+</Project>

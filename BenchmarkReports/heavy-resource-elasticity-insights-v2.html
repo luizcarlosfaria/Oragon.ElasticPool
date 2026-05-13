@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Oragon.AdaptivePool - Elasticity Benchmark Brief</title>
+  <title>Oragon.ElasticPool - Elasticity Benchmark Brief</title>
   <style>
     :root {
       color-scheme: light;
@@ -380,7 +380,7 @@
   <div class="shell">
     <aside>
       <div class="brand">
-        <strong>Oragon.AdaptivePool</strong>
+        <strong>Oragon.ElasticPool</strong>
         <span>Elasticity benchmark brief</span>
       </div>
       <nav aria-label="Seções do relatório">
@@ -404,15 +404,15 @@
           <p class="eyebrow">Benchmark de elasticidade - 2026-05-07</p>
           <h1>O throughput empata no pico. A diferença aparece quando a pressão cai.</h1>
           <p class="lead">
-            AdaptivePool e ObjectPool atingem o mesmo limite prático com 256 recursos. Depois da rampa,
-            o AdaptivePool retorna para <strong>0 MB</strong> retidos, enquanto ObjectPool mantém
+            ElasticPool e ObjectPool atingem o mesmo limite prático com 256 recursos. Depois da rampa,
+            o ElasticPool retorna para <strong>0 MB</strong> retidos, enquanto ObjectPool mantém
             <strong>2.560 MB</strong> vivos no pool.
           </p>
         </div>
 
         <div class="scoreboard" aria-label="Placar principal">
           <div class="score-row">
-            <span>AdaptivePool em 30k</span>
+            <span>ElasticPool em 30k</span>
             <strong class="adaptive">12.804/s</strong>
           </div>
           <div class="score-row">
@@ -434,7 +434,7 @@
         <article class="tile">
           <small>Memória liberada</small>
           <strong class="adaptive">2.560 MB</strong>
-          <p>capacidade que AdaptivePool removeu após idle e ObjectPool manteve.</p>
+          <p>capacidade que ElasticPool removeu após idle e ObjectPool manteve.</p>
         </article>
         <article class="tile">
           <small>Retenção acumulada</small>
@@ -449,7 +449,7 @@
         <article class="tile">
           <small>Ciclo de vida</small>
           <strong class="adaptive">260/260</strong>
-          <p>instâncias criadas e descartadas pelo AdaptivePool.</p>
+          <p>instâncias criadas e descartadas pelo ElasticPool.</p>
         </article>
       </section>
 
@@ -485,7 +485,7 @@
             </svg>
           </div>
           <div class="legend">
-            <span class="adaptive"><i class="swatch"></i>AdaptivePool</span>
+            <span class="adaptive"><i class="swatch"></i>ElasticPool</span>
             <span class="objectpool"><i class="swatch"></i>ObjectPool</span>
             <span class="nopool"><i class="swatch"></i>Sem pool</span>
           </div>
@@ -578,7 +578,7 @@
               </thead>
               <tbody>
                 <tr>
-                  <td>AdaptivePool</td>
+                  <td>ElasticPool</td>
                   <td class="adaptive">12.804/s</td>
                   <td>20,37 ms</td>
                   <td>59.888</td>
@@ -608,7 +608,7 @@
           <h2>Mensagem recomendada</h2>
           <div class="callout">
             <p>
-              AdaptivePool não promete ultrapassar ObjectPool em throughput bruto no pico. Ele entrega
+              ElasticPool não promete ultrapassar ObjectPool em throughput bruto no pico. Ele entrega
               o mesmo teto operacional com política de ciclo de vida: cresce até 256 recursos quando a
               carga exige, reduz para 0 MB após repouso, e diminui a retenção acumulada de memória.
             </p>

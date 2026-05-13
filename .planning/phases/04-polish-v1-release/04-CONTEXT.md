@@ -18,7 +18,7 @@ Cruzar a barra de qualidade OSS e shipar v1.0 para NuGet.org. Objetivo: README q
 - **NuGet publish trigger**: GitHub Actions workflow específico (`.github/workflows/release.yml`) acionado em push de tag `v*`; usa secret `NUGET_API_KEY` (configurado no repo settings) para `dotnet nuget push`
 - **Pre-release strategy**: tagear `v1.0.0-rc.1` primeiro (RC = release candidate) → soak ~1 semana coletando feedback → tagear `v1.0.0` final se nenhum issue blocker surgir
 - **NuGet package metadata** (em `Directory.Build.props` ou per-csproj):
-  - PackageId: `Oragon.AdaptivePool.Core`, `Oragon.AdaptivePool.RabbitMQ`
+  - PackageId: `Oragon.ElasticPool.Core`, `Oragon.ElasticPool.RabbitMQ`
   - Description: clara, ~200 chars, mencionando "adaptive", "elastic", "lifecycle hooks"
   - Authors: `luizcarlosfaria`
   - RepositoryUrl: GitHub URL do projeto (placeholder até ter repo)
@@ -30,7 +30,7 @@ Cruzar a barra de qualidade OSS e shipar v1.0 para NuGet.org. Objetivo: README q
 ### README & Sample Documentation
 - **README structure** (em ordem visual de leitura):
   1. Header com badges (build status, NuGet version, downloads, license)
-  2. **30-second quickstart**: snippet copy-paste direto, mostra `services.AddAdaptivePool<T>(...)` + `IPoolItem<T>` em ~10 linhas runnable
+  2. **30-second quickstart**: snippet copy-paste direto, mostra `services.AddElasticPool<T>(...)` + `IPoolItem<T>` em ~10 linhas runnable
   3. **Feature highlights** em bullets (3 pilares: elasticidade, auto-cura, DX)
   4. **Comparação vs Microsoft.Extensions.ObjectPool** (tabela: bounds, elasticity, health, telemetry, async — que MS ObjectPool não tem)
   5. **RabbitMQ adapter** seção dedicada com layered exemplo
@@ -80,7 +80,7 @@ Cruzar a barra de qualidade OSS e shipar v1.0 para NuGet.org. Objetivo: README q
 ## Specific Ideas
 
 - **Comparação vs Microsoft.Extensions.ObjectPool é o "money shot" do README** — diferenciador central do produto. Tabela visual:
-  | Feature | M.E.OP | Oragon.AdaptivePool |
+  | Feature | M.E.OP | Oragon.ElasticPool |
   |---------|--------|---------------------|
   | Min/Max bounds | ❌ (só MaximumRetained) | ✅ |
   | Elastic grow under pressure | ❌ | ✅ (composite signal) |
@@ -105,7 +105,7 @@ Cruzar a barra de qualidade OSS e shipar v1.0 para NuGet.org. Objetivo: README q
 <deferred>
 ## Deferred Ideas
 
-- Aspire integration package (`Oragon.AdaptivePool.RabbitMQ.AspireClient`) — defer para v1.1+ baseado em demanda
+- Aspire integration package (`Oragon.ElasticPool.RabbitMQ.AspireClient`) — defer para v1.1+ baseado em demanda
 - Polly integration glue — defer
 - HttpClient/Npgsql adapters — defer (REQUIREMENTS marca v2/v3)
 - v2 features (quarantine policy, AfterUse ativo, MaxLifetime, DrainAsync explícito) — explicitamente fora deste milestone

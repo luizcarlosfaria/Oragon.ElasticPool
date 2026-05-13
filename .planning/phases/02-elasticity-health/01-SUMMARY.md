@@ -4,14 +4,14 @@ plan: 01
 subsystem: core-engine-elasticity-scaffold
 tags: [phase2, elasticity, sweeper, scaffold, internal-sealed, builder, options, public-api]
 requires:
-  - Phase 1 sealed AdaptivePool<T> engine + 12 public types + DI extension (Plan 1.03 baseline = 76 tests + PingPongStressTest green on net8/net9/net10)
+  - Phase 1 sealed ElasticPool<T> engine + 12 public types + DI extension (Plan 1.03 baseline = 76 tests + PingPongStressTest green on net8/net9/net10)
   - Phase 1 deviations carried forward (CPM pinned 10.0.6, xUnit1051 NoWarn, public Resource POCO, coverlet.console gate)
 provides:
   - 5 new internal sealed types under Internals/ (UtilizationSampler, WaitDurationHistogram, PressureSampler<T>, SweepBackoffState, BackgroundSweeper<T>)
-  - 8 new init-only properties on AdaptivePoolOptions<T> (locked Phase 2 defaults D-01..D-08)
-  - 7 new fluent methods on AdaptivePoolBuilder<T> (each validating; UtilizationWindow stays options-only)
-  - 13 new internal accessors on AdaptivePool<T> for Plan 02/03 (CurrentTotal/WaitersCount/Idle/Waiters/Options/Pressure/UtilSampler/WaitHistogram/BackoffState/Sweeper + IncrementSinceLastGrowTicks/SinceLastGrowTicks/ResetSinceLastGrowTicks)
-  - InternalsVisibleTo("Oragon.AdaptivePool.Core.Tests") in csproj so Plan 03 tests reach Sweeper.TickCompleted + all internal probes
+  - 8 new init-only properties on ElasticPoolOptions<T> (locked Phase 2 defaults D-01..D-08)
+  - 7 new fluent methods on ElasticPoolBuilder<T> (each validating; UtilizationWindow stays options-only)
+  - 13 new internal accessors on ElasticPool<T> for Plan 02/03 (CurrentTotal/WaitersCount/Idle/Waiters/Options/Pressure/UtilSampler/WaitHistogram/BackoffState/Sweeper + IncrementSinceLastGrowTicks/SinceLastGrowTicks/ResetSinceLastGrowTicks)
+  - InternalsVisibleTo("Oragon.ElasticPool.Core.Tests") in csproj so Plan 03 tests reach Sweeper.TickCompleted + all internal probes
   - PoolEntry<T> migrated record -> internal sealed class with mutable LastReturnedAt + Deconstruct(item, createdAt) compat
   - +23 lines on PublicAPI.Unshipped.txt (7 builder methods + 16 option get/init)
 affects:
@@ -20,7 +20,7 @@ affects:
   - Phase 1 DisposeAsync: now awaits _sweeper.DisposeAsync() BEFORE waiter+idle drain so sweep cannot race with TryDequeue.
   - Phase 1 slow-path AcquireAsync: Interlocked.Increment/Decrement on _waitersCount around the wait window (Plan 02 reads it via PressureSampler.Evaluate).
   - Plan 02 inherits: BackgroundSweeper.RunSweepTickAsync stub that increments cooldown counter and records clean sweep — Plan 02 replaces the body with health-check + shrink + telemetry.
-  - Plan 03 inherits: BackgroundSweeper.TickCompleted Task<>, BackgroundSweeper.TickCount long, all AdaptivePool<T> internal accessors via [InternalsVisibleTo].
+  - Plan 03 inherits: BackgroundSweeper.TickCompleted Task<>, BackgroundSweeper.TickCount long, all ElasticPool<T> internal accessors via [InternalsVisibleTo].
 tech-stack:
   added: []
   patterns:
@@ -32,23 +32,23 @@ tech-stack:
     - "Internal sealed class with [InternalsVisibleTo] for tests — preserves zero public surface for engine internals"
 key-files:
   created:
-    - src/Oragon.AdaptivePool.Core/Internals/UtilizationSampler.cs
-    - src/Oragon.AdaptivePool.Core/Internals/WaitDurationHistogram.cs
-    - src/Oragon.AdaptivePool.Core/Internals/PressureSampler.cs
-    - src/Oragon.AdaptivePool.Core/Internals/SweepBackoffState.cs
-    - src/Oragon.AdaptivePool.Core/Internals/BackgroundSweeper.cs
+    - src/Oragon.ElasticPool.Core/Internals/UtilizationSampler.cs
+    - src/Oragon.ElasticPool.Core/Internals/WaitDurationHistogram.cs
+    - src/Oragon.ElasticPool.Core/Internals/PressureSampler.cs
+    - src/Oragon.ElasticPool.Core/Internals/SweepBackoffState.cs
+    - src/Oragon.ElasticPool.Core/Internals/BackgroundSweeper.cs
   modified:
-    - src/Oragon.AdaptivePool.Core/Builder/AdaptivePoolOptions.cs
-    - src/Oragon.AdaptivePool.Core/Builder/AdaptivePoolBuilder.cs
-    - src/Oragon.AdaptivePool.Core/Internals/PoolEntry.cs
-    - src/Oragon.AdaptivePool.Core/Internals/AdaptivePool.cs
-    - src/Oragon.AdaptivePool.Core/Oragon.AdaptivePool.Core.csproj
-    - src/Oragon.AdaptivePool.Core/PublicAPI.Unshipped.txt
+    - src/Oragon.ElasticPool.Core/Builder/ElasticPoolOptions.cs
+    - src/Oragon.ElasticPool.Core/Builder/ElasticPoolBuilder.cs
+    - src/Oragon.ElasticPool.Core/Internals/PoolEntry.cs
+    - src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs
+    - src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj
+    - src/Oragon.ElasticPool.Core/PublicAPI.Unshipped.txt
 decisions:
   - "PoolEntry<T> migrated from `record` to `internal sealed class` because LastReturnedAt is written every return path; record-with churn would allocate a fresh entry on every return and shred the hot path. Internal-only type, so no public-surface impact. `Deconstruct(item, createdAt)` preserves any positional pattern usages from Phase 1 (none found, but kept for safety)."
   - "BackgroundSweeper<T>.RunSweepTickAsync body is intentionally a no-op stub for Plan 01 — only IncrementSinceLastGrowTicks() + OnSweepResult(0,0) (clean-sweep path). Plan 02 replaces the body with the real health-check + shrink + telemetry logic. This split is what keeps PingPongStressTest non-regressive: the Phase 1 fixed-size hot path doesn't see any new behavior from Phase 2 yet."
   - "Sweeper teardown is sequenced BEFORE waiter+idle drain in DisposeAsync. Cancelling _lifetimeCts unblocks WaitForNextTickAsync which terminates the sweep task; awaiting that completion ensures no concurrent _idle.TryDequeue with the drain loop. Documented in the threat model as T-02-01-02 (DoS mitigation)."
-  - "UtilizationWindow exposed only on AdaptivePoolOptions<T> (not on the builder). Builder uses the locked 30s default; tests in Plan 03 set it directly via the options surface or fall back to the default. Decided per CONTEXT.md 'Claude's Discretion' on what to surface fluently — keeping builder API smaller wins for v1."
+  - "UtilizationWindow exposed only on ElasticPoolOptions<T> (not on the builder). Builder uses the locked 30s default; tests in Plan 03 set it directly via the options surface or fall back to the default. Decided per CONTEXT.md 'Claude's Discretion' on what to surface fluently — keeping builder API smaller wins for v1."
   - "Builder.Build() validates GrowOnWaiterCount<=MaxSize (a >MaxSize trigger is unreachable) and SweepInterval<=MaxBackoff (else exponential backoff cannot apply). Validations chosen specifically because they catch misconfigurations that would silently degrade behavior."
   - "Sampling debounce = 1 second (TimeSpan.FromSeconds(1).Ticks) — independent of UtilizationWindow. CAS via Interlocked.CompareExchange on _lastSampleTicks ensures only one writer wins per second under contention; losers return without sampling. Per RESEARCH OQ #3 — cited inline in the file."
   - "_waitersCount is wrapped in try/finally around the WriteAsync + tcs.Task await. WriteAsync can throw on a completed channel (pool dispose); that path decrements explicitly. The outer finally covers normal completion + OperationCanceledException + the ObjectDisposedException-rethrow path. Net behavior: _waitersCount is always Interlocked-balanced even under cancellation/dispose races."
@@ -70,13 +70,13 @@ metrics:
 
 # Phase 2 Plan 01: Components & Builder Extensions Summary
 
-**One-liner:** Scaffolded all five Phase 2 internal sealed components (UtilizationSampler, WaitDurationHistogram, PressureSampler<T>, SweepBackoffState, BackgroundSweeper<T>), extended `AdaptivePoolOptions<T>` with 8 init-only Phase 2 tunables (locked defaults D-01..D-08) and `AdaptivePoolBuilder<T>` with 7 validating fluent methods, and wired the components into `AdaptivePool<T>`'s constructor and DisposeAsync — all without changing observable Phase 1 behavior. Phase 1 anchor stress (`PingPongStressTest`, MaxSize=1, 256 threads × 40 cycles) passes in ~300 ms across net8/net9/net10; all 76 Phase 1 unit tests pass on all 3 TFMs.
+**One-liner:** Scaffolded all five Phase 2 internal sealed components (UtilizationSampler, WaitDurationHistogram, PressureSampler<T>, SweepBackoffState, BackgroundSweeper<T>), extended `ElasticPoolOptions<T>` with 8 init-only Phase 2 tunables (locked defaults D-01..D-08) and `ElasticPoolBuilder<T>` with 7 validating fluent methods, and wired the components into `ElasticPool<T>`'s constructor and DisposeAsync — all without changing observable Phase 1 behavior. Phase 1 anchor stress (`PingPongStressTest`, MaxSize=1, 256 threads × 40 cycles) passes in ~300 ms across net8/net9/net10; all 76 Phase 1 unit tests pass on all 3 TFMs.
 
 ## What Was Built
 
 ### Task 1 — Options + Builder + PublicAPI deltas (commit `4faaf36`)
 
-**`AdaptivePoolOptions<T>`** gained 8 init-only properties:
+**`ElasticPoolOptions<T>`** gained 8 init-only properties:
 
 | Property | Type | Default | Source |
 | --- | --- | --- | --- |
@@ -89,7 +89,7 @@ metrics:
 | `SweepInterval` | `TimeSpan` | `30 s` | D-07 |
 | `MaxBackoff` | `TimeSpan` | `5 min` | D-08 |
 
-**`AdaptivePoolBuilder<T>`** gained 7 fluent methods, each validating its argument and returning `this`:
+**`ElasticPoolBuilder<T>`** gained 7 fluent methods, each validating its argument and returning `this`:
 
 | Method | Validation |
 | --- | --- |
@@ -129,7 +129,7 @@ All 5 files are `internal sealed` (verified by grep across all 5 files).
 - `DateTimeOffset LastReturnedAt { get; set; }` (mutable — written by engine on every return path)
 - `Deconstruct(out T item, out DateTimeOffset createdAt)` — preserves any positional pattern usages from Phase 1 (none in tree, but kept for forward-compat).
 
-**`Internals/AdaptivePool.cs`** wiring (additive only — no Phase 1 logic rewrites):
+**`Internals/ElasticPool.cs`** wiring (additive only — no Phase 1 logic rewrites):
 
 - 7 new private fields: `_utilSampler`, `_waitHistogram`, `_pressure`, `_backoffState`, `_sweeper`, `_waitersCount`, `_sinceLastGrowTicks`.
 - Ctor instantiates the 5 components (in the order: util → histogram → pressure → backoff → sweeper) BEFORE `WarmupTask = WarmupAsync(...)` so the sweep loop is running by the time warmup completes.
@@ -142,7 +142,7 @@ All 5 files are `internal sealed` (verified by grep across all 5 files).
 - Waiter slow path: `Interlocked.Increment(ref _waitersCount)` before `WriteAsync`; explicit `Decrement` in WriteAsync exception path; outer `finally` decrements after `tcs.Task` await regardless of completion / cancellation / dispose-rethrow. Net: counter is always Interlocked-balanced.
 - `DisposeAsync`: `await _sweeper.DisposeAsync()` is sequenced BEFORE the waiter channel `TryComplete` and the idle drain. Sweeper exit cannot race with the drain `_idle.TryDequeue`.
 
-**`Oragon.AdaptivePool.Core.csproj`** added `<InternalsVisibleTo Include="Oragon.AdaptivePool.Core.Tests" />` so Plan 03 can reach `BackgroundSweeper.TickCompleted`, `BackgroundSweeper.TickCount`, and the 13 new internal accessors on `AdaptivePool<T>`.
+**`Oragon.ElasticPool.Core.csproj`** added `<InternalsVisibleTo Include="Oragon.ElasticPool.Core.Tests" />` so Plan 03 can reach `BackgroundSweeper.TickCompleted`, `BackgroundSweeper.TickCount`, and the 13 new internal accessors on `ElasticPool<T>`.
 
 ## Verification
 
@@ -158,7 +158,7 @@ net8.0   Stress dll (PingPong)      ->  total: 1,  failed: 0, succeeded: 1,  dur
 
 228 unit-test invocations + 3 stress invocations across all 3 TFMs. Zero failures. The Phase 1 anchor gate (`PingPongStressTest`, success criterion 2) is non-regressive under Phase 2 wiring.
 
-Note on `dotnet test` invocation: this project uses MTP-style test execution. Running `dotnet test --project ...` triggers the MTP `--report-trx` injection bug carried forward from Phase 1 (Plan 1.03 deviation #5). Run the test DLL directly: `dotnet bin/Debug/<tfm>/Oragon.AdaptivePool.Core.Tests.dll` and `dotnet bin/Release/<tfm>/Oragon.AdaptivePool.Core.Stress.dll`. CI uses the coverlet.console wrapper as documented in Phase 1 SUMMARY.
+Note on `dotnet test` invocation: this project uses MTP-style test execution. Running `dotnet test --project ...` triggers the MTP `--report-trx` injection bug carried forward from Phase 1 (Plan 1.03 deviation #5). Run the test DLL directly: `dotnet bin/Debug/<tfm>/Oragon.ElasticPool.Core.Tests.dll` and `dotnet bin/Release/<tfm>/Oragon.ElasticPool.Core.Stress.dll`. CI uses the coverlet.console wrapper as documented in Phase 1 SUMMARY.
 
 ## Deviations from Plan
 
@@ -166,8 +166,8 @@ Note on `dotnet test` invocation: this project uses MTP-style test execution. Ru
 
 **1. [Rule 3 — Blocking inter-task dependency] Task 2 standalone build temporarily fails until Task 3 lands**
 
-- **Found during:** Task 2 verify step (`dotnet build src/Oragon.AdaptivePool.Core/Oragon.AdaptivePool.Core.csproj`).
-- **Issue:** `BackgroundSweeper.RunSweepTickAsync` calls `_pool.IncrementSinceLastGrowTicks()`, but `IncrementSinceLastGrowTicks` is added to `AdaptivePool<T>` only in Task 3. Task 2's standalone verify therefore reports `error CS1061: 'AdaptivePool<T>' does not contain a definition for 'IncrementSinceLastGrowTicks'`. The plan documents this as expected — Task 2's note: *"Note: BackgroundSweeper<T> is generic on T so it can carry AdaptivePool<T> reference"* implies the cross-reference is intentional.
+- **Found during:** Task 2 verify step (`dotnet build src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj`).
+- **Issue:** `BackgroundSweeper.RunSweepTickAsync` calls `_pool.IncrementSinceLastGrowTicks()`, but `IncrementSinceLastGrowTicks` is added to `ElasticPool<T>` only in Task 3. Task 2's standalone verify therefore reports `error CS1061: 'ElasticPool<T>' does not contain a definition for 'IncrementSinceLastGrowTicks'`. The plan documents this as expected — Task 2's note: *"Note: BackgroundSweeper<T> is generic on T so it can carry ElasticPool<T> reference"* implies the cross-reference is intentional.
 - **Fix:** Committed Task 2's 5 files as the deliverable (the components themselves are correct), proceeded to Task 3 immediately, and treated the combined build at end of Task 3 as the actual verify gate. Task 3's verify passes (4 projects, 0 errors). No code change to either Task 2 or Task 3 was required — only the verify-gate timing was adjusted.
 - **Files modified:** none beyond the planned set.
 - **Commit:** N/A (process deviation, not code).
@@ -175,8 +175,8 @@ Note on `dotnet test` invocation: this project uses MTP-style test execution. Ru
 **2. [Rule 3 — Blocking] `dotnet test --project` fails with MTP `--report-trx` injection — already documented in Phase 1**
 
 - **Found during:** Task 3 verify step.
-- **Issue:** `dotnet test --project tests/Oragon.AdaptivePool.Core.Tests/...csproj` reports `Test run summary: Zero tests ran, error: 3` because the MTP runner injects `--report-trx` which the xUnit v3 test executable rejects.
-- **Fix:** Switched verify to direct `dotnet bin/Debug/<tfm>/Oragon.AdaptivePool.Core.Tests.dll` execution per Phase 1 SUMMARY deviation #5 (the same coverlet-wrapper rationale). All 76 tests × 3 TFMs pass.
+- **Issue:** `dotnet test --project tests/Oragon.ElasticPool.Core.Tests/...csproj` reports `Test run summary: Zero tests ran, error: 3` because the MTP runner injects `--report-trx` which the xUnit v3 test executable rejects.
+- **Fix:** Switched verify to direct `dotnet bin/Debug/<tfm>/Oragon.ElasticPool.Core.Tests.dll` execution per Phase 1 SUMMARY deviation #5 (the same coverlet-wrapper rationale). All 76 tests × 3 TFMs pass.
 - **Files modified:** none.
 - **Commit:** N/A (verify-step adjustment, not code).
 
@@ -195,13 +195,13 @@ Plan 02 inherits a stable scaffold. Specific TODO sites:
 
 1. **`Internals/BackgroundSweeper.cs:RunSweepTickAsync`** — the body is the stub `_pool.IncrementSinceLastGrowTicks(); _backoff.OnSweepResult(0, 0);`. Plan 02 replaces it with: `Check`-hook iteration over each idle entry, eviction of `Unhealthy` items (via `_pool.Options.Release` + `Interlocked.Decrement(ref _pool._total)` exposed indirectly through a new internal helper), shrink pass over idle entries older than `IdleTimeout` while `SinceLastGrowTicks >= ShrinkCooldownWindows && CurrentTotal > MinSize`, telemetry counter emission (`pool.shrink.count`, `pool.health.failures`), and `_backoff.OnSweepResult(realTotalChecked, realUnhealthy)`.
 
-2. **`Internals/AdaptivePool.cs:AcquireAsyncCore`** — the slow path is still the Phase 1 CAS loop. Plan 02 needs to:
+2. **`Internals/ElasticPool.cs:AcquireAsyncCore`** — the slow path is still the Phase 1 CAS loop. Plan 02 needs to:
    - Insert a `_pressure.Evaluate(currentTotal, _waitersCount)` call between the CAS-grow loop and the WaitBehavior fork, so the composite-signal grow path can fire when `_pressure.Evaluate(...).ShouldGrow` is true even before waiters park.
    - Wire `_waitHistogram.Record(elapsed)` after the `tcs.Task` await completes (covers both fast direct-handoff and slow grow-and-handoff completion). Use `Stopwatch.StartNew()` at the top of the slow path or compute `_time.GetUtcNow() - waitStart` if you want determinism under `FakeTimeProvider`.
 
-3. **`Internals/AdaptivePool.cs` grow-success site** — wherever Plan 02 adds the actual grow decision, call `ResetSinceLastGrowTicks()` to start the cooldown countdown. The internal accessor is already in place.
+3. **`Internals/ElasticPool.cs` grow-success site** — wherever Plan 02 adds the actual grow decision, call `ResetSinceLastGrowTicks()` to start the cooldown countdown. The internal accessor is already in place.
 
-4. **Plan 02's new `<files_modified>` frontmatter** — add `src/Oragon.AdaptivePool.Core/Internals/AdaptivePool.cs` to the list. The plan-checker flagged this as missing from Plan 02's frontmatter; Plan 01 surfaces it here so it's not lost.
+4. **Plan 02's new `<files_modified>` frontmatter** — add `src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs` to the list. The plan-checker flagged this as missing from Plan 02's frontmatter; Plan 01 surfaces it here so it's not lost.
 
 5. **PublicAPI deltas Plan 02 will add** — the new options for `pool.acquire.wait.duration` histogram bucket boundaries (if Plan 02 chooses to expose them) need fresh `PublicAPI.Unshipped.txt` entries. Plan 01 did NOT touch the histogram-buckets surface.
 
@@ -211,24 +211,24 @@ Plan 02 inherits a stable scaffold. Specific TODO sites:
 
 | Task | Hash      | Message |
 | ---- | --------- | ------- |
-| 1    | `4faaf36` | feat(02-01): extend AdaptivePoolOptions+Builder with Phase 2 tunables |
+| 1    | `4faaf36` | feat(02-01): extend ElasticPoolOptions+Builder with Phase 2 tunables |
 | 2    | `3bdb3f7` | feat(02-01): add 5 internal sealed Phase 2 components |
-| 3    | `6f9ae22` | feat(02-01): wire Phase 2 components into AdaptivePool<T> |
+| 3    | `6f9ae22` | feat(02-01): wire Phase 2 components into ElasticPool<T> |
 
 ## Self-Check: PASSED
 
 - All 5 created files exist on disk:
-  - `src/Oragon.AdaptivePool.Core/Internals/UtilizationSampler.cs` ✓
-  - `src/Oragon.AdaptivePool.Core/Internals/WaitDurationHistogram.cs` ✓
-  - `src/Oragon.AdaptivePool.Core/Internals/PressureSampler.cs` ✓
-  - `src/Oragon.AdaptivePool.Core/Internals/SweepBackoffState.cs` ✓
-  - `src/Oragon.AdaptivePool.Core/Internals/BackgroundSweeper.cs` ✓
+  - `src/Oragon.ElasticPool.Core/Internals/UtilizationSampler.cs` ✓
+  - `src/Oragon.ElasticPool.Core/Internals/WaitDurationHistogram.cs` ✓
+  - `src/Oragon.ElasticPool.Core/Internals/PressureSampler.cs` ✓
+  - `src/Oragon.ElasticPool.Core/Internals/SweepBackoffState.cs` ✓
+  - `src/Oragon.ElasticPool.Core/Internals/BackgroundSweeper.cs` ✓
 - All 6 modified files reflect documented changes (verified via `git diff` against parent tip).
 - All 3 task commits exist in `git log` (`4faaf36`, `3bdb3f7`, `6f9ae22`) — verified.
 - `dotnet build` exits 0 (4 projects, 0 errors, 6 carry-forward Phase 1 SourceLink warnings).
 - 76 tests × 3 TFMs (228 invocations, 0 failures) — verified per-TFM dll execution.
 - PingPongStressTest × 3 TFMs (3 invocations, 0 failures, ≤ 301 ms each).
 - `grep -c LastReturnedAt PoolEntry.cs` -> 4 (>= 1).
-- `grep -c "_sweeper" AdaptivePool.cs` -> 4 (>= 3 for field + ctor + DisposeAsync).
+- `grep -c "_sweeper" ElasticPool.cs` -> 4 (>= 3 for field + ctor + DisposeAsync).
 - `internal sealed` declared on each of the 5 new component files.
 - PublicAPI.Unshipped.txt diff is exactly +23 lines (verified via `git diff --stat`).

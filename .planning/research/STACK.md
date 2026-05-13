@@ -1,4 +1,4 @@
-# Stack Research — Oragon.AdaptivePool
+# Stack Research — Oragon.ElasticPool
 
 **Domain:** Multi-target .NET OSS NuGet library (in-process pooling primitive + RabbitMQ adapter)
 **Researched:** 2026-05-03
@@ -34,14 +34,14 @@ deterministic builds for source debugging.
 | `System.Threading.Channels` | BCL (in-box) | Bounded waiter queue for `AcquireAsync` under pressure | Lock-free, async-aware producer/consumer; ideal for waiter queue with cancellation |
 | `IAsyncDisposable` / `ValueTask` | BCL (in-box) | Async disposal of `IPoolItem<T>`, allocation-free hot paths | Both are in-box on net8+; no `System.Threading.Tasks.Extensions` needed |
 
-### Core Package Dependencies (Oragon.AdaptivePool.Core)
+### Core Package Dependencies (Oragon.ElasticPool.Core)
 
 **Keep this list short. Every package added here becomes a transitive burden on every consumer.**
 
 | Package | Version | Purpose | Why minimal-cost |
 |---------|---------|---------|------------------|
 | `Microsoft.Extensions.Logging.Abstractions` | **10.0.x** (latest 10.0.5+) | `ILogger<T>` for state-transition logs | Only pulls `M.E.DependencyInjection.Abstractions`; no implementations |
-| `Microsoft.Extensions.DependencyInjection.Abstractions` | **10.0.x** (latest 10.0.6+) | `IServiceCollection` extension `AddAdaptivePool<T>(...)` | Pure interfaces; no container implementation pulled in |
+| `Microsoft.Extensions.DependencyInjection.Abstractions` | **10.0.x** (latest 10.0.6+) | `IServiceCollection` extension `AddElasticPool<T>(...)` | Pure interfaces; no container implementation pulled in |
 | `Microsoft.SourceLink.GitHub` | **8.0.0** | Embed source-link metadata at build time | `PrivateAssets="all"` — does NOT propagate to consumers |
 | `MinVer` | **6.0.0** | Tag-driven SemVer 2.0 versioning at build time | `PrivateAssets="all"` — build-only, zero runtime cost |
 
@@ -49,13 +49,13 @@ deterministic builds for source debugging.
 
 > **Critical:** Do NOT add `Microsoft.Extensions.Logging`, `Microsoft.Extensions.DependencyInjection` (the implementation), `Microsoft.Extensions.Hosting`, `Microsoft.Extensions.Options`, or `Microsoft.Extensions.Configuration` to Core. These are application-layer concerns.
 
-### RabbitMQ Adapter Dependencies (Oragon.AdaptivePool.RabbitMQ)
+### RabbitMQ Adapter Dependencies (Oragon.ElasticPool.RabbitMQ)
 
 | Package | Version | Purpose | Why |
 |---------|---------|---------|-----|
-| `Oragon.AdaptivePool.Core` | (matching) | Project reference / NuGet | The pool primitive |
+| `Oragon.ElasticPool.Core` | (matching) | Project reference / NuGet | The pool primitive |
 | `RabbitMQ.Client` | **7.2.1** (or `[7.0.0,8.0.0)`) | `IConnection`/`IChannel` to be pooled | v7.x is async-first; `IModel` was renamed `IChannel`; `BasicProperties` is now a value type you `new` — old samples will mislead |
-| `Microsoft.Extensions.DependencyInjection.Abstractions` | 10.0.x | `services.AddAdaptiveConnectionPool(...)` extensions | Same minimalist DI surface as Core |
+| `Microsoft.Extensions.DependencyInjection.Abstractions` | 10.0.x | `services.AddElasticConnectionPool(...)` extensions | Same minimalist DI surface as Core |
 | `Microsoft.Extensions.Logging.Abstractions` | 10.0.x | Adapter-level logging | Same as Core |
 
 **RabbitMQ.Client v7 specifics that affect adapter design:**
@@ -166,7 +166,7 @@ Rationale: `ContinuousIntegrationBuild=true` normalizes file paths in CI (differ
 ```
 
 ```xml
-<!-- src/Oragon.AdaptivePool.Core/Oragon.AdaptivePool.Core.csproj -->
+<!-- src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj -->
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>net10.0;net9.0;net8.0</TargetFrameworks>
@@ -174,7 +174,7 @@ Rationale: `ContinuousIntegrationBuild=true` normalizes file paths in CI (differ
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <IsPackable>true</IsPackable>
-    <PackageId>Oragon.AdaptivePool.Core</PackageId>
+    <PackageId>Oragon.ElasticPool.Core</PackageId>
     <Description>Generic, elastic in-process object pool for .NET with health auto-healing and built-in observability.</Description>
     <PackageTags>pool;objectpool;adaptive;elastic;async;observability;opentelemetry</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -250,7 +250,7 @@ Rationale: `ContinuousIntegrationBuild=true` normalizes file paths in CI (differ
 ## Stack Patterns by Variant
 
 **If consumer is OTel-instrumented:**
-- Library is automatically picked up — `Meter` name `"Oragon.AdaptivePool"` and ActivitySource name `"Oragon.AdaptivePool"` are conventions; consumer adds `.AddMeter("Oragon.AdaptivePool")` / `.AddSource("Oragon.AdaptivePool")` to their OTel pipeline.
+- Library is automatically picked up — `Meter` name `"Oragon.ElasticPool"` and ActivitySource name `"Oragon.ElasticPool"` are conventions; consumer adds `.AddMeter("Oragon.ElasticPool")` / `.AddSource("Oragon.ElasticPool")` to their OTel pipeline.
 
 **If consumer is using Aspire (.NET Aspire dashboard):**
 - Standard OTel exposure works out of the box. No special handling needed beyond standard names.
@@ -262,7 +262,7 @@ Rationale: `ContinuousIntegrationBuild=true` normalizes file paths in CI (differ
 - **Not supported.** Document this as a non-goal in README. Backporting requires polyfills for `IAsyncDisposable`, `Channel<T>`, `ActivitySource`, `IMeterFactory` — large attack surface for a tiny user population.
 
 **If RabbitMQ.Client v8 ships:**
-- Treat as a separate adapter package version (e.g., `Oragon.AdaptivePool.RabbitMQ` 2.x for v8). Don't try to multi-target the client. v7 → v8 is unlikely to be drastic given v7 just stabilized.
+- Treat as a separate adapter package version (e.g., `Oragon.ElasticPool.RabbitMQ` 2.x for v8). Don't try to multi-target the client. v7 → v8 is unlikely to be drastic given v7 just stabilized.
 
 ## Version Compatibility
 
@@ -289,15 +289,15 @@ Rationale: `ContinuousIntegrationBuild=true` normalizes file paths in CI (differ
     workflows/release.yml         # Triggered on tag push; calls dotnet pack + push
     dependabot.yml
   src/
-    Oragon.AdaptivePool.Core/
-    Oragon.AdaptivePool.RabbitMQ/
+    Oragon.ElasticPool.Core/
+    Oragon.ElasticPool.RabbitMQ/
   tests/
-    Oragon.AdaptivePool.Core.Tests/
-    Oragon.AdaptivePool.Core.IntegrationTests/   # stress, concurrency
-    Oragon.AdaptivePool.RabbitMQ.Tests/
-    Oragon.AdaptivePool.RabbitMQ.IntegrationTests/  # uses Testcontainers
+    Oragon.ElasticPool.Core.Tests/
+    Oragon.ElasticPool.Core.IntegrationTests/   # stress, concurrency
+    Oragon.ElasticPool.RabbitMQ.Tests/
+    Oragon.ElasticPool.RabbitMQ.IntegrationTests/  # uses Testcontainers
   bench/
-    Oragon.AdaptivePool.Benchmarks/
+    Oragon.ElasticPool.Benchmarks/
   samples/
     PublisherSample/              # the motivating "few/hour to 100k simultaneous" demo
   README.md

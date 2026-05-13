@@ -1,7 +1,7 @@
 <!-- GSD:project-start source:PROJECT.md -->
 ## Project
 
-**Oragon.AdaptivePool**
+**Oragon.ElasticPool**
 
 Biblioteca .NET genérica para pools de objetos pesados que **se adaptam** à pressão real
 da aplicação — crescem sob carga, encolhem na ociosidade, e auto-curam instâncias quebradas
@@ -42,19 +42,19 @@ juntos são o produto e nenhum pode ser sacrificado.
 | `System.Diagnostics.ActivitySource` | BCL (in-box) | Tracing on Acquire/Release/HealthCheck | OTel reads ActivitySource directly — no extra package needed |
 | `System.Threading.Channels` | BCL (in-box) | Bounded waiter queue for `AcquireAsync` under pressure | Lock-free, async-aware producer/consumer; ideal for waiter queue with cancellation |
 | `IAsyncDisposable` / `ValueTask` | BCL (in-box) | Async disposal of `IPoolItem<T>`, allocation-free hot paths | Both are in-box on net8+; no `System.Threading.Tasks.Extensions` needed |
-### Core Package Dependencies (Oragon.AdaptivePool.Core)
+### Core Package Dependencies (Oragon.ElasticPool.Core)
 | Package | Version | Purpose | Why minimal-cost |
 |---------|---------|---------|------------------|
 | `Microsoft.Extensions.Logging.Abstractions` | **10.0.x** (latest 10.0.5+) | `ILogger<T>` for state-transition logs | Only pulls `M.E.DependencyInjection.Abstractions`; no implementations |
-| `Microsoft.Extensions.DependencyInjection.Abstractions` | **10.0.x** (latest 10.0.6+) | `IServiceCollection` extension `AddAdaptivePool<T>(...)` | Pure interfaces; no container implementation pulled in |
+| `Microsoft.Extensions.DependencyInjection.Abstractions` | **10.0.x** (latest 10.0.6+) | `IServiceCollection` extension `AddElasticPool<T>(...)` | Pure interfaces; no container implementation pulled in |
 | `Microsoft.SourceLink.GitHub` | **8.0.0** | Embed source-link metadata at build time | `PrivateAssets="all"` — does NOT propagate to consumers |
 | `MinVer` | **6.0.0** | Tag-driven SemVer 2.0 versioning at build time | `PrivateAssets="all"` — build-only, zero runtime cost |
-### RabbitMQ Adapter Dependencies (Oragon.AdaptivePool.RabbitMQ)
+### RabbitMQ Adapter Dependencies (Oragon.ElasticPool.RabbitMQ)
 | Package | Version | Purpose | Why |
 |---------|---------|---------|-----|
-| `Oragon.AdaptivePool.Core` | (matching) | Project reference / NuGet | The pool primitive |
+| `Oragon.ElasticPool.Core` | (matching) | Project reference / NuGet | The pool primitive |
 | `RabbitMQ.Client` | **7.2.1** (or `[7.0.0,8.0.0)`) | `IConnection`/`IChannel` to be pooled | v7.x is async-first; `IModel` was renamed `IChannel`; `BasicProperties` is now a value type you `new` — old samples will mislead |
-| `Microsoft.Extensions.DependencyInjection.Abstractions` | 10.0.x | `services.AddAdaptiveConnectionPool(...)` extensions | Same minimalist DI surface as Core |
+| `Microsoft.Extensions.DependencyInjection.Abstractions` | 10.0.x | `services.AddElasticConnectionPool(...)` extensions | Same minimalist DI surface as Core |
 | `Microsoft.Extensions.Logging.Abstractions` | 10.0.x | Adapter-level logging | Same as Core |
 ### Test Project Dependencies
 | Package | Version | Purpose | Why |
@@ -145,11 +145,11 @@ juntos são o produto e nenhum pode ser sacrificado.
 | **`net6.0` / `net7.0` / `netstandard2.0` targeting** | Both EOL; `netstandard2.0` would force polyfills for `IAsyncDisposable`, `Channel<T>`, `ActivitySource` | Drop them; require net8+ |
 | **`AssemblyVersion` hand-edits** | Drift between `AssemblyVersion`, `FileVersion`, `PackageVersion` is a recurring bug | MinVer manages all three from one git tag |
 ## Stack Patterns by Variant
-- Library is automatically picked up — `Meter` name `"Oragon.AdaptivePool"` and ActivitySource name `"Oragon.AdaptivePool"` are conventions; consumer adds `.AddMeter("Oragon.AdaptivePool")` / `.AddSource("Oragon.AdaptivePool")` to their OTel pipeline.
+- Library is automatically picked up — `Meter` name `"Oragon.ElasticPool"` and ActivitySource name `"Oragon.ElasticPool"` are conventions; consumer adds `.AddMeter("Oragon.ElasticPool")` / `.AddSource("Oragon.ElasticPool")` to their OTel pipeline.
 - Standard OTel exposure works out of the box. No special handling needed beyond standard names.
 - Same package works; we ship binaries for net8.0/net9.0/net10.0; NuGet picks the best match.
 - **Not supported.** Document this as a non-goal in README. Backporting requires polyfills for `IAsyncDisposable`, `Channel<T>`, `ActivitySource`, `IMeterFactory` — large attack surface for a tiny user population.
-- Treat as a separate adapter package version (e.g., `Oragon.AdaptivePool.RabbitMQ` 2.x for v8). Don't try to multi-target the client. v7 → v8 is unlikely to be drastic given v7 just stabilized.
+- Treat as a separate adapter package version (e.g., `Oragon.ElasticPool.RabbitMQ` 2.x for v8). Don't try to multi-target the client. v7 → v8 is unlikely to be drastic given v7 just stabilized.
 ## Version Compatibility
 | Package A | Compatible With | Notes |
 |-----------|-----------------|-------|
@@ -193,7 +193,7 @@ xUnit v3 + Microsoft.Testing.Platform. **Zero VSTest dependencies.**
 
 **Run tests:**
 
-- `dotnet test --solution Oragon.AdaptivePool.sln` — discovers all test projects in the solution and runs them via MTP. Works uniformly on Windows / Linux / macOS. Stress is excluded automatically via `<IsTestProject>false</IsTestProject>`.
+- `dotnet test --solution Oragon.ElasticPool.sln` — discovers all test projects in the solution and runs them via MTP. Works uniformly on Windows / Linux / macOS. Stress is excluded automatically via `<IsTestProject>false</IsTestProject>`.
 - `dotnet test --project tests/<Project>/<Project>.csproj` — targeted single-project run.
 - `dotnet run --project tests/<Project>` — direct MTP self-exec; fastest for local iteration; accepts MTP-native flags (`--filter-trait`, `--report-trx`, etc.).
 - **In IDE**: VS 2022 17.14+, JetBrains Rider, and VS Code (C# Dev Kit) discover MTP tests natively. No VSTest adapter required.
@@ -218,7 +218,7 @@ xUnit v3 + Microsoft.Testing.Platform. **Zero VSTest dependencies.**
 - `Microsoft.NET.Test.Sdk` (VSTest SDK)
 - `NSubstitute` (replaced by `Moq` for community familiarity)
 
-**Coverage gate:** 90% line on `Oragon.AdaptivePool.Core` only, enforced via `coverlet.msbuild` `/p:Threshold=90 /p:ThresholdType=line`.
+**Coverage gate:** 90% line on `Oragon.ElasticPool.Core` only, enforced via `coverlet.msbuild` `/p:Threshold=90 /p:ThresholdType=line`.
 
 **Critical config:** `global.json` MUST have `"test": { "runner": "Microsoft.Testing.Platform" }` to force MTP mode on `dotnet test`. Project root has `NuGet.Config` that clears inherited `<fallbackPackageFolders>` for OS-agnostic restore.
 

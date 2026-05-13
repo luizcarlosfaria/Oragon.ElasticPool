@@ -1,4 +1,4 @@
-# Architecture Research — Oragon.AdaptivePool
+# Architecture Research — Oragon.ElasticPool
 
 **Domain:** Multi-target .NET OSS NuGet pooling library + RabbitMQ adapter
 **Researched:** 2026-05-03
@@ -12,9 +12,9 @@ The architecture is two NuGet packages with a thin, deliberately small public su
 2. **`Channel<TaskCompletionSource<PoolEntry<T>>>`** — bounded FIFO **waiter queue** with built-in cancellation and back-pressure (replaces hand-rolled `SemaphoreSlim`+queue dance).
 3. **`PeriodicTimer`** — drift-free background sweep loop for shrink + health-check passes (in-box since .NET 6, single-consumer model fits perfectly).
 
-A **single sealed `AdaptivePool<T>` class** owns all internal state. It is constructed only by an immutable `AdaptivePoolOptions<T>` config record (frozen by the fluent builder's `Build()`). Adapters (RabbitMQ) are pure consumers of the public API — they call `AdaptiveObjectPoolFactory.Build<T>(...)` with their own factory/hooks. Layered pools are composed at the **adapter** layer (channel pool's `Factory` hook acquires from the connection pool); Core has no concept of "layered pool" — keeping the abstraction clean.
+A **single sealed `ElasticPool<T>` class** owns all internal state. It is constructed only by an immutable `ElasticPoolOptions<T>` config record (frozen by the fluent builder's `Build()`). Adapters (RabbitMQ) are pure consumers of the public API — they call `ElasticObjectPoolFactory.Build<T>(...)` with their own factory/hooks. Layered pools are composed at the **adapter** layer (channel pool's `Factory` hook acquires from the connection pool); Core has no concept of "layered pool" — keeping the abstraction clean.
 
-Telemetry follows OpenTelemetry semantic conventions (`db.client.connection.*` model adapted to `pool.*` namespace) with a single `Meter` named `"Oragon.AdaptivePool"` and a single `ActivitySource` of the same name.
+Telemetry follows OpenTelemetry semantic conventions (`db.client.connection.*` model adapted to `pool.*` namespace) with a single `Meter` named `"Oragon.ElasticPool"` and a single `ActivitySource` of the same name.
 
 Build order: ship the **fixed-size pool with hooks + telemetry first** (Phase 1 proves the API surface and DX); add **elasticity (grow + shrink + sweep)** as the marquee differentiator (Phase 2); add **RabbitMQ adapter** (Phase 3) — the layered composition exercises both inner and outer failure-policy paths and validates the abstraction.
 
@@ -27,17 +27,17 @@ Build order: ship the **fixed-size pool with hooks + telemetry first** (Phase 1 
 │                       Consumer Application                           │
 │           (publisher, worker, ASP.NET Core, etc.)                    │
 └────────────────────────┬────────────────────────────────────────────┘
-                         │  IServiceCollection.AddAdaptive*
-                         │  Inject IAdaptivePool<T> / IPoolItem<T>
+                         │  IServiceCollection.AddElastic*
+                         │  Inject IElasticPool<T> / IPoolItem<T>
                          ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│              Oragon.AdaptivePool.RabbitMQ (adapter)                 │
+│              Oragon.ElasticPool.RabbitMQ (adapter)                 │
 │  ┌─────────────────────────┐    ┌─────────────────────────────┐     │
-│  │ AddAdaptive             │    │ AddAdaptive                 │     │
+│  │ AddElastic             │    │ AddElastic                 │     │
 │  │  ConnectionPool(...)    │    │  ChannelPool(...)           │     │
 │  └────────────┬────────────┘    └─────────────┬───────────────┘     │
 │               │ builds                        │ builds              │
-│               │ IAdaptivePool<IConnection>    │ IAdaptivePool<IChannel> │
+│               │ IElasticPool<IConnection>    │ IElasticPool<IChannel> │
 │               │ via Core builder              │ whose Factory pulls │
 │               │                               │ from the connection │
 │               │                               │ pool above          │
@@ -45,23 +45,23 @@ Build order: ship the **fixed-size pool with hooks + telemetry first** (Phase 1 
                 │                               │
                 ▼                               ▼ (depends on inner pool at runtime)
 ┌─────────────────────────────────────────────────────────────────────┐
-│                  Oragon.AdaptivePool.Core (public API)              │
+│                  Oragon.ElasticPool.Core (public API)              │
 │  ┌─────────────────────┐  ┌─────────────────────┐                   │
-│  │ IAdaptivePool<T>    │  │ IPoolItem<T>        │                   │
+│  │ IElasticPool<T>    │  │ IPoolItem<T>        │                   │
 │  │  Acquire / Async    │  │  .Object  IDisposable│                  │
 │  └─────────────────────┘  └─────────────────────┘                   │
 │  ┌─────────────────────┐  ┌─────────────────────┐                   │
-│  │ AdaptiveObjectPool  │  │ AdaptivePoolOptions │                   │
+│  │ AdaptiveObjectPool  │  │ ElasticPoolOptions │                   │
 │  │  Factory.Build<T>() │  │  <T>  (record)      │                   │
 │  └─────────────────────┘  └─────────────────────┘                   │
 │  ┌─────────────────────┐  ┌─────────────────────┐                   │
 │  │ IItemFailurePolicy<T>│ │ DI extensions       │                   │
-│  │  + Discard default  │  │ AddAdaptivePool<T>  │                   │
+│  │  + Discard default  │  │ AddElasticPool<T>  │                   │
 │  └─────────────────────┘  └─────────────────────┘                   │
 ├─────────────────────────────────────────────────────────────────────┤
-│              Oragon.AdaptivePool.Core (internal engine)             │
+│              Oragon.ElasticPool.Core (internal engine)             │
 │  ┌─────────────────────────────────────────────────────────────┐    │
-│  │              sealed AdaptivePool<T> : IAdaptivePool<T>      │    │
+│  │              sealed ElasticPool<T> : IElasticPool<T>      │    │
 │  │  ┌─────────────────────┐  ┌──────────────────────────────┐  │    │
 │  │  │ ConcurrentQueue     │  │ Channel<TCS<PoolEntry<T>>>   │  │    │
 │  │  │ <PoolEntry<T>>      │  │   (waiter queue, bounded)    │  │    │
@@ -92,14 +92,14 @@ Build order: ship the **fixed-size pool with hooks + telemetry first** (Phase 1 
 
 | Component | Responsibility | Visibility | Sealed/Abstract |
 |---|---|---|---|
-| `IAdaptivePool<T>` | Public contract: `Acquire`, `AcquireAsync`, counters, `IAsyncDisposable` | **public** | interface |
+| `IElasticPool<T>` | Public contract: `Acquire`, `AcquireAsync`, counters, `IAsyncDisposable` | **public** | interface |
 | `IPoolItem<T>` | Disposable wrapper: `.Object` + `Dispose`/`DisposeAsync` returns to pool | **public** | interface |
-| `AdaptivePool<T>` | The one and only concrete pool engine | **internal** | **sealed** |
+| `ElasticPool<T>` | The one and only concrete pool engine | **internal** | **sealed** |
 | `PoolItem<T>` | Internal struct/class that holds `PoolEntry<T>` + back-reference to pool | **internal** | **sealed** |
 | `PoolEntry<T>` | Internal record: `T Item`, `DateTimeOffset CreatedAt`, `DateTimeOffset LastReturnedAt`, `long UseCount`, `bool QuarantineFlag` | **internal** | **sealed record** |
-| `AdaptiveObjectPoolFactory` | Static entry point — `.Build<T>(IServiceProvider, CancellationToken)` returns the fluent builder | **public** | static |
-| `AdaptivePoolBuilder<T>` | Fluent builder: `.Factory()`, `.BeforeUse()`, `.Check()`, `.AfterUse()`, `.Release()`, `.WithBounds()`, `.WithFailurePolicy()`, `.Build()` | **public** | **sealed** |
-| `AdaptivePoolOptions<T>` | Frozen immutable config record produced by `Build()` | **public** | **sealed record** (init-only) |
+| `ElasticObjectPoolFactory` | Static entry point — `.Build<T>(IServiceProvider, CancellationToken)` returns the fluent builder | **public** | static |
+| `ElasticPoolBuilder<T>` | Fluent builder: `.Factory()`, `.BeforeUse()`, `.Check()`, `.AfterUse()`, `.Release()`, `.WithBounds()`, `.WithFailurePolicy()`, `.Build()` | **public** | **sealed** |
+| `ElasticPoolOptions<T>` | Frozen immutable config record produced by `Build()` | **public** | **sealed record** (init-only) |
 | `IItemFailurePolicy<T>` | Pluggable: receives broken `PoolEntry<T>`, decides discard vs. quarantine vs. custom | **public** | interface |
 | `DiscardAndReplaceFailurePolicy<T>` | Default policy — always discard | **public** | **sealed** |
 | `WaiterQueue<T>` (alias) | `Channel<TaskCompletionSource<PoolEntry<T>>>` wrapper | **internal** | **sealed** |
@@ -107,8 +107,8 @@ Build order: ship the **fixed-size pool with hooks + telemetry first** (Phase 1 
 | `BackgroundSweeper` | `PeriodicTimer`-driven loop performing shrink + health check passes | **internal** | **sealed** |
 | `TelemetryEmitter` | Owns `Meter` + `ActivitySource`, exposes typed methods (`OnAcquire`, `OnGrow`, etc.) | **internal** | **sealed** |
 | `PoolDiagnosticsLog` | `[LoggerMessage]` source-gen logging (allocation-free) | **internal** | static partial |
-| `ServiceCollectionExtensions` (Core) | `AddAdaptivePool<T>(...)`, `AddKeyedAdaptivePool<T>(string)` | **public** | static |
-| `ServiceCollectionExtensions` (RabbitMQ) | `AddAdaptiveConnectionPool(...)`, `AddAdaptiveChannelPool(...)` | **public** | static |
+| `ServiceCollectionExtensions` (Core) | `AddElasticPool<T>(...)`, `AddKeyedElasticPool<T>(string)` | **public** | static |
+| `ServiceCollectionExtensions` (RabbitMQ) | `AddElasticConnectionPool(...)`, `AddElasticChannelPool(...)` | **public** | static |
 
 **Sealing rationale:** every concrete class is `sealed` to prevent inheritance-based extension. Extension is via **hooks and policy interfaces** — not subclassing. This is HikariCP's discipline (no extension by subclass) and `Microsoft.Extensions.ObjectPool`'s mistake to avoid (people do subclass `DefaultObjectPool` and break things).
 
@@ -116,21 +116,21 @@ Build order: ship the **fixed-size pool with hooks + telemetry first** (Phase 1 
 
 ```
 src/
-├── Oragon.AdaptivePool.Core/
+├── Oragon.ElasticPool.Core/
 │   ├── Abstractions/
-│   │   ├── IAdaptivePool.cs              # public contract
+│   │   ├── IElasticPool.cs              # public contract
 │   │   ├── IPoolItem.cs                  # public disposable wrapper
 │   │   ├── IItemFailurePolicy.cs         # pluggable policy
 │   │   └── HealthCheckResult.cs          # enum: Healthy | Unhealthy
 │   ├── Builder/
-│   │   ├── AdaptiveObjectPoolFactory.cs  # static entry: Build<T>(sp, ct)
-│   │   ├── AdaptivePoolBuilder.cs        # fluent builder, sealed
-│   │   └── AdaptivePoolOptions.cs        # frozen options record
+│   │   ├── ElasticObjectPoolFactory.cs  # static entry: Build<T>(sp, ct)
+│   │   ├── ElasticPoolBuilder.cs        # fluent builder, sealed
+│   │   └── ElasticPoolOptions.cs        # frozen options record
 │   ├── Hooks/
 │   │   ├── PoolItemContext.cs            # state bag passed to all hooks
 │   │   └── HookDelegates.cs              # FactoryDelegate<T>, BeforeUseDelegate<T>, etc.
 │   ├── Internals/
-│   │   ├── AdaptivePool.cs               # sealed engine — internal
+│   │   ├── ElasticPool.cs               # sealed engine — internal
 │   │   ├── PoolEntry.cs                  # internal sealed record
 │   │   ├── PoolItem.cs                   # internal sealed wrapper
 │   │   ├── WaiterQueue.cs                # Channel<TCS> abstraction
@@ -143,25 +143,25 @@ src/
 │   │   ├── PoolMeterNames.cs             # const strings (semantic conv)
 │   │   └── PoolDiagnosticsLog.cs         # [LoggerMessage] source-gen
 │   ├── DependencyInjection/
-│   │   └── ServiceCollectionExtensions.cs  # AddAdaptivePool<T>(...)
+│   │   └── ServiceCollectionExtensions.cs  # AddElasticPool<T>(...)
 │   ├── PublicAPI.Shipped.txt
 │   ├── PublicAPI.Unshipped.txt
-│   └── Oragon.AdaptivePool.Core.csproj
-├── Oragon.AdaptivePool.RabbitMQ/
-│   ├── AdaptiveConnectionPoolBuilder.cs  # ergonomic wrapper over Core builder
-│   ├── AdaptiveChannelPoolBuilder.cs     # layered: Factory hook acquires from connection pool
+│   └── Oragon.ElasticPool.Core.csproj
+├── Oragon.ElasticPool.RabbitMQ/
+│   ├── ElasticConnectionPoolBuilder.cs  # ergonomic wrapper over Core builder
+│   ├── ElasticChannelPoolBuilder.cs     # layered: Factory hook acquires from connection pool
 │   ├── DependencyInjection/
-│   │   └── ServiceCollectionExtensions.cs  # AddAdaptiveConnectionPool / AddAdaptiveChannelPool
+│   │   └── ServiceCollectionExtensions.cs  # AddElasticConnectionPool / AddElasticChannelPool
 │   ├── PublicAPI.Shipped.txt
 │   ├── PublicAPI.Unshipped.txt
-│   └── Oragon.AdaptivePool.RabbitMQ.csproj
+│   └── Oragon.ElasticPool.RabbitMQ.csproj
 tests/
-├── Oragon.AdaptivePool.Core.Tests/
-├── Oragon.AdaptivePool.Core.IntegrationTests/      # stress, concurrency
-├── Oragon.AdaptivePool.RabbitMQ.Tests/
-└── Oragon.AdaptivePool.RabbitMQ.IntegrationTests/   # Testcontainers
+├── Oragon.ElasticPool.Core.Tests/
+├── Oragon.ElasticPool.Core.IntegrationTests/      # stress, concurrency
+├── Oragon.ElasticPool.RabbitMQ.Tests/
+└── Oragon.ElasticPool.RabbitMQ.IntegrationTests/   # Testcontainers
 bench/
-└── Oragon.AdaptivePool.Benchmarks/
+└── Oragon.ElasticPool.Benchmarks/
 samples/
 └── PublisherSample/
 ```
@@ -169,7 +169,7 @@ samples/
 ### Structure Rationale
 
 - **`Abstractions/` separated from `Internals/`:** consumers reference only abstractions; internals are implementation detail and may evolve without API breaks.
-- **`Builder/` separated from `Internals/`:** builder is part of the public surface; engine is not. The builder produces a frozen `AdaptivePoolOptions<T>` record — the engine constructor takes that record. Builder and engine never share mutable state.
+- **`Builder/` separated from `Internals/`:** builder is part of the public surface; engine is not. The builder produces a frozen `ElasticPoolOptions<T>` record — the engine constructor takes that record. Builder and engine never share mutable state.
 - **`Hooks/` is its own folder:** hook delegate types (`FactoryDelegate<T>`, `BeforeUseDelegate<T>`, etc.) are public — but they're a small, related cluster that benefits from co-location for discoverability.
 - **`Policies/` separated:** failure policies are public extension points; ship one default, leave room for `QuarantineWithBackoffFailurePolicy<T>` (P2).
 - **`Telemetry/` self-contained:** `Meter`/`ActivitySource` ownership is centralized in one class so naming conventions cannot drift.
@@ -255,7 +255,7 @@ samples/
 
 **Implementation sketch (multi-target safe):**
 ```csharp
-// Inside AdaptivePool<T> ctor:
+// Inside ElasticPool<T> ctor:
 _sweepCts = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCts.Token);
 _sweepTask = Task.Run(SweepLoopAsync);
 
@@ -283,18 +283,18 @@ private async Task SweepLoopAsync()
 
 ## Builder Pattern Shape
 
-**Shape:** mutable `AdaptivePoolBuilder<T>` → frozen `AdaptivePoolOptions<T>` record → sealed `AdaptivePool<T>` engine.
+**Shape:** mutable `ElasticPoolBuilder<T>` → frozen `ElasticPoolOptions<T>` record → sealed `ElasticPool<T>` engine.
 
 ```csharp
 // public static entry
-public static class AdaptiveObjectPoolFactory
+public static class ElasticObjectPoolFactory
 {
-    public static AdaptivePoolBuilder<T> Build<T>(IServiceProvider sp, CancellationToken ct = default)
+    public static ElasticPoolBuilder<T> Build<T>(IServiceProvider sp, CancellationToken ct = default)
         => new(sp, ct);
 }
 
 // public sealed builder (mutable; not thread-safe)
-public sealed class AdaptivePoolBuilder<T>
+public sealed class ElasticPoolBuilder<T>
 {
     // configured via fluent methods
     private FactoryDelegate<T>? _factory;
@@ -308,11 +308,11 @@ public sealed class AdaptivePoolBuilder<T>
     private IItemFailurePolicy<T>? _failurePolicy;
     // ...
 
-    public AdaptivePoolBuilder<T> Factory(FactoryDelegate<T> factory) { _factory = factory; return this; }
-    public AdaptivePoolBuilder<T> BeforeUse(BeforeUseDelegate<T> hook) { _beforeUse = hook; return this; }
+    public ElasticPoolBuilder<T> Factory(FactoryDelegate<T> factory) { _factory = factory; return this; }
+    public ElasticPoolBuilder<T> BeforeUse(BeforeUseDelegate<T> hook) { _beforeUse = hook; return this; }
     // etc.
 
-    public IAdaptivePool<T> Build()
+    public IElasticPool<T> Build()
     {
         // Validation (throws ArgumentException with clear messages)
         if (_factory is null)
@@ -326,7 +326,7 @@ public sealed class AdaptivePoolBuilder<T>
         // ...
 
         // Freeze into immutable options
-        var options = new AdaptivePoolOptions<T>
+        var options = new ElasticPoolOptions<T>
         {
             Factory = _factory,
             BeforeUse = _beforeUse,
@@ -336,12 +336,12 @@ public sealed class AdaptivePoolBuilder<T>
         };
 
         // Construct engine, kick off warm-up + sweep
-        return new AdaptivePool<T>(options, _serviceProvider, _ct);
+        return new ElasticPool<T>(options, _serviceProvider, _ct);
     }
 }
 
 // public frozen options (init-only)
-public sealed record AdaptivePoolOptions<T>
+public sealed record ElasticPoolOptions<T>
 {
     public required FactoryDelegate<T> Factory { get; init; }
     public BeforeUseDelegate<T>? BeforeUse { get; init; }
@@ -363,29 +363,29 @@ public sealed record AdaptivePoolOptions<T>
 1. **Builder is single-use:** `Build()` doesn't enforce one-shot, but options are frozen on extraction — calling `Build()` twice is allowed and returns two pools.
 2. **Validation in `Build()`:** all config errors throw at construction, never at `AcquireAsync` time. Fail fast and loud.
 3. **Required vs. optional hooks:** only `Factory` is required (enforced at runtime); other hooks default to no-op.
-4. **`required` keyword on options:** C# 12+ `required` on `AdaptivePoolOptions<T>.Factory` provides compile-time enforcement if someone ever constructs options directly.
+4. **`required` keyword on options:** C# 12+ `required` on `ElasticPoolOptions<T>.Factory` provides compile-time enforcement if someone ever constructs options directly.
 
 ## Adapter Composition (How RabbitMQ Adapter Plugs In Without Leaking)
 
-**Core knows nothing about `IConnection`/`IChannel`.** The adapter is a pure consumer of `AdaptiveObjectPoolFactory.Build<T>(...)`.
+**Core knows nothing about `IConnection`/`IChannel`.** The adapter is a pure consumer of `ElasticObjectPoolFactory.Build<T>(...)`.
 
 ### Connection Pool (single-layer, straightforward)
 
 ```csharp
-// In Oragon.AdaptivePool.RabbitMQ
+// In Oragon.ElasticPool.RabbitMQ
 public static class RabbitMqServiceCollectionExtensions
 {
-    public static IServiceCollection AddAdaptiveConnectionPool(
+    public static IServiceCollection AddElasticConnectionPool(
         this IServiceCollection services,
-        Action<AdaptiveConnectionPoolBuilder> configure)
+        Action<ElasticConnectionPoolBuilder> configure)
     {
-        var poolBuilder = new AdaptiveConnectionPoolBuilder();
+        var poolBuilder = new ElasticConnectionPoolBuilder();
         configure(poolBuilder);
 
-        services.AddSingleton<IAdaptivePool<IConnection>>(sp =>
+        services.AddSingleton<IElasticPool<IConnection>>(sp =>
         {
             var connFactory = poolBuilder.BuildConnectionFactory(sp);
-            return AdaptiveObjectPoolFactory.Build<IConnection>(sp)
+            return ElasticObjectPoolFactory.Build<IConnection>(sp)
                 .Factory(async ct => await connFactory.CreateConnectionAsync(ct).ConfigureAwait(false))
                 .BeforeUse(c => c.IsOpen ? HealthCheckResult.Healthy : HealthCheckResult.Unhealthy)
                 .Check(async (c, ct) => c.IsOpen ? HealthCheckResult.Healthy : HealthCheckResult.Unhealthy)
@@ -407,7 +407,7 @@ This is the subtle part. The `Factory` hook for `IChannel` acquires a connection
 **Solution: the channel pool's `PoolEntry<IChannel>` carries its borrowed `IPoolItem<IConnection>` alongside.** This requires an internal wrapper type — exposed via the adapter, not Core.
 
 ```csharp
-// In Oragon.AdaptivePool.RabbitMQ — INTERNAL
+// In Oragon.ElasticPool.RabbitMQ — INTERNAL
 internal sealed class ChannelLease : IAsyncDisposable
 {
     public IChannel Channel { get; }
@@ -424,18 +424,18 @@ internal sealed class ChannelLease : IAsyncDisposable
     }
 }
 
-public static IServiceCollection AddAdaptiveChannelPool(
+public static IServiceCollection AddElasticChannelPool(
     this IServiceCollection services,
-    Action<AdaptiveChannelPoolBuilder> configure)
+    Action<ElasticChannelPoolBuilder> configure)
 {
-    services.AddSingleton<IAdaptivePool<IChannel>>(sp =>
+    services.AddSingleton<IElasticPool<IChannel>>(sp =>
     {
-        var connectionPool = sp.GetRequiredService<IAdaptivePool<IConnection>>();
+        var connectionPool = sp.GetRequiredService<IElasticPool<IConnection>>();
         // Cache: when the channel pool acquires a channel, it stashes the connection lease in a ConditionalWeakTable<IChannel, IPoolItem<IConnection>>
         // so that the Release hook can dispose the connection lease AFTER closing the channel.
         var leaseMap = new ConditionalWeakTable<IChannel, IPoolItem<IConnection>>();
 
-        return AdaptiveObjectPoolFactory.Build<IChannel>(sp)
+        return ElasticObjectPoolFactory.Build<IChannel>(sp)
             .Factory(async ct =>
             {
                 var connLease = await connectionPool.AcquireAsync(ct).ConfigureAwait(false);
@@ -482,7 +482,7 @@ public static IServiceCollection AddAdaptiveChannelPool(
 2. **Outer item (channel) is recycled/discarded:** Release hook unconditionally disposes the connection lease, returning the connection to the inner pool. Inner pool's health policy decides what to do with it.
 3. **Inner pool is shrinking:** the inner pool **cannot shrink a connection that's currently leased** by an outer-pool channel — the lease still exists in `_inUse`. Only after the channel is released does the connection go back to the inner idle queue, where it becomes a shrink candidate. **No special coordination needed** — the lease counter naturally protects in-use connections.
 
-**Why `ConditionalWeakTable<IChannel, IPoolItem<IConnection>>`:** keys off identity, doesn't prevent GC, and the channel pool's Release hook always runs before GC could matter. We could also stash the lease in a wrapper type and store that, but keeping `IChannel` as the pool's `T` keeps the public API clean (`IAdaptivePool<IChannel>` is what consumers expect to inject).
+**Why `ConditionalWeakTable<IChannel, IPoolItem<IConnection>>`:** keys off identity, doesn't prevent GC, and the channel pool's Release hook always runs before GC could matter. We could also stash the lease in a wrapper type and store that, but keeping `IChannel` as the pool's `T` keeps the public API clean (`IElasticPool<IChannel>` is what consumers expect to inject).
 
 **Key abstraction-leak guard:** Core's public types never reference RabbitMQ types. The layered behavior is implemented entirely with Core's public hooks. If a future adapter (HTTP, gRPC) wants the same pattern, it implements it the same way — no new Core API needed.
 
@@ -494,8 +494,8 @@ public static IServiceCollection AddAdaptiveChannelPool(
 internal static class PoolMeterNames
 {
     // Single Meter, single ActivitySource for the whole library
-    public const string MeterName = "Oragon.AdaptivePool";
-    public const string ActivitySourceName = "Oragon.AdaptivePool";
+    public const string MeterName = "Oragon.ElasticPool";
+    public const string ActivitySourceName = "Oragon.ElasticPool";
 
     // Instruments — adapted from OTel db.client.connection.* semantic conventions
     // Using "pool.*" prefix (since we're not strictly db) — namespaced to avoid collision.
@@ -567,17 +567,17 @@ internal static partial class PoolDiagnosticsLog
 
 ```csharp
 // Core
-public static class AdaptivePoolServiceCollectionExtensions
+public static class ElasticPoolServiceCollectionExtensions
 {
-    // Registers IAdaptivePool<T> as a singleton; the configure delegate has access to IServiceProvider
-    public static IServiceCollection AddAdaptivePool<T>(
+    // Registers IElasticPool<T> as a singleton; the configure delegate has access to IServiceProvider
+    public static IServiceCollection AddElasticPool<T>(
         this IServiceCollection services,
-        Action<AdaptivePoolBuilder<T>> configure)
+        Action<ElasticPoolBuilder<T>> configure)
         where T : class
     {
-        services.AddSingleton<IAdaptivePool<T>>(sp =>
+        services.AddSingleton<IElasticPool<T>>(sp =>
         {
-            var builder = AdaptiveObjectPoolFactory.Build<T>(sp);
+            var builder = ElasticObjectPoolFactory.Build<T>(sp);
             configure(builder);
             return builder.Build();
         });
@@ -585,15 +585,15 @@ public static class AdaptivePoolServiceCollectionExtensions
     }
 
     // Named pools — for cases where you need multiple pools of the same T
-    public static IServiceCollection AddKeyedAdaptivePool<T>(
+    public static IServiceCollection AddKeyedElasticPool<T>(
         this IServiceCollection services,
         string name,
-        Action<AdaptivePoolBuilder<T>> configure)
+        Action<ElasticPoolBuilder<T>> configure)
         where T : class
     {
-        services.AddKeyedSingleton<IAdaptivePool<T>>(name, (sp, key) =>
+        services.AddKeyedSingleton<IElasticPool<T>>(name, (sp, key) =>
         {
-            var builder = AdaptiveObjectPoolFactory.Build<T>(sp);
+            var builder = ElasticObjectPoolFactory.Build<T>(sp);
             configure(builder);
             return builder.Build();
         });
@@ -614,18 +614,18 @@ public static class AdaptivePoolServiceCollectionExtensions
 
 | Type | Visibility | Modifier | Rationale |
 |---|---|---|---|
-| `IAdaptivePool<T>` | public | interface | Core contract; consumers code to this |
+| `IElasticPool<T>` | public | interface | Core contract; consumers code to this |
 | `IPoolItem<T>` | public | interface | Disposable wrapper contract |
 | `IItemFailurePolicy<T>` | public | interface | Pluggable extension point |
 | `HealthCheckResult` | public | enum | Hook return type |
 | `PoolItemContext` | public | sealed class | State bag passed to hooks; sealed prevents extension |
-| `AdaptiveObjectPoolFactory` | public | static class | Single entry point — discoverable via `Build<T>` |
-| `AdaptivePoolBuilder<T>` | public | sealed class | Fluent builder; sealed prevents subclass-based extension |
-| `AdaptivePoolOptions<T>` | public | sealed record | Frozen config; sealed because adding fields is an additive evolution, not a subclass concern |
+| `ElasticObjectPoolFactory` | public | static class | Single entry point — discoverable via `Build<T>` |
+| `ElasticPoolBuilder<T>` | public | sealed class | Fluent builder; sealed prevents subclass-based extension |
+| `ElasticPoolOptions<T>` | public | sealed record | Frozen config; sealed because adding fields is an additive evolution, not a subclass concern |
 | `DiscardAndReplaceFailurePolicy<T>` | public | sealed class | Default policy; sealed — extend by writing a different `IItemFailurePolicy<T>` |
 | `FactoryDelegate<T>`, `BeforeUseDelegate<T>`, etc. | public | delegate types | Hook signatures |
-| `AdaptivePoolServiceCollectionExtensions` | public | static class | DI extension methods |
-| `AdaptivePool<T>` | internal | sealed class | The engine; consumers never see the concrete type |
+| `ElasticPoolServiceCollectionExtensions` | public | static class | DI extension methods |
+| `ElasticPool<T>` | internal | sealed class | The engine; consumers never see the concrete type |
 | `PoolEntry<T>` | internal | sealed record | Internal item wrapper with bookkeeping |
 | `PoolItem<T>` | internal | sealed class | Concrete `IPoolItem<T>` impl |
 | `WaiterQueue<T>` | internal | sealed class | Channel<TCS> abstraction |
@@ -657,7 +657,7 @@ public static class AdaptivePoolServiceCollectionExtensions
 **Guidance for public API design:**
 - Never expose a type from `Microsoft.Extensions.Hosting` — that pulls hosting into Core deps.
 - Never expose a `Lock` (net9+) on the public surface — even if used internally, guard it.
-- Take `TimeProvider` in `AdaptivePoolOptions<T>` (defaults to `TimeProvider.System`) — enables `FakeTimeProvider` in tests without dependency injection.
+- Take `TimeProvider` in `ElasticPoolOptions<T>` (defaults to `TimeProvider.System`) — enables `FakeTimeProvider` in tests without dependency injection.
 
 **Verdict:** zero polyfills, at most one `#if NET9_0_OR_GREATER` if we adopt `Lock`. Public API surface is uniform across TFMs.
 
@@ -822,12 +822,12 @@ Mapped to v1.0 MVP scope (`P1` items in `FEATURES.md`).
 ### Phase 1: "Skeleton" — fixed-size pool with hooks (proves the API)
 
 **Ships:**
-- Public surface: `IAdaptivePool<T>`, `IPoolItem<T>`, `AdaptiveObjectPoolFactory`, `AdaptivePoolBuilder<T>`, `AdaptivePoolOptions<T>`, hook delegate types
-- `AdaptivePool<T>` engine with **just** `MaxSize` (no Min, no elasticity, no sweep)
+- Public surface: `IElasticPool<T>`, `IPoolItem<T>`, `ElasticObjectPoolFactory`, `ElasticPoolBuilder<T>`, `ElasticPoolOptions<T>`, hook delegate types
+- `ElasticPool<T>` engine with **just** `MaxSize` (no Min, no elasticity, no sweep)
 - `ConcurrentQueue<PoolEntry<T>>` + lock-free counters
 - Direct-handoff waiter queue via `Channel<TCS>`
 - Factory + BeforeUse + Release hooks (the others can be present in API but no-op)
-- DI extension `AddAdaptivePool<T>(...)`
+- DI extension `AddElasticPool<T>(...)`
 - Basic logging + `Meter` instruments (counters only — no observable gauges yet)
 - `IAsyncDisposable` (basic — drain idle + invoke Release; no graceful timeout yet)
 
@@ -855,9 +855,9 @@ Mapped to v1.0 MVP scope (`P1` items in `FEATURES.md`).
 ### Phase 3: "RabbitMQ Adapter" — proves the abstraction
 
 **Ships:**
-- `Oragon.AdaptivePool.RabbitMQ` package
-- `AddAdaptiveConnectionPool` (single-layer)
-- `AddAdaptiveChannelPool` (layered)
+- `Oragon.ElasticPool.RabbitMQ` package
+- `AddElasticConnectionPool` (single-layer)
+- `AddElasticChannelPool` (layered)
 - `ChannelLease` internal helper + `ConditionalWeakTable` lifecycle
 - Bursty publisher sample
 - Testcontainers integration tests
@@ -877,7 +877,7 @@ Mapped to v1.0 MVP scope (`P1` items in `FEATURES.md`).
 
 - `QuarantineWithBackoffFailurePolicy<T>`
 - Per-item `MaxLifetime` / `MaxUses` rotation
-- `Oragon.AdaptivePool.Polly` glue (if community asks)
+- `Oragon.ElasticPool.Polly` glue (if community asks)
 - Additional adapters (HttpClient, Npgsql, gRPC) — only if RabbitMQ adapter proves the abstraction in real use
 
 ## Architectural Patterns
@@ -991,11 +991,11 @@ while (!ct.IsCancellationRequested)
 
 ### Anti-Pattern 4: Subclass-Based Extension
 
-**What people do:** make `AdaptivePool<T>` non-sealed with `protected virtual OnAcquire`, etc.
+**What people do:** make `ElasticPool<T>` non-sealed with `protected virtual OnAcquire`, etc.
 
 **Why it's wrong:** fragile base class — every method becomes a stable extension point; one internal refactor can break consumers. Also encourages misuse (consumers think subclassing is the right way; it's not).
 
-**Do this instead:** `sealed class AdaptivePool<T>`; extension via hooks and policies (`IItemFailurePolicy<T>`).
+**Do this instead:** `sealed class ElasticPool<T>`; extension via hooks and policies (`IItemFailurePolicy<T>`).
 
 ### Anti-Pattern 5: Async-Over-Sync Factory in Sync Code Paths
 
@@ -1015,11 +1015,11 @@ while (!ct.IsCancellationRequested)
 
 ### Anti-Pattern 7: Exposing the Engine Class
 
-**What people do:** make `AdaptivePool<T>` public so consumers can `new AdaptivePool<T>(options)`.
+**What people do:** make `ElasticPool<T>` public so consumers can `new ElasticPool<T>(options)`.
 
 **Why it's wrong:** bypasses the builder's validation; couples consumers to internal constructor signature; breaks API evolution.
 
-**Do this instead:** keep `AdaptivePool<T>` internal; public path is `AdaptiveObjectPoolFactory.Build<T>(...)...Build()`.
+**Do this instead:** keep `ElasticPool<T>` internal; public path is `ElasticObjectPoolFactory.Build<T>(...)...Build()`.
 
 ## Integration Points
 
@@ -1028,21 +1028,21 @@ while (!ct.IsCancellationRequested)
 | Service | Integration Pattern | Notes |
 |---|---|---|
 | `RabbitMQ.Client` v7.x | Adapter package only; Core doesn't depend on it | `IConnection.IsOpen` / `IChannel.IsOpen` for health probes; `CreateChannelAsync(options)` for channel creation; `BasicProperties` is now a value type |
-| `Microsoft.Extensions.Logging` | `ILogger<AdaptivePool<T>>` resolved from `IServiceProvider`; falls back to `NullLogger<T>` if absent | Source-gen logging via `[LoggerMessage]` |
-| `Microsoft.Extensions.DependencyInjection` (impl) | Only consumer-side; Core depends on Abstractions only | `AddAdaptivePool<T>`/`AddKeyedAdaptivePool<T>` extension methods |
-| `IMeterFactory` | Optional dependency; if registered, used for `Meter` creation; otherwise `new Meter("Oragon.AdaptivePool")` | net8+ in-box |
-| `OpenTelemetry.Extensions.Hosting` | Consumer-side; consumer adds `.AddMeter("Oragon.AdaptivePool").AddSource("Oragon.AdaptivePool")` to their OTel pipeline | We document the names as part of the API contract |
+| `Microsoft.Extensions.Logging` | `ILogger<ElasticPool<T>>` resolved from `IServiceProvider`; falls back to `NullLogger<T>` if absent | Source-gen logging via `[LoggerMessage]` |
+| `Microsoft.Extensions.DependencyInjection` (impl) | Only consumer-side; Core depends on Abstractions only | `AddElasticPool<T>`/`AddKeyedElasticPool<T>` extension methods |
+| `IMeterFactory` | Optional dependency; if registered, used for `Meter` creation; otherwise `new Meter("Oragon.ElasticPool")` | net8+ in-box |
+| `OpenTelemetry.Extensions.Hosting` | Consumer-side; consumer adds `.AddMeter("Oragon.ElasticPool").AddSource("Oragon.ElasticPool")` to their OTel pipeline | We document the names as part of the API contract |
 
 ### Internal Boundaries
 
 | Boundary | Communication | Notes |
 |---|---|---|
-| `Builder ↔ Engine` | Builder produces `AdaptivePoolOptions<T>`; engine constructor takes it | One-way; no callbacks |
+| `Builder ↔ Engine` | Builder produces `ElasticPoolOptions<T>`; engine constructor takes it | One-way; no callbacks |
 | `Engine ↔ Sweeper` | Sweeper is owned by engine; calls private engine methods (`TryEvictIdle`, `RunHealthCheck`) | Direct method call inside same assembly; sweeper has same lifetime as engine |
 | `Engine ↔ TelemetryEmitter` | Engine instantiates emitter in ctor; calls typed methods (`emitter.OnGrow(name, newSize)`) | Decouples Meter API from engine business logic |
 | `Engine ↔ FailurePolicy` | Engine invokes `policy.OnFailure(entry, reason, ct)`; policy returns disposition | Policy may discard (caller decrements _total) or quarantine (caller re-enqueues with flag) |
-| `RabbitMQ Adapter ↔ Core` | Adapter calls `AdaptiveObjectPoolFactory.Build<T>(...)`; uses public hooks; never references internal types | Strict — adapter compiles against Core's NuGet, not its source |
-| `RabbitMQ Channel Pool ↔ RabbitMQ Connection Pool` | Channel pool's `Factory` hook holds an `IAdaptivePool<IConnection>` reference (closed over in delegate) | Pure runtime composition; no Core changes needed |
+| `RabbitMQ Adapter ↔ Core` | Adapter calls `ElasticObjectPoolFactory.Build<T>(...)`; uses public hooks; never references internal types | Strict — adapter compiles against Core's NuGet, not its source |
+| `RabbitMQ Channel Pool ↔ RabbitMQ Connection Pool` | Channel pool's `Factory` hook holds an `IElasticPool<IConnection>` reference (closed over in delegate) | Pure runtime composition; no Core changes needed |
 
 ## Cross-References to Mature Pool Implementations
 
@@ -1074,5 +1074,5 @@ while (!ct.IsCancellationRequested)
 - [RabbitMQ .NET Client v7 docs](https://www.rabbitmq.com/client-libraries/dotnet-api-guide) — `IConnection`/`IChannel` async-first API (HIGH)
 
 ---
-*Architecture research for: Oragon.AdaptivePool — adaptive in-process pool + RabbitMQ adapter*
+*Architecture research for: Oragon.ElasticPool — adaptive in-process pool + RabbitMQ adapter*
 *Researched: 2026-05-03*

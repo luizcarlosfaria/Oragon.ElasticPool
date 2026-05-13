@@ -1,15 +1,15 @@
 # Project Research Summary
 
-**Project:** Oragon.AdaptivePool
+**Project:** Oragon.ElasticPool
 **Domain:** Multi-target .NET OSS NuGet library — generic in-process object pool + RabbitMQ adapter
 **Researched:** 2026-05-03
 **Confidence:** HIGH
 
 ## Executive Summary
 
-Oragon.AdaptivePool fills a genuine gap in the .NET ecosystem: `Microsoft.Extensions.ObjectPool` is fixed-size and health-blind; Polly handles resilience but not pooling; RabbitMQ.Client v7 has no connection/channel pool. The design space is well-charted by HikariCP, Apache commons-pool2, and node generic-pool — all converging on the same core primitives: min/max bounds, async borrow/return, on-borrow validation, background health sweep, and idle eviction. What Oragon.AdaptivePool adds on top of that established baseline is the trifecta that earns its keep: composite-signal elasticity (grow using waiter-queue depth + sustained utilization + wait latency together), pluggable failure policy (discard-and-replace vs. quarantine+backoff vs. custom), and five-stage lifecycle hooks (Factory / BeforeUse / Check / AfterUse / Release). These three together — not any single one — are the stated Core Value and cannot be trimmed.
+Oragon.ElasticPool fills a genuine gap in the .NET ecosystem: `Microsoft.Extensions.ObjectPool` is fixed-size and health-blind; Polly handles resilience but not pooling; RabbitMQ.Client v7 has no connection/channel pool. The design space is well-charted by HikariCP, Apache commons-pool2, and node generic-pool — all converging on the same core primitives: min/max bounds, async borrow/return, on-borrow validation, background health sweep, and idle eviction. What Oragon.ElasticPool adds on top of that established baseline is the trifecta that earns its keep: composite-signal elasticity (grow using waiter-queue depth + sustained utilization + wait latency together), pluggable failure policy (discard-and-replace vs. quarantine+backoff vs. custom), and five-stage lifecycle hooks (Factory / BeforeUse / Check / AfterUse / Release). These three together — not any single one — are the stated Core Value and cannot be trimmed.
 
-The recommended implementation is BCL-centric and deliberately lean. Core depends on exactly two `Microsoft.Extensions.*` packages (Logging.Abstractions, DependencyInjection.Abstractions); every other required primitive — `System.Threading.Channels`, `ConcurrentQueue<T>`, `PeriodicTimer`, `Meter`, `ActivitySource`, `ValueTask`, `IAsyncDisposable`, `IMeterFactory` — is in-box on every target (`net8.0`/`net9.0`/`net10.0`) with zero polyfills. The internal engine is a single sealed `AdaptivePool<T>` built on three BCL primitives: `ConcurrentQueue<PoolEntry<T>>` for idle items, `Channel<TaskCompletionSource<PoolEntry<T>>>` for the waiter queue (direct-handoff pattern, eliminates TOCTOU races), and `PeriodicTimer` for the background sweep. All concrete classes are sealed; extension is via hooks and `IItemFailurePolicy<T>` — not subclassing. Public surface is approximately 12 types.
+The recommended implementation is BCL-centric and deliberately lean. Core depends on exactly two `Microsoft.Extensions.*` packages (Logging.Abstractions, DependencyInjection.Abstractions); every other required primitive — `System.Threading.Channels`, `ConcurrentQueue<T>`, `PeriodicTimer`, `Meter`, `ActivitySource`, `ValueTask`, `IAsyncDisposable`, `IMeterFactory` — is in-box on every target (`net8.0`/`net9.0`/`net10.0`) with zero polyfills. The internal engine is a single sealed `ElasticPool<T>` built on three BCL primitives: `ConcurrentQueue<PoolEntry<T>>` for idle items, `Channel<TaskCompletionSource<PoolEntry<T>>>` for the waiter queue (direct-handoff pattern, eliminates TOCTOU races), and `PeriodicTimer` for the background sweep. All concrete classes are sealed; extension is via hooks and `IItemFailurePolicy<T>` — not subclassing. Public surface is approximately 12 types.
 
 The critical risks all concentrate in Phase 1, before any user touches the API. Cancellation tokens must appear in every hook signature from day one — adding them later is a breaking change. `ValueTask` return semantics must be documented from day one. The `ConcurrentQueue`+`Channel` waiter design must be chosen before any other concurrency code is written — the wrong choice here cascades into every phase. Factory exceptions must do counter rollback (`Interlocked.Decrement`) or the pool will report "full" while holding nothing. All other risks (RabbitMQ autorecovery conflict, metric cardinality, elastic oscillation) are real but phase-localised and have clear mitigations documented in PITFALLS.md.
 
@@ -40,7 +40,7 @@ The 2026 stack for a .NET OSS pooling library is stable and BCL-centric. Build h
 Based on cross-ecosystem analysis (HikariCP, commons-pool2, node generic-pool, Microsoft.Extensions.ObjectPool, Reactor Pool), the feature landscape divides cleanly.
 
 **Must have (table stakes — serious .NET devs will reject the library without these):**
-- Generic `IAdaptivePool<T>` with async-first `AcquireAsync(CancellationToken)` + fast-path sync `Acquire()`
+- Generic `IElasticPool<T>` with async-first `AcquireAsync(CancellationToken)` + fast-path sync `Acquire()`
 - `IPoolItem<T>` disposable wrapper (prevents leaks; `await using` enforced in all docs/samples)
 - `MinSize` / `MaxSize` / `InitialSize` bounds with eager warm-up (awaitable)
 - Thread-safety under high concurrency (validated by stress tests)
@@ -49,7 +49,7 @@ Based on cross-ecosystem analysis (HikariCP, commons-pool2, node generic-pool, M
 - On-borrow validation (`BeforeUse` hook — cheap in-process check only, never a server round-trip)
 - Object factory + cleanup hooks (`Factory`, `Release`)
 - `IAsyncDisposable` + `IDisposable` on the pool itself with drain semantics (both must be implemented)
-- DI extension `services.AddAdaptivePool<T>(...)`
+- DI extension `services.AddElasticPool<T>(...)`
 - Built-in `Meter` metrics (`oragon.pool.size`, `oragon.pool.available`, `oragon.pool.in_use`, `oragon.pool.pending_requests`, `oragon.pool.acquire.duration`, plus event counters)
 - `ILogger<T>` structured logging on state transitions (source-gen `[LoggerMessage]`)
 - CancellationToken plumbed through every async path including all hooks
@@ -75,18 +75,18 @@ Based on cross-ecosystem analysis (HikariCP, commons-pool2, node generic-pool, M
 
 ### Architecture Approach
 
-The architecture is two NuGet packages with a thin public surface (~12 types) and an internal engine (`sealed AdaptivePool<T>`) built entirely on BCL primitives. All concrete classes are sealed; extension points are `IItemFailurePolicy<T>` and the five lifecycle hook delegates — never subclassing. The RabbitMQ adapter is a pure consumer of the Core builder API; it contributes no new Core abstractions. Layered pools (channel over connection) are composed entirely through Core hooks using `ConditionalWeakTable<IChannel, IPoolItem<IConnection>>` to tie channel lifecycle to connection lease lifecycle. Telemetry is centralized in `TelemetryEmitter` (single `Meter` + single `ActivitySource`, both named `"Oragon.AdaptivePool"`); logging uses `[LoggerMessage]` source-gen throughout for allocation-free hot paths.
+The architecture is two NuGet packages with a thin public surface (~12 types) and an internal engine (`sealed ElasticPool<T>`) built entirely on BCL primitives. All concrete classes are sealed; extension points are `IItemFailurePolicy<T>` and the five lifecycle hook delegates — never subclassing. The RabbitMQ adapter is a pure consumer of the Core builder API; it contributes no new Core abstractions. Layered pools (channel over connection) are composed entirely through Core hooks using `ConditionalWeakTable<IChannel, IPoolItem<IConnection>>` to tie channel lifecycle to connection lease lifecycle. Telemetry is centralized in `TelemetryEmitter` (single `Meter` + single `ActivitySource`, both named `"Oragon.ElasticPool"`); logging uses `[LoggerMessage]` source-gen throughout for allocation-free hot paths.
 
 **Major components:**
-1. `IAdaptivePool<T>` / `IPoolItem<T>` / `IItemFailurePolicy<T>` — public contracts; the only types consumers code against
-2. `AdaptiveObjectPoolFactory` + `AdaptivePoolBuilder<T>` + `AdaptivePoolOptions<T>` — fluent builder → frozen config record → engine construction
-3. `sealed AdaptivePool<T>` (internal engine) — `ConcurrentQueue<PoolEntry<T>>` for idle items, `Channel<TCS<PoolEntry<T>>>` for waiter direct-handoff, `Interlocked` counters, state machine (Open / Draining / Closed)
+1. `IElasticPool<T>` / `IPoolItem<T>` / `IItemFailurePolicy<T>` — public contracts; the only types consumers code against
+2. `ElasticObjectPoolFactory` + `ElasticPoolBuilder<T>` + `ElasticPoolOptions<T>` — fluent builder → frozen config record → engine construction
+3. `sealed ElasticPool<T>` (internal engine) — `ConcurrentQueue<PoolEntry<T>>` for idle items, `Channel<TCS<PoolEntry<T>>>` for waiter direct-handoff, `Interlocked` counters, state machine (Open / Draining / Closed)
 4. `BackgroundSweeper` (internal) — `PeriodicTimer`-driven loop: shrink pass + health-check pass; `TimeProvider`-injected for test determinism via `FakeTimeProvider`
 5. `PressureSampler` (internal) — composite-signal logic: sliding window of utilization %, waiter-queue depth, acquire-wait p95; drives grow decisions inline on the acquire slow path
 6. `TelemetryEmitter` (internal) — owns `Meter` (via `IMeterFactory` if present) + `ActivitySource`; all instrument constants in `PoolMeterNames`
 7. `PoolDiagnosticsLog` (internal static partial) — `[LoggerMessage]` source-gen; zero-allocation logging
 8. `ServiceCollectionExtensions` (Core + RabbitMQ) — DI wiring; pool registered as `Singleton` (owns background task + expensive resources); also `AddKeyedSingleton` for named pools
-9. `Oragon.AdaptivePool.RabbitMQ` package — `AddAdaptiveConnectionPool` + `AddAdaptiveChannelPool`; `ChannelLease` + `ConditionalWeakTable` for layered lifecycle; `AutomaticRecoveryEnabled = false` enforced
+9. `Oragon.ElasticPool.RabbitMQ` package — `AddElasticConnectionPool` + `AddElasticChannelPool`; `ChannelLease` + `ConditionalWeakTable` for layered lifecycle; `AutomaticRecoveryEnabled = false` enforced
 
 ### Critical Pitfalls
 
@@ -98,7 +98,7 @@ The architecture is two NuGet packages with a thin public surface (~12 types) an
 
 4. **Health-check sweep amplifies load during downstream outage** — sweep must track rolling failure rate; when above threshold, back off exponentially (30 s → 60 s → 120 s, max 5 min); cap concurrent factory creation with `SemaphoreSlim(maxConcurrentCreations)` to prevent connection storms. Phase: P2.
 
-5. **RabbitMQ autorecovery vs. pool discard — double-management** — `AddAdaptiveConnectionPool` must set `ConnectionFactory.AutomaticRecoveryEnabled = false` and document why; let the pool's failure policy own connection lifecycle, not the client library's recovery. Phase: P4.
+5. **RabbitMQ autorecovery vs. pool discard — double-management** — `AddElasticConnectionPool` must set `ConnectionFactory.AutomaticRecoveryEnabled = false` and document why; let the pool's failure policy own connection lifecycle, not the client library's recovery. Phase: P4.
 
 6. **Elastic oscillation (grow/shrink thrash)** — require N consecutive sweep windows of low utilization before shrinking (hysteresis); shrink one item per sweep tick; expose tuning knobs (`ShrinkBackoffWindows`, `ShrinkBatchSize`). Phase: P2.
 
@@ -115,12 +115,12 @@ Based on research, the architecture file's suggested build order is strongly val
 **Rationale:** Validates API surface end-to-end before elasticity complexity is added. All foundational pitfalls live here. Ship a working, tested pool at `MaxSize`-only before adding any background machinery. Anything broken in the API surface is cheap to fix here, expensive after Phase 2.
 
 **Delivers:**
-- Public contracts: `IAdaptivePool<T>`, `IPoolItem<T>`, `IItemFailurePolicy<T>`, `HealthCheckResult`
-- Builder: `AdaptiveObjectPoolFactory`, `AdaptivePoolBuilder<T>`, `AdaptivePoolOptions<T>`
-- Engine: `AdaptivePool<T>` with `ConcurrentQueue<PoolEntry<T>>`, `Channel<TCS>` direct-handoff waiter queue, `Interlocked` counters
+- Public contracts: `IElasticPool<T>`, `IPoolItem<T>`, `IItemFailurePolicy<T>`, `HealthCheckResult`
+- Builder: `ElasticObjectPoolFactory`, `ElasticPoolBuilder<T>`, `ElasticPoolOptions<T>`
+- Engine: `ElasticPool<T>` with `ConcurrentQueue<PoolEntry<T>>`, `Channel<TCS>` direct-handoff waiter queue, `Interlocked` counters
 - Factory + BeforeUse + Release hooks with `CancellationToken` in every signature
 - `DiscardAndReplaceFailurePolicy<T>` (default, used from Phase 1)
-- DI extension `AddAdaptivePool<T>(...)` + `AddKeyedAdaptivePool<T>(...)`
+- DI extension `AddElasticPool<T>(...)` + `AddKeyedElasticPool<T>(...)`
 - Basic `Meter` counters + `[LoggerMessage]` source-gen logging
 - Both `IAsyncDisposable` and `IDisposable` on pool
 - Stress test: `MaxSize=1` ping-pong + factory-throws-on-Nth-call property test
@@ -148,9 +148,9 @@ Based on research, the architecture file's suggested build order is strongly val
 **Rationale:** Validates that Core's hook/policy abstraction is sufficient for a real, layered, lifecycle-sensitive scenario. If Core is missing anything, Phase 3 surfaces it cheaply — before any community adoption. If Phase 3 requires a new Core API, that signals a refactor while the cost is still low.
 
 **Delivers:**
-- `Oragon.AdaptivePool.RabbitMQ` package
-- `AddAdaptiveConnectionPool(...)` with `AutomaticRecoveryEnabled = false` default + heartbeat validation warning
-- `AddAdaptiveChannelPool(...)` with `ConditionalWeakTable<IChannel, IPoolItem<IConnection>>` lifecycle + channel-per-connection ceiling guidance
+- `Oragon.ElasticPool.RabbitMQ` package
+- `AddElasticConnectionPool(...)` with `AutomaticRecoveryEnabled = false` default + heartbeat validation warning
+- `AddElasticChannelPool(...)` with `ConditionalWeakTable<IChannel, IPoolItem<IConnection>>` lifecycle + channel-per-connection ceiling guidance
 - `ChannelLease` internal helper
 - Testcontainers integration tests (including `channel_max=10` forced-low test for ceiling validation)
 - Bursty publisher sample (few/hour → 100k simultaneous)

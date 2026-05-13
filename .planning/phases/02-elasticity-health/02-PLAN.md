@@ -5,16 +5,16 @@ type: execute
 wave: 2
 depends_on: [01]
 files_modified:
-  - src/Oragon.AdaptivePool.Core/Telemetry/PoolMeterNames.cs
-  - src/Oragon.AdaptivePool.Core/Telemetry/TelemetryEmitter.cs
-  - src/Oragon.AdaptivePool.Core/Telemetry/PoolDiagnosticsLog.cs
-  - src/Oragon.AdaptivePool.Core/Internals/AdaptivePool.cs
-  - src/Oragon.AdaptivePool.Core/Internals/BackgroundSweeper.cs
+  - src/Oragon.ElasticPool.Core/Telemetry/PoolMeterNames.cs
+  - src/Oragon.ElasticPool.Core/Telemetry/TelemetryEmitter.cs
+  - src/Oragon.ElasticPool.Core/Telemetry/PoolDiagnosticsLog.cs
+  - src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs
+  - src/Oragon.ElasticPool.Core/Internals/BackgroundSweeper.cs
 autonomous: true
 requirements: [ELASTIC-01, ELASTIC-02, TELEM-02, TELEM-03]
 must_haves:
   truths:
-    - "ActivitySource 'Oragon.AdaptivePool' is declared once per assembly and emits spans for Acquire, Release, HealthCheck, Grow, Shrink with HasListeners()-guarded tag preparation only where preparatory work is non-trivial."
+    - "ActivitySource 'Oragon.ElasticPool' is declared once per assembly and emits spans for Acquire, Release, HealthCheck, Grow, Shrink with HasListeners()-guarded tag preparation only where preparatory work is non-trivial."
     - "TelemetryEmitter exposes 3 new counters (pool.grow.count, pool.shrink.count, pool.health.failures) and 2 histograms (pool.acquire.wait.duration in seconds, pool.sweep.duration in seconds), each tagged with pool.name."
     - "PoolDiagnosticsLog has 7 new [LoggerMessage] entries (1005 Grew, 1006 Shrunk, 1007 SweepStarted, 1008 SweepCompleted, 1009 SweepFailureBackoff, 1010 CheckUnhealthy, 1099 SweepFailed)."
     - "AcquireAsyncCore consults PressureSampler.Evaluate before parking a waiter; on ShouldGrow=true it CAS-reserves a slot, calls Factory outside any lock, resets _sinceLastGrowTicks, emits Grow span + counter + log."
@@ -22,32 +22,32 @@ must_haves:
     - "BackgroundSweeper.RunSweepTickAsync runs Check hook on idle items, applies failure policy on Unhealthy decisions, runs shrink pass when SinceLastGrowTicks >= ShrinkCooldownWindows, evicts at most 1 idle item per tick respecting MinSize and IdleTimeout, increments cooldown counter at end, calls SweepBackoffState.OnSweepResult."
     - "Sweep failure backoff: after 3 consecutive sweep windows where >=50% of Check invocations are Unhealthy/throw, the timer Period doubles (30s -> 60s -> 120s -> capped at MaxBackoff = 5min); resets to base on first clean window."
   artifacts:
-    - path: "src/Oragon.AdaptivePool.Core/Telemetry/TelemetryEmitter.cs"
+    - path: "src/Oragon.ElasticPool.Core/Telemetry/TelemetryEmitter.cs"
       provides: "Extended emitter with internal static ActivitySource; new counter/histogram fields; OnGrow/OnShrink/OnHealthFailure/OnAcquireWait(TimeSpan)/OnSweepDuration(TimeSpan) methods; StartGrowSpan/StartShrinkSpan/StartSweepSpan/StartHealthCheckSpan helpers"
       contains: "ActivitySource"
-    - path: "src/Oragon.AdaptivePool.Core/Telemetry/PoolDiagnosticsLog.cs"
+    - path: "src/Oragon.ElasticPool.Core/Telemetry/PoolDiagnosticsLog.cs"
       provides: "7 new [LoggerMessage] partial methods (EventIds 1005-1010, 1099)"
       contains: "EventId = 1005"
-    - path: "src/Oragon.AdaptivePool.Core/Telemetry/PoolMeterNames.cs"
+    - path: "src/Oragon.ElasticPool.Core/Telemetry/PoolMeterNames.cs"
       provides: "New instrument-name constants: GrowCount, ShrinkCount, HealthFailures, AcquireWaitDuration, SweepDuration; ActivitySource name + Outcome tag constants"
       contains: "GrowCount"
-    - path: "src/Oragon.AdaptivePool.Core/Internals/AdaptivePool.cs"
+    - path: "src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs"
       provides: "Composite-signal grow path in AcquireAsyncCore; wait-duration recording on slow path; Acquire/Release ActivitySource spans; cooldown reset on grow"
       contains: "_pressure.Evaluate"
-    - path: "src/Oragon.AdaptivePool.Core/Internals/BackgroundSweeper.cs"
+    - path: "src/Oragon.ElasticPool.Core/Internals/BackgroundSweeper.cs"
       provides: "Sweep tick: health-check pass + shrink pass + backoff/cooldown bookkeeping; Pool.Sweep ActivitySource span with per-item ActivityEvents; SweepStarted/SweepCompleted/SweepFailureBackoff log emissions"
       contains: "RunSweepTickAsync"
   key_links:
-    - from: "src/Oragon.AdaptivePool.Core/Internals/AdaptivePool.cs"
-      to: "src/Oragon.AdaptivePool.Core/Internals/PressureSampler.cs"
+    - from: "src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs"
+      to: "src/Oragon.ElasticPool.Core/Internals/PressureSampler.cs"
       via: "AcquireAsyncCore calls _pressure.Evaluate(currentTotal, currentWaiters) on the slow path; on ShouldGrow=true triggers TryGrowAsync"
       pattern: "_pressure\\.Evaluate"
-    - from: "src/Oragon.AdaptivePool.Core/Internals/BackgroundSweeper.cs"
-      to: "src/Oragon.AdaptivePool.Core/Internals/AdaptivePool.cs"
+    - from: "src/Oragon.ElasticPool.Core/Internals/BackgroundSweeper.cs"
+      to: "src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs"
       via: "RunSweepTickAsync calls _pool.Idle (TryDequeue + Check + ReturnSync), _pool.Options.Check, _pool.Options.FailurePolicy, _pool.SinceLastGrowTicks, _pool.IncrementSinceLastGrowTicks"
       pattern: "_pool\\.(Idle|Options|SinceLastGrowTicks|IncrementSinceLastGrowTicks)"
-    - from: "src/Oragon.AdaptivePool.Core/Telemetry/TelemetryEmitter.cs"
-      to: "src/Oragon.AdaptivePool.Core/Internals/AdaptivePool.cs"
+    - from: "src/Oragon.ElasticPool.Core/Telemetry/TelemetryEmitter.cs"
+      to: "src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs"
       via: "OnGrow/OnShrink/OnHealthFailure/OnAcquireWait/StartGrowSpan called from grow + sweep paths"
       pattern: "_telemetry\\.(OnGrow|OnShrink|OnHealthFailure|OnAcquireWait|StartGrowSpan|StartShrinkSpan|StartSweepSpan)"
 ---
@@ -74,15 +74,15 @@ Output: Telemetry expansion (1 ActivitySource + 3 counters + 2 histograms + 7 Lo
 @.planning/phases/02-elasticity-health/02-01-SUMMARY.md
 
 # Phase 1 + Plan 01 source — already in scope.
-@src/Oragon.AdaptivePool.Core/Internals/AdaptivePool.cs
-@src/Oragon.AdaptivePool.Core/Internals/BackgroundSweeper.cs
-@src/Oragon.AdaptivePool.Core/Internals/PressureSampler.cs
-@src/Oragon.AdaptivePool.Core/Internals/SweepBackoffState.cs
-@src/Oragon.AdaptivePool.Core/Internals/UtilizationSampler.cs
-@src/Oragon.AdaptivePool.Core/Internals/WaitDurationHistogram.cs
-@src/Oragon.AdaptivePool.Core/Telemetry/TelemetryEmitter.cs
-@src/Oragon.AdaptivePool.Core/Telemetry/PoolDiagnosticsLog.cs
-@src/Oragon.AdaptivePool.Core/Telemetry/PoolMeterNames.cs
+@src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs
+@src/Oragon.ElasticPool.Core/Internals/BackgroundSweeper.cs
+@src/Oragon.ElasticPool.Core/Internals/PressureSampler.cs
+@src/Oragon.ElasticPool.Core/Internals/SweepBackoffState.cs
+@src/Oragon.ElasticPool.Core/Internals/UtilizationSampler.cs
+@src/Oragon.ElasticPool.Core/Internals/WaitDurationHistogram.cs
+@src/Oragon.ElasticPool.Core/Telemetry/TelemetryEmitter.cs
+@src/Oragon.ElasticPool.Core/Telemetry/PoolDiagnosticsLog.cs
+@src/Oragon.ElasticPool.Core/Telemetry/PoolMeterNames.cs
 
 <interfaces>
 <!-- Plan 01 internal probes Plan 02 must consume. -->
@@ -91,7 +91,7 @@ From Plan 01 BackgroundSweeper<T>:
 ```csharp
 internal sealed class BackgroundSweeper<T> : IAsyncDisposable where T : notnull
 {
-    public BackgroundSweeper(AdaptivePool<T> pool, AdaptivePoolOptions<T> options, SweepBackoffState backoff, CancellationToken lifetimeToken);
+    public BackgroundSweeper(ElasticPool<T> pool, ElasticPoolOptions<T> options, SweepBackoffState backoff, CancellationToken lifetimeToken);
     internal Task TickCompleted { get; }
     internal long TickCount;
     private async Task SweepLoopAsync();
@@ -100,7 +100,7 @@ internal sealed class BackgroundSweeper<T> : IAsyncDisposable where T : notnull
 }
 ```
 
-From Plan 01 AdaptivePool<T> internal probes:
+From Plan 01 ElasticPool<T> internal probes:
 ```csharp
 internal void IncrementSinceLastGrowTicks();
 internal int SinceLastGrowTicks { get; }
@@ -108,7 +108,7 @@ internal void ResetSinceLastGrowTicks();
 internal int CurrentTotal { get; }
 internal ConcurrentQueue<PoolEntry<T>> Idle { get; }
 internal Channel<TaskCompletionSource<PoolEntry<T>>> Waiters { get; }
-internal AdaptivePoolOptions<T> Options { get; }
+internal ElasticPoolOptions<T> Options { get; }
 internal PressureSampler<T> Pressure { get; }
 internal WaitDurationHistogram WaitHistogram { get; }
 internal SweepBackoffState BackoffState { get; }
@@ -121,13 +121,13 @@ internal SweepBackoffState BackoffState { get; }
 <task type="auto">
   <name>Task 1: Extend telemetry surface — ActivitySource, counters, histograms, LoggerMessage entries</name>
   <files>
-    src/Oragon.AdaptivePool.Core/Telemetry/PoolMeterNames.cs,
-    src/Oragon.AdaptivePool.Core/Telemetry/TelemetryEmitter.cs,
-    src/Oragon.AdaptivePool.Core/Telemetry/PoolDiagnosticsLog.cs
+    src/Oragon.ElasticPool.Core/Telemetry/PoolMeterNames.cs,
+    src/Oragon.ElasticPool.Core/Telemetry/TelemetryEmitter.cs,
+    src/Oragon.ElasticPool.Core/Telemetry/PoolDiagnosticsLog.cs
   </files>
   <action>
 **1. Extend PoolMeterNames.cs** with the new instrument names (locked per CONTEXT D-09..D-13 and RESEARCH §"Telemetry"):
-- Add `ActivitySourceName = "Oragon.AdaptivePool"` (same string as MeterName but separate constant — they are different types).
+- Add `ActivitySourceName = "Oragon.ElasticPool"` (same string as MeterName but separate constant — they are different types).
 - Add `OutcomeTag = "outcome"` (used on every span per CONTEXT decision: tag with grew/shrunk/healthy/unhealthy/skipped).
 - Add `GrowCount = "pool.grow.count"`, `ShrinkCount = "pool.shrink.count"`, `HealthFailures = "pool.health.failures"`.
 - Add `AcquireWaitDuration = "pool.acquire.wait.duration"`, `SweepDuration = "pool.sweep.duration"` (both seconds per OTel convention — RESEARCH OQ #2).
@@ -159,7 +159,7 @@ Reference layout (RESEARCH Example "Code Examples" §1 + §6) — follow the str
 **Outcome tag values** (CONTEXT decision — bounded cardinality): "grew", "shrunk", "healthy", "unhealthy", "skipped". `Pool.Acquire` and `Pool.Release` use "ok" or "canceled"; `Pool.HealthCheck` uses "healthy" or "unhealthy". No reason codes.
   </action>
   <verify>
-    <automated>cd /mnt/p/dynamic-pool && dotnet build src/Oragon.AdaptivePool.Core/Oragon.AdaptivePool.Core.csproj /clp:ErrorsOnly && grep -v '^[[:space:]]*//' src/Oragon.AdaptivePool.Core/Telemetry/PoolDiagnosticsLog.cs | grep -c 'EventId = '</automated>
+    <automated>cd /mnt/p/dynamic-pool && dotnet build src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj /clp:ErrorsOnly && grep -v '^[[:space:]]*//' src/Oragon.ElasticPool.Core/Telemetry/PoolDiagnosticsLog.cs | grep -c 'EventId = '</automated>
   </verify>
   <done>Core compiles on net8.0/net9.0/net10.0; PoolDiagnosticsLog.cs grep gate (above) returns 11 (4 Phase 1 + 7 new); ActivitySource singleton present; PublicAPI analyzer reports zero errors (all telemetry types remain internal).</done>
 </task>
@@ -167,7 +167,7 @@ Reference layout (RESEARCH Example "Code Examples" §1 + §6) — follow the str
 <task type="auto">
   <name>Task 2: Composite-signal grow path in AcquireAsyncCore + wait-duration recording + Acquire/Release spans</name>
   <files>
-    src/Oragon.AdaptivePool.Core/Internals/AdaptivePool.cs
+    src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs
   </files>
   <action>
 Implement the composite-signal grow path inside `AcquireAsyncCore` (the existing Phase 1 method). Preserve every existing Phase 1 invariant (CAS-on-_total, counter rollback, BeforeUse retry limit, OperationCanceledException semantics, ObjectDisposedException semantics). Reference: RESEARCH Example 1 + Pattern 3 + Pattern 4.
@@ -284,15 +284,15 @@ This satisfies the must-have "AcquireAsyncCore records wait duration into WaitDu
 - WaitBehavior.Throw still throws PoolExhaustedException synchronously when MaxSize reached.
   </action>
   <verify>
-    <automated>cd /mnt/p/dynamic-pool && dotnet build /clp:ErrorsOnly && dotnet test tests/Oragon.AdaptivePool.Core.Tests/Oragon.AdaptivePool.Core.Tests.csproj --no-build 2>&1 | tail -5 && dotnet test tests/Oragon.AdaptivePool.Core.Stress/Oragon.AdaptivePool.Core.Stress.csproj --configuration Release 2>&1 | tail -5</automated>
+    <automated>cd /mnt/p/dynamic-pool && dotnet build /clp:ErrorsOnly && dotnet test tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj --no-build 2>&1 | tail -5 && dotnet test tests/Oragon.ElasticPool.Core.Stress/Oragon.ElasticPool.Core.Stress.csproj --configuration Release 2>&1 | tail -5</automated>
   </verify>
-  <done>Core builds; all 70 Phase 1 unit tests still pass (regression guard); PingPongStressTest still passes; `grep -c TryGrowAsync src/Oragon.AdaptivePool.Core/Internals/AdaptivePool.cs` >= 2 (declaration + invocation); `grep -c "_waitHistogram.Record" src/Oragon.AdaptivePool.Core/Internals/AdaptivePool.cs` == 1; `grep -c "_telemetry.OnGrow" src/Oragon.AdaptivePool.Core/Internals/AdaptivePool.cs` >= 2 (TryGrowAsync + GrowAndHandoffAsync).</done>
+  <done>Core builds; all 70 Phase 1 unit tests still pass (regression guard); PingPongStressTest still passes; `grep -c TryGrowAsync src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs` >= 2 (declaration + invocation); `grep -c "_waitHistogram.Record" src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs` == 1; `grep -c "_telemetry.OnGrow" src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs` >= 2 (TryGrowAsync + GrowAndHandoffAsync).</done>
 </task>
 
 <task type="auto">
   <name>Task 3: Replace BackgroundSweeper sweep tick with health-check + shrink + backoff body; emit Pool.Sweep span and SweepStarted/Completed/Backoff logs</name>
   <files>
-    src/Oragon.AdaptivePool.Core/Internals/BackgroundSweeper.cs
+    src/Oragon.ElasticPool.Core/Internals/BackgroundSweeper.cs
   </files>
   <action>
 Replace the Plan 01 stub `RunSweepTickAsync` body with the real implementation. Per RESEARCH §"Pattern 1" + §"Pattern 4" + §"Pattern 5".
@@ -300,7 +300,7 @@ Replace the Plan 01 stub `RunSweepTickAsync` body with the real implementation. 
 **Tick sequence:**
 
 1. Capture `var sweepStart = _options.TimeProvider.GetTimestamp();`.
-2. Open `Pool.Sweep` ActivitySource span via `_pool.Telemetry.StartSweepSpan(_options.PoolName)`. (Add an internal `Telemetry` accessor on `AdaptivePool<T>` returning the `TelemetryEmitter` — already needed by Task 2's grow path so it should already exist; if not, expose it.)
+2. Open `Pool.Sweep` ActivitySource span via `_pool.Telemetry.StartSweepSpan(_options.PoolName)`. (Add an internal `Telemetry` accessor on `ElasticPool<T>` returning the `TelemetryEmitter` — already needed by Task 2's grow path so it should already exist; if not, expose it.)
 3. Log `SweepStarted` at Debug.
 4. Health-check pass: enumerate the current snapshot of `_pool.Idle` (use `_pool.Idle.ToArray()` for a stable enumeration — `ConcurrentQueue<T>.ToArray` is snapshotted). For each `entry`, if `_pool.Options.Check is { } check`:
    - `int totalChecked = 0; int unhealthy = 0;`
@@ -318,9 +318,9 @@ Replace the Plan 01 stub `RunSweepTickAsync` body with the real implementation. 
 7. Update backoff: `_backoff.OnSweepResult(totalChecked, unhealthy);` if `_backoff.IntervalChanged`, `timer.Period = _backoff.CurrentInterval;` (the timer reference must be accessible — restructure `SweepLoopAsync` so `timer` is a field, OR pass it into `RunSweepTickAsync`. Pass it as a parameter for cleanliness.) Log `SweepFailureBackoff` at Warning when `IntervalChanged && CurrentInterval > PreviousInterval`.
 8. End of tick: `_pool.Telemetry.OnSweepDuration(_options.TimeProvider.GetElapsedTime(sweepStart));` and `_pool.Log.SweepCompleted(...)` at Debug. `sweepSpan?.SetTag("outcome", unhealthy > 0 ? "unhealthy" : "healthy");`
 
-**Add the missing internal helper to AdaptivePool<T>**: `internal void DecrementTotal() => Interlocked.Decrement(ref _total);` — only the sweeper's shrink pass uses it. Other decrement sites (Factory failure, AfterUse Unhealthy) already have direct field access.
+**Add the missing internal helper to ElasticPool<T>**: `internal void DecrementTotal() => Interlocked.Decrement(ref _total);` — only the sweeper's shrink pass uses it. Other decrement sites (Factory failure, AfterUse Unhealthy) already have direct field access.
 
-**Add internal Log + Telemetry accessors on AdaptivePool<T>** if not already present in Plan 01 (Plan 01 didn't add them):
+**Add internal Log + Telemetry accessors on ElasticPool<T>** if not already present in Plan 01 (Plan 01 didn't add them):
 ```csharp
 internal TelemetryEmitter Telemetry => _telemetry;
 internal ILogger Log => _log;
@@ -335,9 +335,9 @@ internal ILogger Log => _log;
 **Telemetry-first failure handling:** on `Check` throw, log `CheckUnhealthy` with `ex.GetType().Name` as the reason; do NOT log the full exception (sweep failures of many items would explode log volume). The aggregate `SweepFailed` 1099 entry covers catastrophic per-tick failures.
   </action>
   <verify>
-    <automated>cd /mnt/p/dynamic-pool && dotnet build /clp:ErrorsOnly && dotnet test tests/Oragon.AdaptivePool.Core.Tests/Oragon.AdaptivePool.Core.Tests.csproj --no-build 2>&1 | tail -5 && dotnet test tests/Oragon.AdaptivePool.Core.Stress/Oragon.AdaptivePool.Core.Stress.csproj --configuration Release 2>&1 | tail -5</automated>
+    <automated>cd /mnt/p/dynamic-pool && dotnet build /clp:ErrorsOnly && dotnet test tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj --no-build 2>&1 | tail -5 && dotnet test tests/Oragon.ElasticPool.Core.Stress/Oragon.ElasticPool.Core.Stress.csproj --configuration Release 2>&1 | tail -5</automated>
   </verify>
-  <done>Core builds; all Phase 1 tests still pass; PingPongStressTest still passes; `grep -c "RunSweepTickAsync" src/Oragon.AdaptivePool.Core/Internals/BackgroundSweeper.cs` >= 2 (decl + call); `grep -c "OnSweepResult" src/Oragon.AdaptivePool.Core/Internals/BackgroundSweeper.cs` >= 1; `grep -c "SweepCompleted" src/Oragon.AdaptivePool.Core/Internals/BackgroundSweeper.cs` >= 1.</done>
+  <done>Core builds; all Phase 1 tests still pass; PingPongStressTest still passes; `grep -c "RunSweepTickAsync" src/Oragon.ElasticPool.Core/Internals/BackgroundSweeper.cs` >= 2 (decl + call); `grep -c "OnSweepResult" src/Oragon.ElasticPool.Core/Internals/BackgroundSweeper.cs` >= 1; `grep -c "SweepCompleted" src/Oragon.ElasticPool.Core/Internals/BackgroundSweeper.cs` >= 1.</done>
 </task>
 
 </tasks>
@@ -379,7 +379,7 @@ internal ILogger Log => _log;
 - Shrink fires only when SinceLastGrowTicks >= ShrinkCooldownWindows AND idle-head's LastReturnedAt is older than IdleTimeout AND total > MinSize; evicts 1 item per tick.
 - Sweep backoff doubles the timer Period (30s -> 60s -> 120s -> MaxBackoff cap) after 3 consecutive failure windows; resets on first clean window. Each transition logged as `SweepFailureBackoff`.
 - `pool.acquire.wait.duration` histogram records every parked wait in seconds; `pool.sweep.duration` histogram records every sweep tick in seconds.
-- ActivityListener attached to "Oragon.AdaptivePool" observes `Pool.Acquire`, `Pool.Release`, `Pool.HealthCheck`, `Pool.Grow`, `Pool.Shrink`, `Pool.Sweep` spans across the appropriate code paths.
+- ActivityListener attached to "Oragon.ElasticPool" observes `Pool.Acquire`, `Pool.Release`, `Pool.HealthCheck`, `Pool.Grow`, `Pool.Shrink`, `Pool.Sweep` spans across the appropriate code paths.
 - All 7 new `[LoggerMessage]` EventIds (1005-1010, 1099) fire on their corresponding state transitions.
 </success_criteria>
 

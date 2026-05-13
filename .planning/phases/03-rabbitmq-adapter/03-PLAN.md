@@ -5,25 +5,25 @@ type: execute
 wave: 3
 depends_on: ["03-01", "03-02"]
 files_modified:
-  - Oragon.AdaptivePool.sln
-  - tests/Oragon.AdaptivePool.RabbitMQ.Tests/Oragon.AdaptivePool.RabbitMQ.Tests.csproj
-  - tests/Oragon.AdaptivePool.RabbitMQ.Tests/ConnectionPoolUnitTests.cs
-  - tests/Oragon.AdaptivePool.RabbitMQ.Tests/ChannelPoolUnitTests.cs
-  - tests/Oragon.AdaptivePool.RabbitMQ.Tests/ConnectionFactoryResolverTests.cs
-  - tests/Oragon.AdaptivePool.RabbitMQ.Tests/ConnectionChannelTrackerTests.cs
-  - tests/Oragon.AdaptivePool.RabbitMQ.Tests/TestSupport/CapturedLogEntries.cs
-  - tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests.csproj
-  - tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/Fixtures/RabbitMqContainerFixture.cs
-  - tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/Fixtures/LowChannelMaxFixture.cs
-  - tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/ConnectionPoolIntegrationTests.cs
-  - tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/ChannelPoolIntegrationTests.cs
-  - tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/ChannelSpreadIntegrationTests.cs
-  - tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/AutomaticRecoveryOverrideTests.cs
-  - tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/BurstyPublisherIntegrationTests.cs
-  - samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher.csproj
-  - samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/Program.cs
-  - samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/BurstyPublisherWorker.cs
-  - samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/README.md
+  - Oragon.ElasticPool.sln
+  - tests/Oragon.ElasticPool.RabbitMQ.Tests/Oragon.ElasticPool.RabbitMQ.Tests.csproj
+  - tests/Oragon.ElasticPool.RabbitMQ.Tests/ConnectionPoolUnitTests.cs
+  - tests/Oragon.ElasticPool.RabbitMQ.Tests/ChannelPoolUnitTests.cs
+  - tests/Oragon.ElasticPool.RabbitMQ.Tests/ConnectionFactoryResolverTests.cs
+  - tests/Oragon.ElasticPool.RabbitMQ.Tests/ConnectionChannelTrackerTests.cs
+  - tests/Oragon.ElasticPool.RabbitMQ.Tests/TestSupport/CapturedLogEntries.cs
+  - tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/Oragon.ElasticPool.RabbitMQ.IntegrationTests.csproj
+  - tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/Fixtures/RabbitMqContainerFixture.cs
+  - tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/Fixtures/LowChannelMaxFixture.cs
+  - tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/ConnectionPoolIntegrationTests.cs
+  - tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/ChannelPoolIntegrationTests.cs
+  - tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/ChannelSpreadIntegrationTests.cs
+  - tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/AutomaticRecoveryOverrideTests.cs
+  - tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/BurstyPublisherIntegrationTests.cs
+  - samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher.csproj
+  - samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/Program.cs
+  - samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/BurstyPublisherWorker.cs
+  - samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/README.md
   - Directory.Packages.props
 autonomous: true
 requirements: [RMQ-01, RMQ-02, RMQ-03, RMQ-04]
@@ -36,24 +36,24 @@ must_haves:
     - "Integration test verifies: forced `channel_max=10` produces connection pool growth (at least 2 distinct connections used) when 50 channels are simultaneously acquired."
     - "Integration test verifies: when a connection is forcibly closed mid-pool, subsequent BeforeUse marks affected channels Unhealthy and the failure policy replaces them (no AlreadyClosedException leaks to consumer)."
     - "Integration test verifies: BurstyPublisher cycle (idle → burst → idle) completes without leaked channels/connections; pool size grows during burst, shrinks during idle, regrows on next burst."
-    - "Sample project `samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher` is runnable end-to-end via `dotnet run --project samples/...` against a Docker-managed RabbitMQ 4 broker."
+    - "Sample project `samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher` is runnable end-to-end via `dotnet run --project samples/...` against a Docker-managed RabbitMQ 4 broker."
     - "All Phase 1+2 Core tests still pass after this plan completes (no regression)."
   artifacts:
-    - path: "tests/Oragon.AdaptivePool.RabbitMQ.Tests/Oragon.AdaptivePool.RabbitMQ.Tests.csproj"
+    - path: "tests/Oragon.ElasticPool.RabbitMQ.Tests/Oragon.ElasticPool.RabbitMQ.Tests.csproj"
       provides: "Unit test project, multi-target net10/9/8, NSubstitute mocks of IConnection/IChannel"
       contains: "<TargetFrameworks>net10.0;net9.0;net8.0</TargetFrameworks>"
-    - path: "tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests.csproj"
+    - path: "tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/Oragon.ElasticPool.RabbitMQ.IntegrationTests.csproj"
       provides: "Integration test project, multi-target, Testcontainers.RabbitMq fixture"
       contains: "Testcontainers.RabbitMq"
-    - path: "tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/Fixtures/RabbitMqContainerFixture.cs"
+    - path: "tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/Fixtures/RabbitMqContainerFixture.cs"
       provides: "IClassFixture wrapping RabbitMqBuilder().WithImage(\"rabbitmq:4-management\")"
-    - path: "tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/Fixtures/LowChannelMaxFixture.cs"
+    - path: "tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/Fixtures/LowChannelMaxFixture.cs"
       provides: "Variant fixture with channel_max=10 for spread test (sets RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS or rabbitmq.conf override)"
-    - path: "samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/Program.cs"
-      provides: "Generic Host setup with AddAdaptiveConnectionPool + AddAdaptiveChannelPool + AddHostedService<BurstyPublisherWorker>"
-    - path: "samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/BurstyPublisherWorker.cs"
+    - path: "samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/Program.cs"
+      provides: "Generic Host setup with AddElasticConnectionPool + AddElasticChannelPool + AddHostedService<BurstyPublisherWorker>"
+    - path: "samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/BurstyPublisherWorker.cs"
       provides: "BackgroundService cycling 5min idle → 30s burst → 5min idle, 3 cycles"
-    - path: "samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/README.md"
+    - path: "samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/README.md"
       provides: "Quick start: docker prerequisite, dotnet run command, expected log output"
   key_links:
     - from: "tests/...IntegrationTests/Fixtures/RabbitMqContainerFixture.cs"
@@ -61,7 +61,7 @@ must_haves:
       via: "WithImage(\"rabbitmq:4-management\").Build() + IAsyncLifetime"
       pattern: "RabbitMqBuilder"
     - from: "BurstyPublisherWorker"
-      to: "IAdaptivePool<IChannel>"
+      to: "IElasticPool<IChannel>"
       via: "[FromKeyedServices(\"sample\")] constructor injection"
       pattern: "FromKeyedServices"
     - from: "BurstyPublisherWorker.ExecuteAsync"
@@ -74,7 +74,7 @@ must_haves:
 Validate the Phase 3 adapter end-to-end with three deliverables:
 1. Unit tests using NSubstitute (no broker) covering hook wiring, the 3-mode factory probe, AutomaticRecoveryEnabled override + log, channel-spread tracker logic, and CWT lease pairing.
 2. Integration tests using Testcontainers.RabbitMq 4.11.0 covering the locked CONTEXT scenarios — basic CRUD against a real broker, channel-spread under `channel_max=10`, lazy cross-pool invalidation when a connection dies, and the BurstyPublisher cycle (idle → burst → idle) without leaks.
-3. The runnable sample `samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher` (RMQ-03) — a `BackgroundService` cycling idle → 100k burst → idle, demonstrating the headline value proposition.
+3. The runnable sample `samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher` (RMQ-03) — a `BackgroundService` cycling idle → 100k burst → idle, demonstrating the headline value proposition.
 
 Purpose: Cover RMQ-03 (sample) and lock down RMQ-01/02/04 with empirical proof. The integration tests are the ANCHOR for Phase 3 — if any Core API gap was masked by Plans 01/02, the integration tests will surface it (per success criterion #5: refactor Core BEFORE Phase 4).
 
@@ -99,9 +99,9 @@ Output:
 @.planning/phases/03-rabbitmq-adapter/03-01-PLAN.md
 @.planning/phases/03-rabbitmq-adapter/03-02-PLAN.md
 @.planning/phases/02-elasticity-health/03-SUMMARY.md
-@tests/Oragon.AdaptivePool.Core.Tests/Oragon.AdaptivePool.Core.Tests.csproj
-@src/Oragon.AdaptivePool.RabbitMQ/DependencyInjection/AdaptiveConnectionPoolServiceCollectionExtensions.cs
-@src/Oragon.AdaptivePool.RabbitMQ/DependencyInjection/AdaptiveChannelPoolServiceCollectionExtensions.cs
+@tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj
+@src/Oragon.ElasticPool.RabbitMQ/DependencyInjection/ElasticConnectionPoolServiceCollectionExtensions.cs
+@src/Oragon.ElasticPool.RabbitMQ/DependencyInjection/ElasticChannelPoolServiceCollectionExtensions.cs
 @Directory.Packages.props
 @Directory.Build.props
 
@@ -110,20 +110,20 @@ Output:
 
 Adapter public surface (what these tests exercise):
 ```csharp
-namespace Oragon.AdaptivePool.RabbitMQ.DependencyInjection;
-public static class AdaptiveConnectionPoolServiceCollectionExtensions
+namespace Oragon.ElasticPool.RabbitMQ.DependencyInjection;
+public static class ElasticConnectionPoolServiceCollectionExtensions
 {
-    public static IServiceCollection AddAdaptiveConnectionPool(this IServiceCollection services,
+    public static IServiceCollection AddElasticConnectionPool(this IServiceCollection services,
         string name,
         Action<ConnectionFactory>? configureFactory,
-        Action<AdaptiveConnectionPoolBuilder> configurePool);
+        Action<ElasticConnectionPoolBuilder> configurePool);
 }
 
-public static class AdaptiveChannelPoolServiceCollectionExtensions
+public static class ElasticChannelPoolServiceCollectionExtensions
 {
-    public static IServiceCollection AddAdaptiveChannelPool(this IServiceCollection services,
+    public static IServiceCollection AddElasticChannelPool(this IServiceCollection services,
         string name, string connectionPoolName,
-        Action<AdaptiveChannelPoolBuilder> configurePool);
+        Action<ElasticChannelPoolBuilder> configurePool);
 }
 ```
 
@@ -131,8 +131,8 @@ Test harness conventions inherited from Phase 1+2 (per Phase 2 SUMMARY "Heads-up
 - `OutputType=Exe` + `UseMicrosoftTestingPlatformRunner=true` + `TestingPlatformDotnetTestSupport=true`.
 - `xunit.v3` 3.2.2, `xunit.runner.visualstudio` 3.1.5, `AwesomeAssertions` 9.4.0, `NSubstitute` 5.3.0.
 - `<NoWarn>$(NoWarn);xUnit1051</NoWarn>` for test projects.
-- `CapturedLogEntries` is the canonical in-memory `ILoggerProvider` used in Phase 2; copy/paste forward from `tests/Oragon.AdaptivePool.Core.Tests/TestSupport/CapturedLogEntries.cs` (it's a 30-LOC helper) — duplication is acceptable per Phase 2's documented decision to avoid pulling FakeLogger.
-- Run tests via direct dll execution per CONTEXT carry-forward: `dotnet bin/Release/net{TFM}/Oragon.AdaptivePool.RabbitMQ.Tests.dll`.
+- `CapturedLogEntries` is the canonical in-memory `ILoggerProvider` used in Phase 2; copy/paste forward from `tests/Oragon.ElasticPool.Core.Tests/TestSupport/CapturedLogEntries.cs` (it's a 30-LOC helper) — duplication is acceptable per Phase 2's documented decision to avoid pulling FakeLogger.
+- Run tests via direct dll execution per CONTEXT carry-forward: `dotnet bin/Release/net{TFM}/Oragon.ElasticPool.RabbitMQ.Tests.dll`.
 
 Testcontainers.RabbitMq 4.11.0 surface (verified per RESEARCH Pattern 4):
 ```csharp
@@ -182,13 +182,13 @@ public sealed class BasicProperties
   <name>Task 1: Unit tests project + adapter unit tests using NSubstitute</name>
   <files>
     Directory.Packages.props,
-    Oragon.AdaptivePool.sln,
-    tests/Oragon.AdaptivePool.RabbitMQ.Tests/Oragon.AdaptivePool.RabbitMQ.Tests.csproj,
-    tests/Oragon.AdaptivePool.RabbitMQ.Tests/TestSupport/CapturedLogEntries.cs,
-    tests/Oragon.AdaptivePool.RabbitMQ.Tests/ConnectionFactoryResolverTests.cs,
-    tests/Oragon.AdaptivePool.RabbitMQ.Tests/ConnectionChannelTrackerTests.cs,
-    tests/Oragon.AdaptivePool.RabbitMQ.Tests/ConnectionPoolUnitTests.cs,
-    tests/Oragon.AdaptivePool.RabbitMQ.Tests/ChannelPoolUnitTests.cs
+    Oragon.ElasticPool.sln,
+    tests/Oragon.ElasticPool.RabbitMQ.Tests/Oragon.ElasticPool.RabbitMQ.Tests.csproj,
+    tests/Oragon.ElasticPool.RabbitMQ.Tests/TestSupport/CapturedLogEntries.cs,
+    tests/Oragon.ElasticPool.RabbitMQ.Tests/ConnectionFactoryResolverTests.cs,
+    tests/Oragon.ElasticPool.RabbitMQ.Tests/ConnectionChannelTrackerTests.cs,
+    tests/Oragon.ElasticPool.RabbitMQ.Tests/ConnectionPoolUnitTests.cs,
+    tests/Oragon.ElasticPool.RabbitMQ.Tests/ChannelPoolUnitTests.cs
   </files>
   <behavior>
     The unit test surface (each test self-describes via name):
@@ -196,7 +196,7 @@ public sealed class BasicProperties
     `ConnectionFactoryResolverTests`:
     - Resolve_PrefersKeyedSingleton_OverClosure: registers a keyed `IConnectionFactory` substitute AND provides a closure → resolver returns the keyed.
     - Resolve_FallsBackToClosure_WhenNoKeyed: no keyed registration, closure provided → resolver returns the closure-mutated factory.
-    - Resolve_FallsBackToOptions_WhenNoKeyedAndNoClosure: only `IOptionsMonitor<AdaptiveConnectionPoolOptions>` registered with HostName → resolver returns a `ConnectionFactory` populated from options.
+    - Resolve_FallsBackToOptions_WhenNoKeyedAndNoClosure: only `IOptionsMonitor<ElasticConnectionPoolOptions>` registered with HostName → resolver returns a `ConnectionFactory` populated from options.
     - Resolve_ThrowsInvalidOperation_WhenAllModesFail: nothing registered → throws with message containing the pool name.
     - ForceAutomaticRecoveryDisabled_LogsWarning_AndOverridesToFalse_WhenTrue: substitute logger; assert EventId 2001 + LogLevel.Warning + final value false.
     - ForceAutomaticRecoveryDisabled_NoOp_WhenAlreadyFalse: no log entry, final value false.
@@ -209,16 +209,16 @@ public sealed class BasicProperties
     - Concurrent_TryAcquireSlot_NeverExceedsMax: 64 threads × 1000 attempts on same connection with max=10 → final CountFor exactly 10 (or fewer if some released).
 
     `ConnectionPoolUnitTests`:
-    - AddAdaptiveConnectionPool_RegistersResolvableKeyedSingleton: `BuildServiceProvider().GetRequiredKeyedService<IAdaptivePool<IConnection>>("default")` is non-null.
-    - AddAdaptiveConnectionPool_EmptyName_AlsoResolvableNonKeyed: `name=string.Empty` → `GetRequiredService<IAdaptivePool<IConnection>>()` works.
-    - AddAdaptiveConnectionPool_FactoryCallsCreateConnectionAsync: substitute `IConnectionFactory` keyed-registered; first acquire calls `CreateConnectionAsync` exactly once. Use `Substitute.For<IConnectionFactory>()` and `factory.CreateConnectionAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(connSubstitute))`.
+    - AddElasticConnectionPool_RegistersResolvableKeyedSingleton: `BuildServiceProvider().GetRequiredKeyedService<IElasticPool<IConnection>>("default")` is non-null.
+    - AddElasticConnectionPool_EmptyName_AlsoResolvableNonKeyed: `name=string.Empty` → `GetRequiredService<IElasticPool<IConnection>>()` works.
+    - AddElasticConnectionPool_FactoryCallsCreateConnectionAsync: substitute `IConnectionFactory` keyed-registered; first acquire calls `CreateConnectionAsync` exactly once. Use `Substitute.For<IConnectionFactory>()` and `factory.CreateConnectionAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(connSubstitute))`.
     - BeforeUse_ReturnsUnhealthy_WhenIsOpenFalse: substitute IConnection with `IsOpen` toggled false; the next AcquireAsync triggers failure-policy replacement (verify by counting Factory invocations — 2nd call). Use Core's `DiscardAndReplaceFailurePolicy<T>` (default).
     - Release_CallsCloseAsync_ThenDispose_EvenWhenCloseThrows: substitute `IConnection.CloseAsync(...)` throws; assert `IConnection.DisposeAsync()` is still received.
     - AutomaticRecoveryOverride_LogsWarning_OnFirstAcquire: register a substitute logger via `services.AddLogging(b => b.AddProvider(captured))`; configure closure that sets `cf.AutomaticRecoveryEnabled = true`; first acquire produces a captured EventId=2001 entry.
 
     `ChannelPoolUnitTests`:
-    - AddAdaptiveChannelPool_FactoryAcquiresFromConnectionPool: register both pools; first channel-acquire calls `connectionPool.AcquireAsync` exactly once via the substituted-but-real Core pool.
-    - AddAdaptiveChannelPool_PairingAddedOnFactory: after acquire, the channel is paired (verify by acquiring then disposing, then asserting the connection lease was returned — connection pool's `Available` reverts to original).
+    - AddElasticChannelPool_FactoryAcquiresFromConnectionPool: register both pools; first channel-acquire calls `connectionPool.AcquireAsync` exactly once via the substituted-but-real Core pool.
+    - AddElasticChannelPool_PairingAddedOnFactory: after acquire, the channel is paired (verify by acquiring then disposing, then asserting the connection lease was returned — connection pool's `Available` reverts to original).
     - BeforeUse_ReturnsUnhealthy_WhenChannelIsOpenFalse: substitute IChannel.IsOpen=false; acquire triggers failure-policy.
     - BeforeUse_ReturnsUnhealthy_WhenPairedConnectionIsOpenFalse: channel.IsOpen=true but underlying connection.IsOpen=false (lazy invalidation per Q1) → Unhealthy.
     - Release_DisposesChannel_ThenReleasesConnectionLease: assert ordering: `IChannel.CloseAsync` → `IChannel.DisposeAsync` → connection pool `Available` increments (lease returned).
@@ -230,18 +230,18 @@ public sealed class BasicProperties
   <action>
     1. Add `Testcontainers.RabbitMq` to `Directory.Packages.props` with `<PackageVersion Include="Testcontainers.RabbitMq" Version="4.11.0" />` (used by Task 2 integration tests).
 
-    2. Create `tests/Oragon.AdaptivePool.RabbitMQ.Tests/Oragon.AdaptivePool.RabbitMQ.Tests.csproj` modeled on the existing `Core.Tests` csproj:
+    2. Create `tests/Oragon.ElasticPool.RabbitMQ.Tests/Oragon.ElasticPool.RabbitMQ.Tests.csproj` modeled on the existing `Core.Tests` csproj:
        - `<TargetFrameworks>net10.0;net9.0;net8.0</TargetFrameworks>`
        - `<IsPackable>false</IsPackable>`
        - `<OutputType>Exe</OutputType>` (Microsoft.Testing.Platform requirement — Phase 1 hit this)
        - `<UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>` and `<TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>`
        - `<NoWarn>$(NoWarn);xUnit1051</NoWarn>`
        - PackageReferences: `xunit.v3`, `xunit.runner.visualstudio`, `AwesomeAssertions`, `NSubstitute`, `Microsoft.Extensions.DependencyInjection`, `Microsoft.Extensions.Logging.Console`, `Microsoft.Extensions.Diagnostics`, `RabbitMQ.Client` (needed for IConnection/IChannel substitutes), `coverlet.collector` (PrivateAssets="all").
-       - ProjectReference: `..\..\src\Oragon.AdaptivePool.RabbitMQ\Oragon.AdaptivePool.RabbitMQ.csproj`.
+       - ProjectReference: `..\..\src\Oragon.ElasticPool.RabbitMQ\Oragon.ElasticPool.RabbitMQ.csproj`.
 
-    3. Add the test project to `Oragon.AdaptivePool.sln` under the existing `tests` solution folder. Generate a fresh GUID. Replicate the Debug/Release × Any CPU/x64/x86 config block.
+    3. Add the test project to `Oragon.ElasticPool.sln` under the existing `tests` solution folder. Generate a fresh GUID. Replicate the Debug/Release × Any CPU/x64/x86 config block.
 
-    4. Create `tests/Oragon.AdaptivePool.RabbitMQ.Tests/TestSupport/CapturedLogEntries.cs` — copy verbatim from `tests/Oragon.AdaptivePool.Core.Tests/TestSupport/CapturedLogEntries.cs` (it's a 30-LOC ILoggerProvider; per Phase 2 SUMMARY decision, duplication beats pulling FakeLogger). Add a brief comment at top noting "Forward-copied from Core.Tests; Phase 2 documented this is intentional."
+    4. Create `tests/Oragon.ElasticPool.RabbitMQ.Tests/TestSupport/CapturedLogEntries.cs` — copy verbatim from `tests/Oragon.ElasticPool.Core.Tests/TestSupport/CapturedLogEntries.cs` (it's a 30-LOC ILoggerProvider; per Phase 2 SUMMARY decision, duplication beats pulling FakeLogger). Add a brief comment at top noting "Forward-copied from Core.Tests; Phase 2 documented this is intentional."
 
     5. Implement the 4 test classes (`ConnectionFactoryResolverTests`, `ConnectionChannelTrackerTests`, `ConnectionPoolUnitTests`, `ChannelPoolUnitTests`) covering ALL behaviors listed under <behavior>. Conventions:
        - Use `[Fact]` (or `[Theory]` where multiple inputs apply).
@@ -252,43 +252,43 @@ public sealed class BasicProperties
 
     6. Verify test project builds and runs:
        ```
-       dotnet build tests/Oragon.AdaptivePool.RabbitMQ.Tests/Oragon.AdaptivePool.RabbitMQ.Tests.csproj -c Release
-       dotnet bin/Release/net10.0/Oragon.AdaptivePool.RabbitMQ.Tests.dll  # direct-dll run (Phase 1+2 carry-forward)
+       dotnet build tests/Oragon.ElasticPool.RabbitMQ.Tests/Oragon.ElasticPool.RabbitMQ.Tests.csproj -c Release
+       dotnet bin/Release/net10.0/Oragon.ElasticPool.RabbitMQ.Tests.dll  # direct-dll run (Phase 1+2 carry-forward)
        ```
        Then on net9.0 and net8.0.
   </action>
   <verify>
     <automated>
       cd /mnt/p/dynamic-pool && \
-      dotnet build Oragon.AdaptivePool.sln -c Release && \
-      cd tests/Oragon.AdaptivePool.RabbitMQ.Tests && \
+      dotnet build Oragon.ElasticPool.sln -c Release && \
+      cd tests/Oragon.ElasticPool.RabbitMQ.Tests && \
       for tfm in net10.0 net9.0 net8.0; do \
-        dotnet bin/Release/$tfm/Oragon.AdaptivePool.RabbitMQ.Tests.dll || exit 1; \
+        dotnet bin/Release/$tfm/Oragon.ElasticPool.RabbitMQ.Tests.dll || exit 1; \
       done && \
       cd /mnt/p/dynamic-pool && \
-      dotnet test tests/Oragon.AdaptivePool.Core.Tests/Oragon.AdaptivePool.Core.Tests.csproj -c Release --no-build
+      dotnet test tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj -c Release --no-build
     </automated>
   </verify>
   <done>
     - All unit tests pass on net10.0, net9.0, net8.0 (3 TFMs × N tests, expect ~25-30 tests total based on the behavior list).
     - Phase 1+2 Core test suite still 141/141 green per TFM (no regression).
     - `Testcontainers.RabbitMq 4.11.0` is centrally pinned.
-    - Solution gained `Oragon.AdaptivePool.RabbitMQ.Tests` project.
+    - Solution gained `Oragon.ElasticPool.RabbitMQ.Tests` project.
   </done>
 </task>
 
 <task type="auto" tdd="true">
   <name>Task 2: Integration tests project (Testcontainers) — connection pool, channel pool, channel-spread, AutomaticRecoveryEnabled override, BurstyPublisher cycle</name>
   <files>
-    Oragon.AdaptivePool.sln,
-    tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests.csproj,
-    tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/Fixtures/RabbitMqContainerFixture.cs,
-    tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/Fixtures/LowChannelMaxFixture.cs,
-    tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/ConnectionPoolIntegrationTests.cs,
-    tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/ChannelPoolIntegrationTests.cs,
-    tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/ChannelSpreadIntegrationTests.cs,
-    tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/AutomaticRecoveryOverrideTests.cs,
-    tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/BurstyPublisherIntegrationTests.cs
+    Oragon.ElasticPool.sln,
+    tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/Oragon.ElasticPool.RabbitMQ.IntegrationTests.csproj,
+    tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/Fixtures/RabbitMqContainerFixture.cs,
+    tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/Fixtures/LowChannelMaxFixture.cs,
+    tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/ConnectionPoolIntegrationTests.cs,
+    tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/ChannelPoolIntegrationTests.cs,
+    tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/ChannelSpreadIntegrationTests.cs,
+    tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/AutomaticRecoveryOverrideTests.cs,
+    tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/BurstyPublisherIntegrationTests.cs
   </files>
   <behavior>
     All test classes carry `[Trait("Category", "Integration")]` so unit-runs (no Docker) skip them via filter.
@@ -321,13 +321,13 @@ public sealed class BasicProperties
       - NOTE: This is a SCALED-DOWN version of the sample (1k×3 instead of 100k×3) so the test runs in <60s wall-clock. The full 100k cycle lives in the SAMPLE, not the test.
   </behavior>
   <action>
-    1. Create `tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests.csproj` modeled on the unit test project. Differences:
+    1. Create `tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/Oragon.ElasticPool.RabbitMQ.IntegrationTests.csproj` modeled on the unit test project. Differences:
        - Add `<PackageReference Include="Testcontainers.RabbitMq" />`.
        - Add `<PackageReference Include="Microsoft.Extensions.Diagnostics.Testing" />` (for `MetricCollector<T>` per Phase 2 pattern).
        - Add `<PackageReference Include="Microsoft.Extensions.Hosting" />` (BurstyPublisher integration test uses Generic Host or at least IHostedService primitives).
-       - ProjectReference: `..\..\src\Oragon.AdaptivePool.RabbitMQ\Oragon.AdaptivePool.RabbitMQ.csproj`.
+       - ProjectReference: `..\..\src\Oragon.ElasticPool.RabbitMQ\Oragon.ElasticPool.RabbitMQ.csproj`.
 
-    2. Add the integration test project to `Oragon.AdaptivePool.sln` under `tests` folder. Fresh GUID.
+    2. Add the integration test project to `Oragon.ElasticPool.sln` under `tests` folder. Fresh GUID.
 
     3. Create `Fixtures/RabbitMqContainerFixture.cs` — implements xUnit v3 `IAsyncLifetime` (returns `ValueTask`):
        ```csharp
@@ -352,25 +352,25 @@ public sealed class BasicProperties
        - All classes carry `[Trait("Category", "Integration")]`.
        - Use `IClassFixture<RabbitMqContainerFixture>` (or `LowChannelMaxFixture` for spread test).
        - Each test runs in a fresh `ServiceCollection` to avoid shared state.
-       - Use `MetricCollector<long>(meterFactory, "Oragon.AdaptivePool", "pool.grow.count")` for grow/shrink assertions (Phase 2 SUMMARY pattern).
+       - Use `MetricCollector<long>(meterFactory, "Oragon.ElasticPool", "pool.grow.count")` for grow/shrink assertions (Phase 2 SUMMARY pattern).
        - Use `await using` for service provider AND for individual leases.
 
     6. Verify build + run with Docker available:
        ```
-       dotnet build Oragon.AdaptivePool.sln -c Release
-       cd tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests
-       dotnet bin/Release/net10.0/Oragon.AdaptivePool.RabbitMQ.IntegrationTests.dll --filter "Category=Integration"
+       dotnet build Oragon.ElasticPool.sln -c Release
+       cd tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests
+       dotnet bin/Release/net10.0/Oragon.ElasticPool.RabbitMQ.IntegrationTests.dll --filter "Category=Integration"
        ```
        (If Docker unavailable in the executor's environment: STOP and report — this is RMQ-03's anchor, cannot be skipped without losing the phase's integration validation.)
   </action>
   <verify>
     <automated>
       cd /mnt/p/dynamic-pool && \
-      dotnet build Oragon.AdaptivePool.sln -c Release && \
+      dotnet build Oragon.ElasticPool.sln -c Release && \
       docker ps >/dev/null 2>&1 && \
-      cd tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests && \
+      cd tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests && \
       for tfm in net10.0 net9.0 net8.0; do \
-        dotnet bin/Release/$tfm/Oragon.AdaptivePool.RabbitMQ.IntegrationTests.dll || exit 1; \
+        dotnet bin/Release/$tfm/Oragon.ElasticPool.RabbitMQ.IntegrationTests.dll || exit 1; \
       done
     </automated>
   </verify>
@@ -386,59 +386,59 @@ public sealed class BasicProperties
 <task type="auto" tdd="true">
   <name>Task 3: BurstyPublisher sample project — runnable end-to-end (RMQ-03)</name>
   <files>
-    Oragon.AdaptivePool.sln,
-    samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher.csproj,
-    samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/Program.cs,
-    samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/BurstyPublisherWorker.cs,
-    samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/README.md
+    Oragon.ElasticPool.sln,
+    samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher.csproj,
+    samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/Program.cs,
+    samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/BurstyPublisherWorker.cs,
+    samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/README.md
   </files>
   <behavior>
     - Sample compiles for `net10.0` only (samples don't need multi-target — single-runtime keeps sample lean).
-    - `Program.cs` wires Generic Host: `Host.CreateApplicationBuilder` → `services.AddLogging(... AddConsole())` → `services.AddAdaptiveConnectionPool("sample", f => f.Uri = new Uri(connStr), p => p.WithBounds(min:1,max:8,initial:1))` → `services.AddAdaptiveChannelPool("sample","sample", p => p.WithBounds(0,64,0).WithMaxChannelsPerConnection(50))` → `services.AddHostedService<BurstyPublisherWorker>()` → `host.RunAsync()`.
+    - `Program.cs` wires Generic Host: `Host.CreateApplicationBuilder` → `services.AddLogging(... AddConsole())` → `services.AddElasticConnectionPool("sample", f => f.Uri = new Uri(connStr), p => p.WithBounds(min:1,max:8,initial:1))` → `services.AddElasticChannelPool("sample","sample", p => p.WithBounds(0,64,0).WithMaxChannelsPerConnection(50))` → `services.AddHostedService<BurstyPublisherWorker>()` → `host.RunAsync()`.
     - Connection string source: env var `RABBITMQ_URI` (default `amqp://guest:guest@localhost:5672/` if unset).
     - `BurstyPublisherWorker : BackgroundService` cycles 3 times: 5min idle → 30s burst (~100k publishes via `Parallel.ForEachAsync`, MaxDegreeOfParallelism = 256, each acquiring its OWN channel per Pitfall 10) → 5min idle. Logs cycle markers + elapsed/throughput per burst.
-    - Topology: declare exchange `oragon.adaptivepool.sample` (direct, durable), queue `oragon.adaptivepool.sample.queue` (durable, classic — quorum requires 3-node cluster), binding to routing key `bursty.demo`. Done once at worker startup.
+    - Topology: declare exchange `oragon.elasticpool.sample` (direct, durable), queue `oragon.elasticpool.sample.queue` (durable, classic — quorum requires 3-node cluster), binding to routing key `bursty.demo`. Done once at worker startup.
     - Message body: small JSON `{ "Idx": 1234, "Cycle": 0 }`, persistent.
     - Per-publish: `BasicProperties { Persistent = true }`, `mandatory: false`.
-    - README: prerequisites (Docker for local broker), how to start broker (`docker run -d --rm -p 5672:5672 -p 15672:15672 rabbitmq:4-management`), how to run sample (`dotnet run --project samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher`), expected log output snippet (cycle 0/1/2 with throughput numbers).
+    - README: prerequisites (Docker for local broker), how to start broker (`docker run -d --rm -p 5672:5672 -p 15672:15672 rabbitmq:4-management`), how to run sample (`dotnet run --project samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher`), expected log output snippet (cycle 0/1/2 with throughput numbers).
     - The sample is NOT in CI; it's documentation + a runnable demonstration (per RMQ-03).
   </behavior>
   <action>
-    1. Create `samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher.csproj`:
+    1. Create `samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher.csproj`:
        - `<TargetFramework>net10.0</TargetFramework>` (single-runtime sample).
-       - `<OutputType>Exe</OutputType>`, `<IsPackable>false</IsPackable>`, `<RootNamespace>Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher</RootNamespace>`.
+       - `<OutputType>Exe</OutputType>`, `<IsPackable>false</IsPackable>`, `<RootNamespace>Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher</RootNamespace>`.
        - PackageReferences: `Microsoft.Extensions.Hosting`, `Microsoft.Extensions.Logging.Console`, `RabbitMQ.Client`.
-       - ProjectReference: `..\..\src\Oragon.AdaptivePool.RabbitMQ\Oragon.AdaptivePool.RabbitMQ.csproj`.
+       - ProjectReference: `..\..\src\Oragon.ElasticPool.RabbitMQ\Oragon.ElasticPool.RabbitMQ.csproj`.
 
-    2. Create `Program.cs` per <behavior>. Use top-level statements (.NET 10 idiom). Include OTel-friendly logging configuration: `builder.Logging.AddSimpleConsole(o => { o.SingleLine = true; o.TimestampFormat = "HH:mm:ss "; });`. Document in inline comment that the consumer can `.AddMeter("Oragon.AdaptivePool")` and `.AddSource("Oragon.AdaptivePool")` to a real OTel exporter for production scenarios.
+    2. Create `Program.cs` per <behavior>. Use top-level statements (.NET 10 idiom). Include OTel-friendly logging configuration: `builder.Logging.AddSimpleConsole(o => { o.SingleLine = true; o.TimestampFormat = "HH:mm:ss "; });`. Document in inline comment that the consumer can `.AddMeter("Oragon.ElasticPool")` and `.AddSource("Oragon.ElasticPool")` to a real OTel exporter for production scenarios.
 
     3. Create `BurstyPublisherWorker.cs` per <behavior>:
-       - Use primary constructor: `public sealed class BurstyPublisherWorker([FromKeyedServices("sample")] IAdaptivePool<IChannel> channelPool, ILogger<BurstyPublisherWorker> logger) : BackgroundService`.
+       - Use primary constructor: `public sealed class BurstyPublisherWorker([FromKeyedServices("sample")] IElasticPool<IChannel> channelPool, ILogger<BurstyPublisherWorker> logger) : BackgroundService`.
        - Topology declared in a separate setup acquire (not inside the burst loop).
        - Burst loop: `await Parallel.ForEachAsync(Enumerable.Range(0, 100_000), new ParallelOptions { MaxDegreeOfParallelism = 256, CancellationToken = ct }, async (i, token) => { await using var ch = await channelPool.AcquireAsync(token); var body = JsonSerializer.SerializeToUtf8Bytes(new { Idx = i, Cycle = cycle }); await ch.Value.BasicPublishAsync(Exchange, RoutingKey, mandatory: false, basicProperties: new BasicProperties { Persistent = true }, body: body, cancellationToken: token); });`.
        - Per Pitfall 10: comment near the inner lambda saying "// MUST acquire a fresh channel per iteration — IChannel is NOT thread-safe for publish (RabbitMQ docs)".
        - Cycle count: 3. Idle duration: 5 min between cycles. (Configurable via env vars `BURSTY_CYCLES`, `BURSTY_IDLE_SECONDS`, `BURSTY_BURST_COUNT` for dev convenience, but defaults match CONTEXT.)
        - Catch and log cancellation cleanly so Ctrl+C exits without stack traces.
 
-    4. Create `samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/README.md` per <behavior>. ~50 lines. Include a "What this demonstrates" section pointing back to PROJECT.md "Motivation real" paragraph.
+    4. Create `samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/README.md` per <behavior>. ~50 lines. Include a "What this demonstrates" section pointing back to PROJECT.md "Motivation real" paragraph.
 
-    5. Add the sample to `Oragon.AdaptivePool.sln` under a NEW `samples` solution folder (generate a folder GUID since none exists yet).
+    5. Add the sample to `Oragon.ElasticPool.sln` under a NEW `samples` solution folder (generate a folder GUID since none exists yet).
 
     6. Verify the sample BUILDS (don't actually run a 30-min cycle in verification — that's manual):
        ```
-       dotnet build samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher.csproj -c Release
+       dotnet build samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher.csproj -c Release
        ```
        Optionally run a smoke build with `BURSTY_CYCLES=1 BURSTY_IDLE_SECONDS=2 BURSTY_BURST_COUNT=100` against a Testcontainers-managed broker to prove end-to-end works (manual verify, not automated in this task — it would need orchestration).
   </action>
   <verify>
     <automated>
       cd /mnt/p/dynamic-pool && \
-      dotnet build samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher.csproj -c Release && \
-      grep -v '^#' samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/BurstyPublisherWorker.cs | grep -c "AcquireAsync" && \
-      grep -v '^#' samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/BurstyPublisherWorker.cs | grep -c "Parallel.ForEachAsync" && \
-      grep -v '^#' samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/Program.cs | grep -c "AddAdaptiveConnectionPool" && \
-      grep -v '^#' samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/Program.cs | grep -c "AddAdaptiveChannelPool" && \
-      grep -c "samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher" Oragon.AdaptivePool.sln
+      dotnet build samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher.csproj -c Release && \
+      grep -v '^#' samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/BurstyPublisherWorker.cs | grep -c "AcquireAsync" && \
+      grep -v '^#' samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/BurstyPublisherWorker.cs | grep -c "Parallel.ForEachAsync" && \
+      grep -v '^#' samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/Program.cs | grep -c "AddElasticConnectionPool" && \
+      grep -v '^#' samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/Program.cs | grep -c "AddElasticChannelPool" && \
+      grep -c "samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher" Oragon.ElasticPool.sln
     </automated>
   </verify>
   <done>
@@ -475,7 +475,7 @@ public sealed class BasicProperties
 </threat_model>
 
 <verification>
-- `dotnet build Oragon.AdaptivePool.sln -c Release` exits 0; produces 8 projects (Core, Core.Tests, Core.Stress, Core.Benchmarks, RabbitMQ, RabbitMQ.Tests, RabbitMQ.IntegrationTests, RabbitMQ.Sample.BurstyPublisher).
+- `dotnet build Oragon.ElasticPool.sln -c Release` exits 0; produces 8 projects (Core, Core.Tests, Core.Stress, Core.Benchmarks, RabbitMQ, RabbitMQ.Tests, RabbitMQ.IntegrationTests, RabbitMQ.Sample.BurstyPublisher).
 - Unit tests pass on net8/9/10 (direct-dll execution per Phase 1+2 carry-forward).
 - Integration tests pass on net8/9/10 with Docker available (Testcontainers spins fresh broker per test class).
 - The channel-spread integration test produces ≥ 5 distinct connections under broker `channel_max=10` (empirical proof of eager-spread strategy from Plan 02).
@@ -488,9 +488,9 @@ public sealed class BasicProperties
 </verification>
 
 <success_criteria>
-1. `Oragon.AdaptivePool.RabbitMQ.Tests` project exists, runs on all 3 TFMs, all unit tests pass.
-2. `Oragon.AdaptivePool.RabbitMQ.IntegrationTests` project exists, all 5 test classes pass against Testcontainers RabbitMQ 4.x.
-3. `samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher` builds and is documented in its own README.
+1. `Oragon.ElasticPool.RabbitMQ.Tests` project exists, runs on all 3 TFMs, all unit tests pass.
+2. `Oragon.ElasticPool.RabbitMQ.IntegrationTests` project exists, all 5 test classes pass against Testcontainers RabbitMQ 4.x.
+3. `samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher` builds and is documented in its own README.
 4. The channel-spread test empirically proves the eager strategy (Plan 02) handles `channel_max=10` correctly.
 5. The lazy-invalidation test empirically proves Q1's strategy is sufficient — OR it fails and the failure surfaces a Core API gap to be fixed before Phase 4 (per phase success criterion #5).
 6. No regression in Core tests.

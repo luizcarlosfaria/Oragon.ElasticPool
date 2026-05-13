@@ -1,0 +1,138 @@
+@page "/"
+@rendermode InteractiveServer
+@implements IAsyncDisposable
+@inject LiveLoadController Load
+
+<PageTitle>ElasticPool Live Dashboard</PageTitle>
+
+<main class="dashboard">
+    <section class="hero-band">
+        <div>
+            <p class="eyebrow">RabbitMQ elastic pool</p>
+            <h1>Live connection pressure</h1>
+            <p class="status">@_snapshot.Status</p>
+        </div>
+        <div class="rate">
+            <span>@_snapshot.PublishRate.ToString("N0")</span>
+            <label>msg/s</label>
+        </div>
+    </section>
+
+    <section class="control-band">
+        <div class="control-row">
+            <label for="load">Concurrency</label>
+            <input id="load" type="range" min="0" max="200" value="@_targetConcurrency" @oninput="OnConcurrencyInput" />
+            <input class="number-input" type="number" min="0" max="200" value="@_targetConcurrency" @oninput="OnConcurrencyInput" />
+            <button type="button" @onclick="Stop">Stop</button>
+        </div>
+        <div class="totals">
+            <span>@_snapshot.TargetConcurrency workers</span>
+            <span>@_snapshot.Published.ToString("N0") published</span>
+            <span>@_snapshot.Errors.ToString("N0") errors</span>
+        </div>
+    </section>
+
+    @if (!string.IsNullOrWhiteSpace(_snapshot.LastError))
+    {
+        <section class="error-band">@_snapshot.LastError</section>
+    }
+
+    <section class="pool-grid">
+        <PoolPanel Title="Connections" Snapshot="_snapshot.Connections" />
+        <PoolPanel Title="Channels" Snapshot="_snapshot.Channels" />
+    </section>
+
+    <section class="chart-band">
+        <div class="chart-header">
+            <span>Pool size history</span>
+            <span>100 ms samples</span>
+        </div>
+        <svg viewBox="0 0 600 180" preserveAspectRatio="none" role="img" aria-label="Live pool size history">
+            <polyline class="connections-line" points="@BuildPolyline(static s => s.Connections.Total)" />
+            <polyline class="channels-line" points="@BuildPolyline(static s => s.Channels.Total)" />
+        </svg>
+        <div class="legend">
+            <span><i class="connections-key"></i> Connections</span>
+            <span><i class="channels-key"></i> Channels</span>
+        </div>
+    </section>
+</main>
+
+@code {
+    private readonly CancellationTokenSource _dispose = new();
+    private readonly List<LiveDashboardSnapshot> _history = [];
+    private LiveDashboardSnapshot _snapshot = EmptySnapshot();
+    private Task? _refreshTask;
+    private int _targetConcurrency;
+
+    protected override void OnInitialized()
+    {
+        _snapshot = Load.GetSnapshot();
+        _refreshTask = RefreshLoopAsync();
+    }
+
+    private void OnConcurrencyInput(ChangeEventArgs args)
+    {
+        if (int.TryParse(args.Value?.ToString(), out var value))
+        {
+            _targetConcurrency = Math.Clamp(value, 0, 200);
+            Load.SetTargetConcurrency(_targetConcurrency);
+            _snapshot = Load.GetSnapshot();
+        }
+    }
+
+    private void Stop()
+    {
+        _targetConcurrency = 0;
+        Load.Stop();
+        _snapshot = Load.GetSnapshot();
+    }
+
+    private async Task RefreshLoopAsync()
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(100));
+        while (await timer.WaitForNextTickAsync(_dispose.Token))
+        {
+            _snapshot = Load.GetSnapshot();
+            _targetConcurrency = _snapshot.TargetConcurrency;
+            _history.Add(_snapshot);
+            if (_history.Count > 120)
+            {
+                _history.RemoveAt(0);
+            }
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private string BuildPolyline(Func<LiveDashboardSnapshot, int> selector)
+    {
+        if (_history.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var max = Math.Max(1, _history.Max(s => Math.Max(s.Connections.Total, s.Channels.Total)));
+        var width = 600d;
+        var height = 180d;
+        var last = Math.Max(1, _history.Count - 1);
+        return string.Join(' ', _history.Select((snapshot, index) =>
+        {
+            var x = index * width / last;
+            var y = height - selector(snapshot) * height / max;
+            return $"{x:F1},{y:F1}";
+        }));
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _dispose.Cancel();
+        if (_refreshTask is not null)
+        {
+            try { await _refreshTask; } catch (OperationCanceledException) { }
+        }
+        _dispose.Dispose();
+    }
+
+    private static LiveDashboardSnapshot EmptySnapshot() =>
+        new(new(0, 0, 0, 0, 0, 0), new(0, 0, 0, 0, 0, 0), 0, 0, 0, 0, "Starting", null);
+}

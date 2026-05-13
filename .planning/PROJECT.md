@@ -1,4 +1,4 @@
-# Oragon.AdaptivePool
+# Oragon.ElasticPool
 
 ## What This Is
 
@@ -28,11 +28,11 @@ juntos são o produto e nenhum pode ser sacrificado.
 
 <!-- Current scope. Building toward these. -->
 
-**Core (`Oragon.AdaptivePool.Core`):**
+**Core (`Oragon.ElasticPool.Core`):**
 
-- [ ] Pool genérico `IAdaptivePool<T>` com `Acquire()` síncrono (retorno imediato se há item livre) e `AcquireAsync(CancellationToken)` (espera/cresce sob pressão)
+- [ ] Pool genérico `IElasticPool<T>` com `Acquire()` síncrono (retorno imediato se há item livre) e `AcquireAsync(CancellationToken)` (espera/cresce sob pressão)
 - [ ] Wrapper disposable `IPoolItem<T>` expondo `.Object` e devolvendo ao pool no `Dispose()`/`DisposeAsync()`
-- [ ] Builder fluente `AdaptiveObjectPoolFactory.Build<T>(IServiceProvider, CancellationToken)` com `.Factory(...)`, `.BeforeUse(...)`, `.Check(...)`, `.AfterUse(...)`, `.Release(...)`, `.Build()`
+- [ ] Builder fluente `ElasticObjectPoolFactory.Build<T>(IServiceProvider, CancellationToken)` com `.Factory(...)`, `.BeforeUse(...)`, `.Check(...)`, `.AfterUse(...)`, `.Release(...)`, `.Build()`
 - [ ] Configuração de bounds: `MinSize`, `MaxSize`, `InitialSize` (eager warm-up opcional)
 - [ ] Crescimento sob pressão por **combinação de sinais**: espera no `Acquire`, utilização sustentada (%), tamanho da fila de waiters
 - [ ] Encolhimento automático: itens ociosos além de `IdleTimeout` são descartados até atingir `MinSize`
@@ -44,14 +44,14 @@ juntos são o produto e nenhum pode ser sacrificado.
 - [ ] Telemetria built-in via `System.Diagnostics.Metrics.Meter` (gauges de tamanho, contadores de borrow/return/fail/grow/shrink)
 - [ ] Tracing via `ActivitySource` em `Acquire`/`Release`/health-check
 - [ ] Logging via `ILogger<T>` em transições de estado e falhas
-- [ ] Integração DI: extensão `services.AddAdaptivePool<T>(...)` para Microsoft.Extensions.DependencyInjection
+- [ ] Integração DI: extensão `services.AddElasticPool<T>(...)` para Microsoft.Extensions.DependencyInjection
 - [ ] Cancellation token propagado em todos os hooks async e em `AcquireAsync`
 - [ ] Thread-safety verificada sob carga concorrente real
 
-**RabbitMQ Adapter (`Oragon.AdaptivePool.RabbitMQ`):**
+**RabbitMQ Adapter (`Oragon.ElasticPool.RabbitMQ`):**
 
-- [ ] Extension `services.AddAdaptiveConnectionPool(...)` configurando pool de `IConnection` com health check baseado em `IsOpen`
-- [ ] Extension `services.AddAdaptiveChannelPool(...)` configurando pool de `IChannel` em camada sobre o pool de `IConnection` (factory pega conexão do pool de conexões)
+- [ ] Extension `services.AddElasticConnectionPool(...)` configurando pool de `IConnection` com health check baseado em `IsOpen`
+- [ ] Extension `services.AddElasticChannelPool(...)` configurando pool de `IChannel` em camada sobre o pool de `IConnection` (factory pega conexão do pool de conexões)
 - [ ] Convenções de nomenclatura e DX consistentes com `Oragon.RabbitMQ` (sister library)
 - [ ] Sample mostrando publisher de alta variação (de algumas/hora a centenas-de-milhares simultâneas)
 
@@ -84,7 +84,7 @@ e descartar conexões ad-hoc, com custo TCP repetido nos picos e desperdício de
 recursos quando ociosos.
 
 **Sister library:** `Oragon.RabbitMQ` (mesma autoria) cobre o lado consumidor com
-fluent builder + minimal API + DI-first. O AdaptivePool complementa o lado publisher
+fluent builder + minimal API + DI-first. O ElasticPool complementa o lado publisher
 (e qualquer cenário que precise de conexões/canais sob demanda elástica), mantendo
 convenções consistentes (fluent builder, factory pattern, DI-first, RabbitMQ.Client v7+).
 
@@ -109,7 +109,7 @@ Não há equivalente direto que combine elasticidade + auto-cura + generalidade 
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Nome `Oragon.AdaptivePool` | "Adaptive" captura tanto elasticidade quanto auto-cura num único termo; prefixo `Oragon.` consistente com outras libs do autor | — Pending |
+| Nome `Oragon.ElasticPool` | "Adaptive" captura tanto elasticidade quanto auto-cura num único termo; prefixo `Oragon.` consistente com outras libs do autor | — Pending |
 | Multi-target `net10.0` / `net9.0` / `net8.0` | Cobre LTS atuais e a release mais recente; sem polyfills significativos necessários | — Pending |
 | Dois pacotes (Core + RabbitMQ adapter) | Core sem dependência externa permite outros adapters futuros; separação clara de responsabilidades | — Pending |
 | Hooks lifecycle com 5 estágios (Factory/BeforeUse/Check/AfterUse/Release) | Cobertura granular do ciclo de vida sem forçar todos os hooks a serem usados; cada um é opcional exceto Factory | — Pending |

@@ -12,7 +12,7 @@ essa variação é muito grande e exige
 A ideia do poll é ter um pool que seja generic
 
 ```
-var pool = AdaptiveObjectPoolFactory.Build<IConnection>(sp, ct)
+var pool = ElasticObjectPoolFactory.Build<IConnection>(sp, ct)
 
 .Factory((sp, ct) => sp.GetRequiredService<IConnectionFactory>().CreateConnectionAsync(ct))
 

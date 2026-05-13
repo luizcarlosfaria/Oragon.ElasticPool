@@ -1,0 +1,21 @@
+#nullable enable
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticChannelPoolBuilder.ShrinkCooldownWindows.get -> int
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticChannelPoolBuilder.ShrinkBatchSize.get -> int
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticChannelPoolBuilder.ShrinkOnUtilizationPercent.get -> double
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticChannelPoolBuilder.ShrinkTargetUtilizationPercent.get -> double
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticChannelPoolBuilder.SweepInterval.get -> System.TimeSpan
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticChannelPoolBuilder.WithShrinkBatchSize(int n) -> Oragon.ElasticPool.RabbitMQ.Builder.ElasticChannelPoolBuilder!
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticChannelPoolBuilder.WithShrinkCooldownWindows(int n) -> Oragon.ElasticPool.RabbitMQ.Builder.ElasticChannelPoolBuilder!
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticChannelPoolBuilder.WithShrinkOnUtilizationPercent(double p) -> Oragon.ElasticPool.RabbitMQ.Builder.ElasticChannelPoolBuilder!
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticChannelPoolBuilder.WithShrinkTargetUtilizationPercent(double p) -> Oragon.ElasticPool.RabbitMQ.Builder.ElasticChannelPoolBuilder!
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticChannelPoolBuilder.WithSweepInterval(System.TimeSpan t) -> Oragon.ElasticPool.RabbitMQ.Builder.ElasticChannelPoolBuilder!
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticConnectionPoolBuilder.ShrinkCooldownWindows.get -> int
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticConnectionPoolBuilder.ShrinkBatchSize.get -> int
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticConnectionPoolBuilder.ShrinkOnUtilizationPercent.get -> double
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticConnectionPoolBuilder.ShrinkTargetUtilizationPercent.get -> double
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticConnectionPoolBuilder.SweepInterval.get -> System.TimeSpan
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticConnectionPoolBuilder.WithShrinkBatchSize(int n) -> Oragon.ElasticPool.RabbitMQ.Builder.ElasticConnectionPoolBuilder!
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticConnectionPoolBuilder.WithShrinkCooldownWindows(int n) -> Oragon.ElasticPool.RabbitMQ.Builder.ElasticConnectionPoolBuilder!
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticConnectionPoolBuilder.WithShrinkOnUtilizationPercent(double p) -> Oragon.ElasticPool.RabbitMQ.Builder.ElasticConnectionPoolBuilder!
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticConnectionPoolBuilder.WithShrinkTargetUtilizationPercent(double p) -> Oragon.ElasticPool.RabbitMQ.Builder.ElasticConnectionPoolBuilder!
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticConnectionPoolBuilder.WithSweepInterval(System.TimeSpan t) -> Oragon.ElasticPool.RabbitMQ.Builder.ElasticConnectionPoolBuilder!

@@ -43,14 +43,14 @@ key-files:
     - .editorconfig
     - Directory.Build.props
     - Directory.Packages.props
-    - Oragon.AdaptivePool.sln
-    - src/Oragon.AdaptivePool.Core/Oragon.AdaptivePool.Core.csproj
-    - src/Oragon.AdaptivePool.Core/PublicAPI.Shipped.txt
-    - src/Oragon.AdaptivePool.Core/PublicAPI.Unshipped.txt
-    - tests/Oragon.AdaptivePool.Core.Tests/Oragon.AdaptivePool.Core.Tests.csproj
-    - tests/Oragon.AdaptivePool.Core.Tests/PlaceholderSmokeTest.cs
-    - tests/Oragon.AdaptivePool.Core.Stress/Oragon.AdaptivePool.Core.Stress.csproj
-    - tests/Oragon.AdaptivePool.Core.Stress/PlaceholderStressFact.cs
+    - Oragon.ElasticPool.sln
+    - src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj
+    - src/Oragon.ElasticPool.Core/PublicAPI.Shipped.txt
+    - src/Oragon.ElasticPool.Core/PublicAPI.Unshipped.txt
+    - tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj
+    - tests/Oragon.ElasticPool.Core.Tests/PlaceholderSmokeTest.cs
+    - tests/Oragon.ElasticPool.Core.Stress/Oragon.ElasticPool.Core.Stress.csproj
+    - tests/Oragon.ElasticPool.Core.Stress/PlaceholderStressFact.cs
     - .github/workflows/build.yml
   modified: []
 decisions:
@@ -70,7 +70,7 @@ metrics:
 
 # Phase 1 Plan 01: Core Skeleton — Repository Scaffolding Summary
 
-**One-liner:** Stood up the empty Oragon.AdaptivePool.sln with three multi-target (net8/net9/net10) projects, Central Package Management, SourceLink + deterministic build, PublicApiAnalyzers wired with empty baselines, xUnit v3 + Microsoft.Testing.Platform test/stress projects, and a minimal multi-TFM GitHub Actions CI workflow that runs Core.Tests only — all green from a fresh clone.
+**One-liner:** Stood up the empty Oragon.ElasticPool.sln with three multi-target (net8/net9/net10) projects, Central Package Management, SourceLink + deterministic build, PublicApiAnalyzers wired with empty baselines, xUnit v3 + Microsoft.Testing.Platform test/stress projects, and a minimal multi-TFM GitHub Actions CI workflow that runs Core.Tests only — all green from a fresh clone.
 
 ## What Was Built
 
@@ -88,10 +88,10 @@ metrics:
 
 | Project | Type | TFMs | Notes |
 | --- | --- | --- | --- |
-| `src/Oragon.AdaptivePool.Core` | Library, packable | net10.0;net9.0;net8.0 | PackageReferences (no inline versions; CPM-driven): Logging.Abstractions, DI.Abstractions, Options, PublicApiAnalyzers (PrivateAssets=all), MinVer (PrivateAssets=all), SourceLink.GitHub (PrivateAssets=all). PublicAPI.Shipped.txt + PublicAPI.Unshipped.txt registered as `<AdditionalFiles>`. |
-| `tests/Oragon.AdaptivePool.Core.Tests` | Test exe, non-packable | net10.0;net9.0;net8.0 | xUnit v3 + MTP runner (`UseMicrosoftTestingPlatformRunner=true`, `TestingPlatformDotnetTestSupport=true`, `OutputType=Exe`). PackageReferences: xunit.v3, xunit.runner.visualstudio, AwesomeAssertions, NSubstitute, TimeProvider.Testing, DI, Logging.Console, Diagnostics.Testing, coverlet.collector. ProjectReference to Core. |
-| `tests/Oragon.AdaptivePool.Core.Stress` | Test exe, non-packable | net10.0;net9.0;net8.0 | Same MTP wiring as Tests; smaller dep set (no Diagnostics.Testing). ProjectReference to Core. |
-| `Oragon.AdaptivePool.sln` | Classic `.sln` (not `.slnx`) | — | Contains all three projects. CI invokes Core.Tests explicitly to keep Stress out of the default sweep. |
+| `src/Oragon.ElasticPool.Core` | Library, packable | net10.0;net9.0;net8.0 | PackageReferences (no inline versions; CPM-driven): Logging.Abstractions, DI.Abstractions, Options, PublicApiAnalyzers (PrivateAssets=all), MinVer (PrivateAssets=all), SourceLink.GitHub (PrivateAssets=all). PublicAPI.Shipped.txt + PublicAPI.Unshipped.txt registered as `<AdditionalFiles>`. |
+| `tests/Oragon.ElasticPool.Core.Tests` | Test exe, non-packable | net10.0;net9.0;net8.0 | xUnit v3 + MTP runner (`UseMicrosoftTestingPlatformRunner=true`, `TestingPlatformDotnetTestSupport=true`, `OutputType=Exe`). PackageReferences: xunit.v3, xunit.runner.visualstudio, AwesomeAssertions, NSubstitute, TimeProvider.Testing, DI, Logging.Console, Diagnostics.Testing, coverlet.collector. ProjectReference to Core. |
+| `tests/Oragon.ElasticPool.Core.Stress` | Test exe, non-packable | net10.0;net9.0;net8.0 | Same MTP wiring as Tests; smaller dep set (no Diagnostics.Testing). ProjectReference to Core. |
+| `Oragon.ElasticPool.sln` | Classic `.sln` (not `.slnx`) | — | Contains all three projects. CI invokes Core.Tests explicitly to keep Stress out of the default sweep. |
 
 `PublicAPI.Shipped.txt` and `PublicAPI.Unshipped.txt` each contain a single `#nullable enable` line — the canonical empty baseline expected by `Microsoft.CodeAnalysis.PublicApiAnalyzers`. Plans 02 + 03 will populate Unshipped.txt as the public surface lands.
 
@@ -104,7 +104,7 @@ metrics:
 - Single OS for now: `ubuntu-latest` (Windows + macOS deferred to Phase 4 OSS-01).
 - `actions/setup-dotnet@v4` installs SDKs `8.0.x`, `9.0.x`, and `10.0.x`.
 - TFM matrix: `net8.0`, `net9.0`, `net10.0`.
-- Steps: `dotnet restore` → `dotnet build -c Release --no-restore -f ${{ matrix.tfm }}` → `dotnet test --project tests/Oragon.AdaptivePool.Core.Tests/Oragon.AdaptivePool.Core.Tests.csproj -c Release --no-build -f ${{ matrix.tfm }}`.
+- Steps: `dotnet restore` → `dotnet build -c Release --no-restore -f ${{ matrix.tfm }}` → `dotnet test --project tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj -c Release --no-build -f ${{ matrix.tfm }}`.
 - The Stress project is **never** invoked (per CONTEXT.md decision). The dedicated nightly stress job is a Phase 4 deliverable.
 - `CI=true` is implicit on GitHub Actions runners → activates `ContinuousIntegrationBuild` and `DeterministicSourcePaths` from `Directory.Build.props`.
 
@@ -113,13 +113,13 @@ metrics:
 End-to-end checks from the plan's `<verification>` block all green:
 
 ```
-dotnet restore Oragon.AdaptivePool.sln       → all 3 projects restored, 0 errors, 0 NU* warnings
-dotnet build  Oragon.AdaptivePool.sln -c Release --no-restore
+dotnet restore Oragon.ElasticPool.sln       → all 3 projects restored, 0 errors, 0 NU* warnings
+dotnet build  Oragon.ElasticPool.sln -c Release --no-restore
                                               → 4 build outputs (Core × 3 TFMs + 2 test projects × 3 TFMs)
                                               → 0 errors; 6 SourceLink warnings (no remote configured locally;
                                                 disappear in CI where actions/checkout sets origin)
-dotnet test --project tests/Oragon.AdaptivePool.Core.Tests   → 3 passed, 0 failed (1 placeholder × 3 TFMs)
-dotnet test --project tests/Oragon.AdaptivePool.Core.Stress  → 3 passed, 0 failed (1 placeholder × 3 TFMs)
+dotnet test --project tests/Oragon.ElasticPool.Core.Tests   → 3 passed, 0 failed (1 placeholder × 3 TFMs)
+dotnet test --project tests/Oragon.ElasticPool.Core.Stress  → 3 passed, 0 failed (1 placeholder × 3 TFMs)
 test ! -e ./bin && test ! -e ./obj            → no stray top-level build artifacts
 ```
 
@@ -135,7 +135,7 @@ All deviations were forced by upstream NuGet reality (wrong package id / non-exi
 - **Found during:** Task 2 restore.
 - **Issue:** `xunit.v3.runner.visualstudio` is not published on NuGet.org (NU1101). The unified VS Test Explorer adapter for xUnit v3 is published as `xunit.runner.visualstudio` (versions 3.x). The plan's STACK research snippet propagated the wrong id.
 - **Fix:** Renamed the central pin and both PackageReferences to `xunit.runner.visualstudio`; pinned to `3.1.5` (latest stable that targets xUnit v3).
-- **Files modified:** `Directory.Packages.props`, `tests/Oragon.AdaptivePool.Core.Tests/Oragon.AdaptivePool.Core.Tests.csproj`, `tests/Oragon.AdaptivePool.Core.Stress/Oragon.AdaptivePool.Core.Stress.csproj`.
+- **Files modified:** `Directory.Packages.props`, `tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj`, `tests/Oragon.ElasticPool.Core.Stress/Oragon.ElasticPool.Core.Stress.csproj`.
 - **Commit:** 8e65d03.
 
 **2. [Rule 1 — Bug] Non-existent version `Microsoft.Extensions.Diagnostics.Testing 10.0.5`**
@@ -156,7 +156,7 @@ All deviations were forced by upstream NuGet reality (wrong package id / non-exi
 - **Found during:** Task 2 build.
 - **Issue:** `xunit.v3.core.mtp-v1.targets` errors out unless test projects declare `OutputType=Exe` (they are self-executing under MTP). Plan csproj snippets did not include this property.
 - **Fix:** Added `<OutputType>Exe</OutputType>` to both test projects.
-- **Files modified:** `tests/Oragon.AdaptivePool.Core.Tests/Oragon.AdaptivePool.Core.Tests.csproj`, `tests/Oragon.AdaptivePool.Core.Stress/Oragon.AdaptivePool.Core.Stress.csproj`.
+- **Files modified:** `tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj`, `tests/Oragon.ElasticPool.Core.Stress/Oragon.ElasticPool.Core.Stress.csproj`.
 - **Commit:** 8e65d03.
 
 **5. [Rule 3 — Blocking] `dotnet test <project>` rejected by .NET 10 SDK with MTP runner**
@@ -168,9 +168,9 @@ All deviations were forced by upstream NuGet reality (wrong package id / non-exi
 
 **6. [Rule 3 — Blocking] `dotnet new sln` defaulted to `.slnx` on .NET 10**
 - **Found during:** Task 2 solution authoring.
-- **Issue:** .NET 10 SDK's `dotnet new sln` produces `Oragon.AdaptivePool.slnx` (XML format) by default. The plan, the CI workflow, and the verify commands all reference `.sln`.
+- **Issue:** .NET 10 SDK's `dotnet new sln` produces `Oragon.ElasticPool.slnx` (XML format) by default. The plan, the CI workflow, and the verify commands all reference `.sln`.
 - **Fix:** Recreated using `dotnet new sln --format sln` to force the classic `.sln` format.
-- **Files modified:** `Oragon.AdaptivePool.sln` (created).
+- **Files modified:** `Oragon.ElasticPool.sln` (created).
 - **Commit:** 8e65d03.
 
 ### Out-of-Scope Findings (NOT fixed)
@@ -183,7 +183,7 @@ None — all package restores worked against the public NuGet.org feed without c
 
 ## Heads-up to Plan 02
 
-- **Do NOT re-add `<PackageReadmeFile>README.md</PackageReadmeFile>` to `Oragon.AdaptivePool.Core.csproj`** unless you also add a `README.md` and a matching `<None Include="README.md" Pack="true" PackagePath="\" />`. Phase 4 owns the README. The PackageReadmeFile reference was intentionally removed from the plan's snippet to avoid `dotnet pack` failure.
+- **Do NOT re-add `<PackageReadmeFile>README.md</PackageReadmeFile>` to `Oragon.ElasticPool.Core.csproj`** unless you also add a `README.md` and a matching `<None Include="README.md" Pack="true" PackagePath="\" />`. Phase 4 owns the README. The PackageReadmeFile reference was intentionally removed from the plan's snippet to avoid `dotnet pack` failure.
 - **The placeholder smoke test (`tests/.../PlaceholderSmokeTest.cs`) is yours to delete** when the first real test lands.
 - **Use the `--project` form for any `dotnet test` invocation** you add (script, docs, sample) — the bare positional form is broken under the MTP runner on .NET 10.
 - **CPM is strict.** When you add a new dependency, pin it in `Directory.Packages.props`; reference it via `<PackageReference Include="..." />` (no `Version=` attribute) in the csproj. If transitive pinning produces an NU1109 downgrade, bump the offending central pin to satisfy the resolved transitive demand.

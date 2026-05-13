@@ -4,16 +4,16 @@ plan: 02
 subsystem: rabbitmq-adapter
 tags: [rabbitmq, adapter, channel-pool, layered-pool, eager-spread, conditional-weak-table, di]
 requires:
-  - "Plan 01: AddAdaptiveConnectionPool registration → IAdaptivePool<IConnection>"
-  - "Oragon.AdaptivePool.Core ServiceCollectionExtensions.AddAdaptivePool<IChannel>"
+  - "Plan 01: AddElasticConnectionPool registration → IElasticPool<IConnection>"
+  - "Oragon.ElasticPool.Core ServiceCollectionExtensions.AddElasticPool<IChannel>"
   - "RabbitMQ.Client 7.2.1 IConnection.CreateChannelAsync + CreateChannelOptions ctor"
 provides:
-  - "AddAdaptiveChannelPool(name, connectionPoolName, configurePool) DI extension"
-  - "AdaptiveChannelPoolBuilder (WithBounds/WithIdleTimeout/WithMaxChannelsPerConnection/WithChannelOptions)"
+  - "AddElasticChannelPool(name, connectionPoolName, configurePool) DI extension"
+  - "ElasticChannelPoolBuilder (WithBounds/WithIdleTimeout/WithMaxChannelsPerConnection/WithChannelOptions)"
   - "ChannelLeasePairing (internal CWT wrapper IChannel↔IPoolItem<IConnection>)"
   - "ConnectionChannelTracker (internal ConcurrentDictionary<IConnection,int> with atomic CAS)"
 affects:
-  - "src/Oragon.AdaptivePool.RabbitMQ/PublicAPI.Unshipped.txt (+13 entries)"
+  - "src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Unshipped.txt (+13 entries)"
 tech-stack:
   added: []
   patterns:
@@ -26,14 +26,14 @@ tech-stack:
     - "Decrement-before-return release order so a concurrent Factory call never sees a stale-saturated connection"
 key-files:
   created:
-    - "src/Oragon.AdaptivePool.RabbitMQ/Internals/ChannelLeasePairing.cs (49 lines)"
-    - "src/Oragon.AdaptivePool.RabbitMQ/Internals/ConnectionChannelTracker.cs (86 lines)"
-    - "src/Oragon.AdaptivePool.RabbitMQ/Builder/AdaptiveChannelPoolBuilder.cs (109 lines)"
-    - "src/Oragon.AdaptivePool.RabbitMQ/DependencyInjection/AdaptiveChannelPoolServiceCollectionExtensions.cs (201 lines)"
+    - "src/Oragon.ElasticPool.RabbitMQ/Internals/ChannelLeasePairing.cs (49 lines)"
+    - "src/Oragon.ElasticPool.RabbitMQ/Internals/ConnectionChannelTracker.cs (86 lines)"
+    - "src/Oragon.ElasticPool.RabbitMQ/Builder/ElasticChannelPoolBuilder.cs (109 lines)"
+    - "src/Oragon.ElasticPool.RabbitMQ/DependencyInjection/ElasticChannelPoolServiceCollectionExtensions.cs (201 lines)"
   modified:
-    - "src/Oragon.AdaptivePool.RabbitMQ/PublicAPI.Unshipped.txt (+13 entries: 1 type AdaptiveChannelPoolBuilder + 11 members + 1 DI extension type + 1 method)"
+    - "src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Unshipped.txt (+13 entries: 1 type ElasticChannelPoolBuilder + 11 members + 1 DI extension type + 1 method)"
 decisions:
-  - "AdaptiveChannelPoolOptions class NOT created — channel knobs flow through CreateChannelOptions directly (RabbitMQ.Client's own type) via WithChannelOptions; no IOptions binding surface needed for v1 since channel pool is composed (referenced by name) and inherits the connection pool's IOptions wiring upstream"
+  - "ElasticChannelPoolOptions class NOT created — channel knobs flow through CreateChannelOptions directly (RabbitMQ.Client's own type) via WithChannelOptions; no IOptions binding surface needed for v1 since channel pool is composed (referenced by name) and inherits the connection pool's IOptions wiring upstream"
   - "MaxChannelsPerConnection default = 100 (well below broker channel_max=2047 per Pitfall 11); upper bound validated at 2047"
   - "Default CreateChannelOptions has publisher-confirmations + tracking ENABLED (Pitfall E mitigation) — consumers explicitly opt out via WithChannelOptions(custom)"
   - "MaxAttempts=16 safety net for eager-spread retry — bounds T-03-07 DoS scenario where every connection is saturated; consumer is expected to scale via the connection pool's MaxSize before hitting this bound (which throws InvalidOperationException with operator guidance)"
@@ -48,21 +48,21 @@ metrics:
 
 # Phase 3 Plan 02: Adaptive Channel Pool Summary
 
-Layered the channel pool over Plan 01's connection pool. Shipped `services.AddAdaptiveChannelPool(name, connectionPoolName, configurePool)` plus the `AdaptiveChannelPoolBuilder` fluent builder, the `ChannelLeasePairing` weak-table for `IChannel ↔ IPoolItem<IConnection>` pairing, and the `ConnectionChannelTracker` eager-spread counter that enforces `MaxChannelsPerConnection` (default 100) per RESEARCH Q2.
+Layered the channel pool over Plan 01's connection pool. Shipped `services.AddElasticChannelPool(name, connectionPoolName, configurePool)` plus the `ElasticChannelPoolBuilder` fluent builder, the `ChannelLeasePairing` weak-table for `IChannel ↔ IPoolItem<IConnection>` pairing, and the `ConnectionChannelTracker` eager-spread counter that enforces `MaxChannelsPerConnection` (default 100) per RESEARCH Q2.
 
 ## Tasks Executed
 
 | Task | Name                                                                              | Commit    |
 | ---- | --------------------------------------------------------------------------------- | --------- |
-| 1    | ChannelLeasePairing + ConnectionChannelTracker + AdaptiveChannelPoolBuilder       | `297f3ba` |
-| 2    | AddAdaptiveChannelPool extension with eager-spread Factory + lazy invalidation    | `d63ffb0` |
+| 1    | ChannelLeasePairing + ConnectionChannelTracker + ElasticChannelPoolBuilder       | `297f3ba` |
+| 2    | AddElasticChannelPool extension with eager-spread Factory + lazy invalidation    | `d63ffb0` |
 
 ## Verification Results
 
 ### Build (Release)
 
 ```
-dotnet build Oragon.AdaptivePool.sln -c Release
+dotnet build Oragon.ElasticPool.sln -c Release
 ok dotnet build: 6 projects, 0 errors, 12 warnings (00:00:06.64)
 ```
 
@@ -71,7 +71,7 @@ The 12 warnings are the pre-existing carry-forward SourceLink "no remote" adviso
 ### Phase 1+2 Regression Check
 
 ```
-dotnet test --project tests/Oragon.AdaptivePool.Core.Tests/Oragon.AdaptivePool.Core.Tests.csproj -c Release --no-build
+dotnet test --project tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj -c Release --no-build
 total: 432
 failed: 0
 succeeded: 432
@@ -83,10 +83,10 @@ skipped: 0
 ### Code-Grep Verifications (per plan automated checks)
 
 ```
-grep -c "AddAdaptivePool<IChannel>"     ...AdaptiveChannelPoolServiceCollectionExtensions.cs   -> 1
-grep -c "TryAcquireSlot"                ...AdaptiveChannelPoolServiceCollectionExtensions.cs   -> 1
-grep -c "ReleaseSlot"                   ...AdaptiveChannelPoolServiceCollectionExtensions.cs   -> 3
-grep -c "AddAdaptiveChannelPool"        ...PublicAPI.Unshipped.txt                              -> 1
+grep -c "AddElasticPool<IChannel>"     ...ElasticChannelPoolServiceCollectionExtensions.cs   -> 1
+grep -c "TryAcquireSlot"                ...ElasticChannelPoolServiceCollectionExtensions.cs   -> 1
+grep -c "ReleaseSlot"                   ...ElasticChannelPoolServiceCollectionExtensions.cs   -> 3
+grep -c "AddElasticChannelPool"        ...PublicAPI.Unshipped.txt                              -> 1
 grep -c "ConditionalWeakTable<IChannel" ...Internals/ChannelLeasePairing.cs                     -> 1
 grep -c "ConcurrentDictionary<IConnection" ...Internals/ConnectionChannelTracker.cs             -> 1
 ```
@@ -97,7 +97,7 @@ All checks confirmed: `ConditionalWeakTable<IChannel, IPoolItem<IConnection>>` i
 
 Implemented in `CreateChannelWithSpreadAsync` (private static helper):
 
-1. Resolve `IAdaptivePool<IConnection>` from DI by `connectionPoolName` (keyed singleton).
+1. Resolve `IElasticPool<IConnection>` from DI by `connectionPoolName` (keyed singleton).
 2. Loop up to `MaxAttempts=16`: acquire a connection lease, call `tracker.TryAcquireSlot(lease.Value, MaxChannelsPerConnection)`.
 3. **Slot acquired** → store as `selected`, exit loop.
 4. **Saturated** → add lease to `rejected` list and continue (the lease is held briefly so the inner pool does not immediately re-issue the same connection on the next `AcquireAsync`).
@@ -148,14 +148,14 @@ Steps 3→5 ordering matters: decrementing BEFORE returning the lease ensures a 
 ## Public Surface Established
 
 **Public types (1 new):**
-- `Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveChannelPoolBuilder` — channel-pool fluent builder (8 public members: 6 properties + `WithBounds`/`WithIdleTimeout`/`WithMaxChannelsPerConnection`/`WithChannelOptions`).
-- `Oragon.AdaptivePool.RabbitMQ.DependencyInjection.AdaptiveChannelPoolServiceCollectionExtensions` — hosts the `AddAdaptiveChannelPool` extension.
+- `Oragon.ElasticPool.RabbitMQ.Builder.ElasticChannelPoolBuilder` — channel-pool fluent builder (8 public members: 6 properties + `WithBounds`/`WithIdleTimeout`/`WithMaxChannelsPerConnection`/`WithChannelOptions`).
+- `Oragon.ElasticPool.RabbitMQ.DependencyInjection.ElasticChannelPoolServiceCollectionExtensions` — hosts the `AddElasticChannelPool` extension.
 
 **Internal types (2 new):**
-- `Oragon.AdaptivePool.RabbitMQ.Internals.ChannelLeasePairing` — CWT wrapper.
-- `Oragon.AdaptivePool.RabbitMQ.Internals.ConnectionChannelTracker` — atomic counter for eager spread.
+- `Oragon.ElasticPool.RabbitMQ.Internals.ChannelLeasePairing` — CWT wrapper.
+- `Oragon.ElasticPool.RabbitMQ.Internals.ConnectionChannelTracker` — atomic counter for eager spread.
 
-PublicAPI.Unshipped.txt now lists both `AddAdaptiveConnectionPool` (Plan 01) and `AddAdaptiveChannelPool` (this plan).
+PublicAPI.Unshipped.txt now lists both `AddElasticConnectionPool` (Plan 01) and `AddElasticChannelPool` (this plan).
 
 ## Threat Model Mitigations Applied
 
@@ -170,11 +170,11 @@ PublicAPI.Unshipped.txt now lists both `AddAdaptiveConnectionPool` (Plan 01) and
 
 ## Deviations from Plan
 
-**None.** Plan 02 executed exactly as written. Auto mode was active; no checkpoints required. The plan-frontmatter `files_modified` list intentionally did not include an `AdaptiveChannelPoolOptions.cs` file — the user's wrapper prompt mentioned one, but the plan body only specifies builder + two internals + DI extension, and `WithChannelOptions(CreateChannelOptions)` covers the channel knobs without a separate IOptions-bindable POCO. No Options class was created; this matches the plan body and frontmatter.
+**None.** Plan 02 executed exactly as written. Auto mode was active; no checkpoints required. The plan-frontmatter `files_modified` list intentionally did not include an `ElasticChannelPoolOptions.cs` file — the user's wrapper prompt mentioned one, but the plan body only specifies builder + two internals + DI extension, and `WithChannelOptions(CreateChannelOptions)` covers the channel knobs without a separate IOptions-bindable POCO. No Options class was created; this matches the plan body and frontmatter.
 
 ## Core API Gap Surfaced
 
-**None.** Core's `AddAdaptivePool<IChannel>(name, configure)` and the `AdaptivePoolBuilder<IChannel>` fluent surface (`Factory`/`BeforeUse`/`Check`/`Release`/`WithBounds`/`IdleTimeout`) covered everything Plan 02 needed to compose the layered channel pool. The `IPoolItem<IConnection>.Value` accessor (carry-forward from Plan 01) worked as expected for the lazy-invalidation BeforeUse re-probe and the Release-hook lease return. **Per phase success criterion #5, no Core refactor is required before Plan 03.**
+**None.** Core's `AddElasticPool<IChannel>(name, configure)` and the `ElasticPoolBuilder<IChannel>` fluent surface (`Factory`/`BeforeUse`/`Check`/`Release`/`WithBounds`/`IdleTimeout`) covered everything Plan 02 needed to compose the layered channel pool. The `IPoolItem<IConnection>.Value` accessor (carry-forward from Plan 01) worked as expected for the lazy-invalidation BeforeUse re-probe and the Release-hook lease return. **Per phase success criterion #5, no Core refactor is required before Plan 03.**
 
 ## Heads-up to Plan 03
 
@@ -191,11 +191,11 @@ Plan 03 author should also exercise the **`CreateChannelAsync` throws → tracke
 Files exist on disk:
 
 ```
-[ -f src/Oragon.AdaptivePool.RabbitMQ/Internals/ChannelLeasePairing.cs                                ] -> FOUND
-[ -f src/Oragon.AdaptivePool.RabbitMQ/Internals/ConnectionChannelTracker.cs                           ] -> FOUND
-[ -f src/Oragon.AdaptivePool.RabbitMQ/Builder/AdaptiveChannelPoolBuilder.cs                           ] -> FOUND
-[ -f src/Oragon.AdaptivePool.RabbitMQ/DependencyInjection/AdaptiveChannelPoolServiceCollectionExtensions.cs ] -> FOUND
-[ -f src/Oragon.AdaptivePool.RabbitMQ/PublicAPI.Unshipped.txt                                          ] -> FOUND (modified)
+[ -f src/Oragon.ElasticPool.RabbitMQ/Internals/ChannelLeasePairing.cs                                ] -> FOUND
+[ -f src/Oragon.ElasticPool.RabbitMQ/Internals/ConnectionChannelTracker.cs                           ] -> FOUND
+[ -f src/Oragon.ElasticPool.RabbitMQ/Builder/ElasticChannelPoolBuilder.cs                           ] -> FOUND
+[ -f src/Oragon.ElasticPool.RabbitMQ/DependencyInjection/ElasticChannelPoolServiceCollectionExtensions.cs ] -> FOUND
+[ -f src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Unshipped.txt                                          ] -> FOUND (modified)
 ```
 
 Both task commits present in git log: `297f3ba` (Task 1), `d63ffb0` (Task 2).

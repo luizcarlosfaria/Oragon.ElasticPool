@@ -10,14 +10,14 @@ provides:
   - "65 new unit tests across 11 test files (Pool/* + Telemetry/*) covering every Phase 2 must-have"
   - "3 reusable TestSupport helpers: CapturedActivities, CapturedLogEntries, SweepDeterminism"
   - "BurstIdleBurstStressTest — Phase 2 anchor stress test (200 threads × 10 cycles, FakeTimeProvider-driven; ROADMAP success criterion 4)"
-  - "Benchmark project (Oragon.AdaptivePool.Core.Benchmarks) with PoolDiagnosticsLogBenchmarks for the 6 Phase 2 [LoggerMessage] entries"
+  - "Benchmark project (Oragon.ElasticPool.Core.Benchmarks) with PoolDiagnosticsLogBenchmarks for the 6 Phase 2 [LoggerMessage] entries"
   - "Verified 0-allocation-per-call across all 6 Phase 2 [LoggerMessage] entries via BenchmarkDotNet 0.15.4 (ROADMAP success criterion 5)"
-  - "Coverage: 92.7% line / 86.2% branch / 93.4% method on Oragon.AdaptivePool.Core (above the 90% gate)"
+  - "Coverage: 92.7% line / 86.2% branch / 93.4% method on Oragon.ElasticPool.Core (above the 90% gate)"
 affects:
-  - "[InternalsVisibleTo] in Oragon.AdaptivePool.Core.csproj extended to include Stress + Benchmarks projects (was Tests-only)."
+  - "[InternalsVisibleTo] in Oragon.ElasticPool.Core.csproj extended to include Stress + Benchmarks projects (was Tests-only)."
   - "Stress.csproj gained 3 package refs (TimeProvider.Testing, Diagnostics, Diagnostics.Testing) for the new anchor stress test."
   - "Directory.Packages.props gained BenchmarkDotNet 0.15.4 pin."
-  - "Solution file (Oragon.AdaptivePool.sln) gained the Benchmarks project entry; build now produces 5 projects vs 4."
+  - "Solution file (Oragon.ElasticPool.sln) gained the Benchmarks project entry; build now produces 5 projects vs 4."
   - "Phase 1 + Plan 02 tests untouched; full regression: 76 (Phase 1) + 22 (Plan 02-01 + 02-02 intermediate) + 43 (Plan 03 new in Tests) = 141 unit tests × 3 TFMs = 423 invocations, all green; 1 PingPong + 1 BurstIdleBurst stress test × 3 TFMs = 6 invocations all green."
 tech-stack:
   added:
@@ -31,34 +31,34 @@ tech-stack:
     - "BenchmarkDotNet [MemoryDiagnoser] + EnabledNullProvider (cheapest logger that still runs the source-gen dispatch path; IsEnabled=false would short-circuit and trivially produce 0 allocations)"
 key-files:
   created:
-    - tests/Oragon.AdaptivePool.Core.Tests/TestSupport/CapturedActivities.cs
-    - tests/Oragon.AdaptivePool.Core.Tests/TestSupport/CapturedLogEntries.cs
-    - tests/Oragon.AdaptivePool.Core.Tests/TestSupport/SweepDeterminism.cs
-    - tests/Oragon.AdaptivePool.Core.Tests/Pool/UtilizationSamplerTests.cs
-    - tests/Oragon.AdaptivePool.Core.Tests/Pool/WaitDurationHistogramTests.cs
-    - tests/Oragon.AdaptivePool.Core.Tests/Pool/PressureSamplerTests.cs
-    - tests/Oragon.AdaptivePool.Core.Tests/Pool/SweepBackoffStateTests.cs
-    - tests/Oragon.AdaptivePool.Core.Tests/Pool/BackgroundSweepTests.cs
-    - tests/Oragon.AdaptivePool.Core.Tests/Pool/ElasticGrowTests.cs
-    - tests/Oragon.AdaptivePool.Core.Tests/Pool/HystereticShrinkTests.cs
-    - tests/Oragon.AdaptivePool.Core.Tests/Pool/SweepBackoffIntegrationTests.cs
-    - tests/Oragon.AdaptivePool.Core.Tests/Telemetry/ActivitySourceSpanTests.cs
-    - tests/Oragon.AdaptivePool.Core.Tests/Telemetry/Phase2CountersAndHistogramsTests.cs
-    - tests/Oragon.AdaptivePool.Core.Tests/Telemetry/LoggerMessageEventTests.cs
-    - tests/Oragon.AdaptivePool.Core.Stress/BurstIdleBurstStressTest.cs
-    - tests/Oragon.AdaptivePool.Core.Benchmarks/Oragon.AdaptivePool.Core.Benchmarks.csproj
-    - tests/Oragon.AdaptivePool.Core.Benchmarks/PoolDiagnosticsLogBenchmarks.cs
+    - tests/Oragon.ElasticPool.Core.Tests/TestSupport/CapturedActivities.cs
+    - tests/Oragon.ElasticPool.Core.Tests/TestSupport/CapturedLogEntries.cs
+    - tests/Oragon.ElasticPool.Core.Tests/TestSupport/SweepDeterminism.cs
+    - tests/Oragon.ElasticPool.Core.Tests/Pool/UtilizationSamplerTests.cs
+    - tests/Oragon.ElasticPool.Core.Tests/Pool/WaitDurationHistogramTests.cs
+    - tests/Oragon.ElasticPool.Core.Tests/Pool/PressureSamplerTests.cs
+    - tests/Oragon.ElasticPool.Core.Tests/Pool/SweepBackoffStateTests.cs
+    - tests/Oragon.ElasticPool.Core.Tests/Pool/BackgroundSweepTests.cs
+    - tests/Oragon.ElasticPool.Core.Tests/Pool/ElasticGrowTests.cs
+    - tests/Oragon.ElasticPool.Core.Tests/Pool/HystereticShrinkTests.cs
+    - tests/Oragon.ElasticPool.Core.Tests/Pool/SweepBackoffIntegrationTests.cs
+    - tests/Oragon.ElasticPool.Core.Tests/Telemetry/ActivitySourceSpanTests.cs
+    - tests/Oragon.ElasticPool.Core.Tests/Telemetry/Phase2CountersAndHistogramsTests.cs
+    - tests/Oragon.ElasticPool.Core.Tests/Telemetry/LoggerMessageEventTests.cs
+    - tests/Oragon.ElasticPool.Core.Stress/BurstIdleBurstStressTest.cs
+    - tests/Oragon.ElasticPool.Core.Benchmarks/Oragon.ElasticPool.Core.Benchmarks.csproj
+    - tests/Oragon.ElasticPool.Core.Benchmarks/PoolDiagnosticsLogBenchmarks.cs
   modified:
-    - src/Oragon.AdaptivePool.Core/Oragon.AdaptivePool.Core.csproj
-    - tests/Oragon.AdaptivePool.Core.Stress/Oragon.AdaptivePool.Core.Stress.csproj
+    - src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj
+    - tests/Oragon.ElasticPool.Core.Stress/Oragon.ElasticPool.Core.Stress.csproj
     - Directory.Packages.props
-    - Oragon.AdaptivePool.sln
+    - Oragon.ElasticPool.sln
 decisions:
   - "Use CapturedLogEntries (30-line custom in-memory ILoggerProvider) instead of pulling Microsoft.Extensions.Logging.Testing FakeLogger. Phase 1 SUMMARY did not pin FakeLogger; preserving the dependency graph dominates the marginal benefit of FakeLogger's API surface. CapturedLogEntries indexes by EventId and exposes (Level, EventId, CategoryName, Message, Exception, State KVPs)."
   - "Per-test unique pool names + CapturedActivities.ByNameAndPool filter. The ActivitySource is a process-static singleton; xUnit v3 default parallel test execution ran tests concurrently and spans bled across — initial single-pool-name approach failed Grow_EmitsPoolGrowSpan_WithTripFlags with 'expected single, found 2' because a sibling test was firing its own grow span at the same time. Switching to Guid-suffixed names + tag-based filter restored determinism. ALL Telemetry/* tests + the 2 ElasticGrow/HystereticShrink tests that assert exact-count spans now use this pattern."
   - "SweepDeterminism helper centralizes the FakeTimeProvider+PeriodicTimer race mitigation. Plan called for `await Task.Yield()` after Advance, but observation showed the sweep loop's Task.Run hadn't entered WaitForNextTickAsync by the time the test ran. PrimeAsync (`Task.Yield + Task.Delay(100)`) + AdvanceAndAwaitTickAsync (capture pre-Advance TCS, advance, await with 2s fallback) — failure of the fallback throws TimeoutException so silent hangs become explicit test failures."
   - "EventId 1099 SweepFailed test pivoted to direct-invocation. The reachable surface in BackgroundSweeper that triggers 1099 is tightly bounded: only an unhandled exception escaping RunSweepTickAsync after the per-item try/catch + the per-shrink try/catch reaches the outer SweepLoopAsync's catch block. Within RunSweepTickAsync, the only un-guarded sites are TimeProvider calls and counter Volatile.Read — none of these are test-induceable in any reasonable test. Pivoted to a sanity test that invokes _logger.SweepFailed(...) directly and asserts EventId=1099 + LogLevel=Error + Exception type. The dispatch path is identical (same source-gen partial); the production reachability is documented but not asserted in tests."
-  - "Stress + Benchmarks both gained [InternalsVisibleTo]. Stress needs AdaptivePool<T>.Sweeper.TickCompleted for FakeTimeProvider determinism; Benchmarks needs PoolDiagnosticsLog static class (internal) to invoke the [LoggerMessage] partials. Both projects are CI-excluded already; the InternalsVisibleTo expansion does not change the public API surface."
+  - "Stress + Benchmarks both gained [InternalsVisibleTo]. Stress needs ElasticPool<T>.Sweeper.TickCompleted for FakeTimeProvider determinism; Benchmarks needs PoolDiagnosticsLog static class (internal) to invoke the [LoggerMessage] partials. Both projects are CI-excluded already; the InternalsVisibleTo expansion does not change the public API surface."
   - "Coverage gate verified locally at 92.7% line / 86.2% branch / 93.4% method with the same coverlet+reportgenerator commands the CI workflow runs. No [ExcludeFromCodeCoverage] attributes were added — the gap (7.3% lines uncovered) lives in unreachable cancellation/disposal paths and the AfterUse=Unhealthy GrowAndHandoffAsync branch which Phase 1 covers indirectly. PoolEntry.Deconstruct (77.7%) is the lowest; this is the unused 2-arg deconstructor kept for Phase 1 API compat — Phase 3 may remove it."
   - "BenchmarkDotNet 0.15.4 ShortJob run on net10.0 reports 0 B allocated for ALL 6 Phase 2 [LoggerMessage] entries (Grew 16.6 ns, Shrunk 16.0 ns, SweepStarted 1.5 ns, SweepCompleted 1.0 ns, SweepFailureBackoff 18.9 ns, CheckUnhealthy 14.0 ns). ROADMAP success criterion 5 (allocation-free observability) verified empirically. Benchmark output documented as a baseline artifact; no CI gate added (per Plan)."
 metrics:
@@ -85,7 +85,7 @@ metrics:
 
 # Phase 2 Plan 03: Tests, Anchor Stress, and Benchmark Summary
 
-**One-liner:** Locked down every Phase 2 must-have with 65 new deterministic tests (per-component + integration + telemetry), the BurstIdleBurst anchor stress test (200 threads × 10 cycles burst → idle → burst, FakeTimeProvider-driven, passes in ~380 ms), and a BenchmarkDotNet baseline proving all 6 Phase 2 `[LoggerMessage]` entries are 0-bytes-per-call. Coverage on `Oragon.AdaptivePool.Core` rose to 92.7% line / 86.2% branch / 93.4% method — above the 90% gate.
+**One-liner:** Locked down every Phase 2 must-have with 65 new deterministic tests (per-component + integration + telemetry), the BurstIdleBurst anchor stress test (200 threads × 10 cycles burst → idle → burst, FakeTimeProvider-driven, passes in ~380 ms), and a BenchmarkDotNet baseline proving all 6 Phase 2 `[LoggerMessage]` entries are 0-bytes-per-call. Coverage on `Oragon.ElasticPool.Core` rose to 92.7% line / 86.2% branch / 93.4% method — above the 90% gate.
 
 ## What Was Built
 
@@ -111,8 +111,8 @@ The TestSupport `SweepDeterminism` helper was added during this task to centrali
 ```csharp
 internal static class SweepDeterminism
 {
-    public static async Task PrimeAsync<T>(AdaptivePool<T> pool) { /* Yield + 100ms */ }
-    public static async Task AdvanceAndAwaitTickAsync<T>(AdaptivePool<T> pool, FakeTimeProvider fake, TimeSpan amount)
+    public static async Task PrimeAsync<T>(ElasticPool<T> pool) { /* Yield + 100ms */ }
+    public static async Task AdvanceAndAwaitTickAsync<T>(ElasticPool<T> pool, FakeTimeProvider fake, TimeSpan amount)
     {
         var tcs = pool.Sweeper.TickCompleted;
         fake.Advance(amount);
@@ -122,7 +122,7 @@ internal static class SweepDeterminism
 }
 ```
 
-Without `PrimeAsync`, the sweep loop (started in `Task.Run(SweepLoopAsync)` from `AdaptivePool<T>.ctor`) had not subscribed to its `PeriodicTimer.WaitForNextTickAsync` by the time tests called `fake.Advance(...)`, causing the timer to fire silently and tests to hang on `await pool.Sweeper.TickCompleted`. RESEARCH Pitfall E mentioned `Task.Yield()` between calls; in practice a 100 ms delay was needed to reliably let `Task.Run` schedule and the loop body execute up through the first `WaitForNextTickAsync`.
+Without `PrimeAsync`, the sweep loop (started in `Task.Run(SweepLoopAsync)` from `ElasticPool<T>.ctor`) had not subscribed to its `PeriodicTimer.WaitForNextTickAsync` by the time tests called `fake.Advance(...)`, causing the timer to fire silently and tests to hang on `await pool.Sweeper.TickCompleted`. RESEARCH Pitfall E mentioned `Task.Yield()` between calls; in practice a 100 ms delay was needed to reliably let `Task.Run` schedule and the loop body execute up through the first `WaitForNextTickAsync`.
 
 | File | Tests | Purpose |
 | ---- | ----- | ------- |
@@ -166,14 +166,14 @@ Watchdog: 45 s logical (`CancellationTokenSource`) + xUnit `Timeout = 60_000` ou
 
 **Plumbing:**
 - `Stress.csproj` gained `Microsoft.Extensions.TimeProvider.Testing`, `Microsoft.Extensions.Diagnostics`, `Microsoft.Extensions.Diagnostics.Testing` package refs.
-- `Oragon.AdaptivePool.Core.csproj` gained `<InternalsVisibleTo Include="Oragon.AdaptivePool.Core.Stress" />` (needs `AdaptivePool<T>.Sweeper.TickCompleted` probe).
+- `Oragon.ElasticPool.Core.csproj` gained `<InternalsVisibleTo Include="Oragon.ElasticPool.Core.Stress" />` (needs `ElasticPool<T>.Sweeper.TickCompleted` probe).
 - Stress project still NOT in CI workflow; runs manually only.
 
 **Verify:** 2/2 pass × 3 TFMs (BurstIdleBurst + PingPong, both ≤ ~380 ms wall-clock).
 
 ### Task 5 — Benchmark project + coverage gate (commit `d14d232`)
 
-**`tests/Oragon.AdaptivePool.Core.Benchmarks/Oragon.AdaptivePool.Core.Benchmarks.csproj`** — multi-target net10/9/8, `OutputType=Exe` (BenchmarkDotNet requirement), pkg refs to BenchmarkDotNet 0.15.4 + Microsoft.Extensions.Logging.Abstractions, project ref to Core.
+**`tests/Oragon.ElasticPool.Core.Benchmarks/Oragon.ElasticPool.Core.Benchmarks.csproj`** — multi-target net10/9/8, `OutputType=Exe` (BenchmarkDotNet requirement), pkg refs to BenchmarkDotNet 0.15.4 + Microsoft.Extensions.Logging.Abstractions, project ref to Core.
 
 **`PoolDiagnosticsLogBenchmarks.cs`** — `[MemoryDiagnoser]` benchmarks for the 6 Phase 2 [LoggerMessage] entries via an `EnabledNullProvider` (cheapest logger that still runs the source-gen dispatch path; an `IsEnabled=false` logger would short-circuit and trivially measure 0 allocations). Output (BenchmarkDotNet ShortJob, .NET 10.0.7, x64 RyuJIT):
 
@@ -186,7 +186,7 @@ Watchdog: 45 s logical (`CancellationTokenSource`) + xUnit `Timeout = 60_000` ou
 | SweepFailureBackoff   | 18.883 ns  | **0 B**   |
 | CheckUnhealthy        | 14.004 ns  | **0 B**   |
 
-**ROADMAP success criterion 5 (allocation-free observability) verified empirically.** No CI gate on this benchmark — it's a documented baseline artifact (manual `dotnet run --project tests/Oragon.AdaptivePool.Core.Benchmarks --configuration Release`).
+**ROADMAP success criterion 5 (allocation-free observability) verified empirically.** No CI gate on this benchmark — it's a documented baseline artifact (manual `dotnet run --project tests/Oragon.ElasticPool.Core.Benchmarks --configuration Release`).
 
 **Coverage gate**
 
@@ -195,7 +195,7 @@ Reproduced the CI commands locally (`coverlet` + `reportgenerator`) on the Relea
 ```
 | Module                   | Line   | Branch | Method |
 +--------------------------+--------+--------+--------+
-| Oragon.AdaptivePool.Core | 92.71% | 86.36% | 93.54% |
+| Oragon.ElasticPool.Core | 92.71% | 86.36% | 93.54% |
 ```
 
 **Above the 90% line gate.** Per-class breakdown (lowest first):
@@ -203,7 +203,7 @@ Reproduced the CI commands locally (`coverlet` + `reportgenerator`) on the Relea
 - `PoolEntry<T>` 77.7% — unused 2-arg `Deconstruct` kept for Phase 1 API compat (Phase 3 may remove)
 - `PressureSampler<T>` 84.6% — one defensive at-MaxSize early-return path
 - `PoolExhaustedException` 85.7% — one ctor variant unexercised by tests
-- `AdaptivePool<T>` 89.2% — AfterUse=Unhealthy + GrowAndHandoffAsync replacement-grow paths (Phase 1 covers indirectly via BeforeUseUnhealthy tests)
+- `ElasticPool<T>` 89.2% — AfterUse=Unhealthy + GrowAndHandoffAsync replacement-grow paths (Phase 1 covers indirectly via BeforeUseUnhealthy tests)
 - `BackgroundSweeper<T>` 90.0% — outer 1099 catch path (un-test-induceable; see Task 3 decision)
 
 Everything else ≥ 92.7% line.
@@ -253,7 +253,7 @@ Benchmark allocations              ->  6/6 entries: 0 B/op
 - **Found during:** Task 1 build of `WaitDurationHistogramTests.Record_DoesNotThrow_UnderConcurrency`.
 - **Issue:** `xUnit1031` analyzer error: blocking task ops (`Task.WaitAll`) inside test methods.
 - **Fix:** Changed signature to `async Task` + `await Task.WhenAll(tasks)`.
-- **Files modified:** `tests/Oragon.AdaptivePool.Core.Tests/Pool/WaitDurationHistogramTests.cs`
+- **Files modified:** `tests/Oragon.ElasticPool.Core.Tests/Pool/WaitDurationHistogramTests.cs`
 - **Commit:** `30bbab1` (within Task 1).
 
 **2. [Rule 1 — Bug] `WithBounds(min: ..., max: ..., initial: ...)` named args don't match the API**
@@ -305,8 +305,8 @@ Benchmark allocations              ->  6/6 entries: 0 B/op
 **8. [Rule 3 — Blocking] Stress + Benchmark projects needed [InternalsVisibleTo]**
 
 - **Found during:** Task 4 build of `BurstIdleBurstStressTest`, Task 5 build of `PoolDiagnosticsLogBenchmarks`.
-- **Issue:** Stress test needs `AdaptivePool<T>.Sweeper.TickCompleted` (internal); Benchmarks need `PoolDiagnosticsLog` static class (internal).
-- **Fix:** Added two new `<InternalsVisibleTo>` entries to `Oragon.AdaptivePool.Core.csproj` for `Oragon.AdaptivePool.Core.Stress` and `Oragon.AdaptivePool.Core.Benchmarks`. Both projects are CI-excluded — no public API impact.
+- **Issue:** Stress test needs `ElasticPool<T>.Sweeper.TickCompleted` (internal); Benchmarks need `PoolDiagnosticsLog` static class (internal).
+- **Fix:** Added two new `<InternalsVisibleTo>` entries to `Oragon.ElasticPool.Core.csproj` for `Oragon.ElasticPool.Core.Stress` and `Oragon.ElasticPool.Core.Benchmarks`. Both projects are CI-excluded — no public API impact.
 - **Commits:** `ccb273a` (Stress), `d14d232` (Benchmarks).
 
 **9. [Rule 3 — Blocking] EventId 1099 SweepFailed not test-induceable through normal code paths**
@@ -332,7 +332,7 @@ Phase 3 (RabbitMQ adapter) inherits a fully verified Phase 2 engine. Reusable te
 1. **`CapturedActivities`** + `ByNameAndPool(opName, poolName)` — works for any `ActivitySource`-emitting consumer; the parallel-test-bleed pattern is now solved.
 2. **`CapturedLogEntries`** — drop-in `ILoggerProvider` for any `[LoggerMessage]` capture; indexes by `EventId`. Phase 3 should reuse this directly.
 3. **`SweepDeterminism`** — `PrimeAsync` + `AdvanceAndAwaitTickAsync` work for any pool that exposes a sweeper; the 100 ms warmup + 2 s fallback are tuned and proven.
-4. **`MetricCollector<T>` pattern** — `(IMeterFactory, "Oragon.AdaptivePool", instrumentName)` constructor; `GetMeasurementSnapshot().Sum(m => m.Value)` is the canonical assertion.
+4. **`MetricCollector<T>` pattern** — `(IMeterFactory, "Oragon.ElasticPool", instrumentName)` constructor; `GetMeasurementSnapshot().Sum(m => m.Value)` is the canonical assertion.
 5. **Per-test unique pool names** — `$"prefix-{Guid.NewGuid():N}"` is the required pattern for any test that asserts an exact count of telemetry events.
 6. **Stress test design** — Watchdog 45s logical + xUnit `Timeout = 60_000` outer net. `BurstIdleBurst` runs in ~380 ms wall-clock thanks to FakeTimeProvider; Phase 3 RabbitMQ stress tests can scale to similar dimensions.
 7. **Benchmark project lives** — Phase 3 can extend `PoolDiagnosticsLogBenchmarks` with RabbitMQ-specific [LoggerMessage] entries and reuse the `EnabledNullProvider` pattern.
@@ -351,20 +351,20 @@ Phase 3 (RabbitMQ adapter) inherits a fully verified Phase 2 engine. Reusable te
 ## Self-Check: PASSED
 
 - All 16 created files exist in the working tree (verified):
-  - `tests/Oragon.AdaptivePool.Core.Tests/TestSupport/{CapturedActivities,CapturedLogEntries,SweepDeterminism}.cs` ✓
-  - `tests/Oragon.AdaptivePool.Core.Tests/Pool/{UtilizationSampler,WaitDurationHistogram,PressureSampler,SweepBackoffState,BackgroundSweep,ElasticGrow,HystereticShrink,SweepBackoffIntegration}Tests.cs` ✓
-  - `tests/Oragon.AdaptivePool.Core.Tests/Telemetry/{ActivitySourceSpan,Phase2CountersAndHistograms,LoggerMessageEvent}Tests.cs` ✓
-  - `tests/Oragon.AdaptivePool.Core.Stress/BurstIdleBurstStressTest.cs` ✓
-  - `tests/Oragon.AdaptivePool.Core.Benchmarks/{Oragon.AdaptivePool.Core.Benchmarks.csproj,PoolDiagnosticsLogBenchmarks.cs}` ✓
+  - `tests/Oragon.ElasticPool.Core.Tests/TestSupport/{CapturedActivities,CapturedLogEntries,SweepDeterminism}.cs` ✓
+  - `tests/Oragon.ElasticPool.Core.Tests/Pool/{UtilizationSampler,WaitDurationHistogram,PressureSampler,SweepBackoffState,BackgroundSweep,ElasticGrow,HystereticShrink,SweepBackoffIntegration}Tests.cs` ✓
+  - `tests/Oragon.ElasticPool.Core.Tests/Telemetry/{ActivitySourceSpan,Phase2CountersAndHistograms,LoggerMessageEvent}Tests.cs` ✓
+  - `tests/Oragon.ElasticPool.Core.Stress/BurstIdleBurstStressTest.cs` ✓
+  - `tests/Oragon.ElasticPool.Core.Benchmarks/{Oragon.ElasticPool.Core.Benchmarks.csproj,PoolDiagnosticsLogBenchmarks.cs}` ✓
 - All 4 modified files reflect documented changes (`git diff` clean):
-  - `src/Oragon.AdaptivePool.Core/Oragon.AdaptivePool.Core.csproj` — 2 new InternalsVisibleTo entries ✓
-  - `tests/Oragon.AdaptivePool.Core.Stress/Oragon.AdaptivePool.Core.Stress.csproj` — 3 new pkg refs ✓
+  - `src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj` — 2 new InternalsVisibleTo entries ✓
+  - `tests/Oragon.ElasticPool.Core.Stress/Oragon.ElasticPool.Core.Stress.csproj` — 3 new pkg refs ✓
   - `Directory.Packages.props` — BenchmarkDotNet pin ✓
-  - `Oragon.AdaptivePool.sln` — Benchmarks project entry ✓
+  - `Oragon.ElasticPool.sln` — Benchmarks project entry ✓
 - All 5 task commits exist in `git log` (`30bbab1`, `657f52a`, `74a76f4`, `ccb273a`, `d14d232`) — verified.
 - `dotnet build` exits 0 (5 projects, 0 errors, 6 carry-forward Phase 1 SourceLink warnings).
 - 141 tests × 3 TFMs (423 invocations, 0 failures); 2 stress tests × 3 TFMs (6 invocations, 0 failures).
 - BenchmarkDotNet ShortJob: 6/6 [LoggerMessage] entries report 0 B/op (allocation-free baseline confirmed).
 - Coverage on Core: 92.7% line / 86.2% branch / 93.4% method — above the 90% gate.
-- `grep -c "Oragon.AdaptivePool.Core.Stress\|Oragon.AdaptivePool.Core.Benchmarks" .github/workflows/build.yml` = 0 (both projects excluded from CI default build).
-- `grep -rn "Thread.Sleep\|Task.Delay" tests/Oragon.AdaptivePool.Core.Tests/Pool/ tests/Oragon.AdaptivePool.Core.Tests/Telemetry/` returns only the SweepDeterminism helper's documented 100 ms prime delay — no per-test wall-clock dependencies in the test bodies themselves.
+- `grep -c "Oragon.ElasticPool.Core.Stress\|Oragon.ElasticPool.Core.Benchmarks" .github/workflows/build.yml` = 0 (both projects excluded from CI default build).
+- `grep -rn "Thread.Sleep\|Task.Delay" tests/Oragon.ElasticPool.Core.Tests/Pool/ tests/Oragon.ElasticPool.Core.Tests/Telemetry/` returns only the SweepDeterminism helper's documented 100 ms prime delay — no per-test wall-clock dependencies in the test bodies themselves.

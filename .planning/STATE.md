@@ -4,8 +4,8 @@ milestone: v1.0
 milestone_name: Release
 status: verifying
 stopped_at: End of Plan 03 (commits 58c0916, 481fec1, c7b6191). Self-check PASSED. 70 unit tests + 1 stress test green on net8/9/10; 92.8 % line coverage on Core.
-last_updated: "2026-05-03T21:09:43.441Z"
-last_activity: 2026-05-03
+last_updated: "2026-05-13T00:00:00.000Z"
+last_activity: 2026-05-13
 progress:
   total_phases: 1
   completed_phases: 1
@@ -14,15 +14,15 @@ progress:
   percent: 100
 ---
 
-# State: Oragon.AdaptivePool
+# State: Oragon.ElasticPool
 
-**Last updated:** 2026-05-03
+**Last updated:** 2026-05-13
 
 ## Project Reference
 
 **Core Value:** Pool genérico .NET que entrega simultaneamente elasticidade real (min/max com crescimento e encolhimento automáticos), auto-cura (detecta e substitui objetos quebrados sem o cliente saber) e DX fluente (builder limpo, async-first, DI-first) — os três pilares juntos são o produto e nenhum pode ser sacrificado.
 
-**Current Focus:** Phase 2 (Elasticity & Health) **IN PROGRESS**. Plan 01 (components + builder extensions scaffold) shipped green: 5 internal sealed components wired into AdaptivePool<T>, 8 new options properties, 7 new builder fluent methods, PingPongStressTest still passes on all 3 TFMs. Plan 02 (engine grow/shrink + telemetry) is next.
+**Current Focus:** Phase 2 (Elasticity & Health) **IN PROGRESS**. Plan 01 (components + builder extensions scaffold) shipped green: 5 internal sealed components wired into ElasticPool<T>, 8 new options properties, 7 new builder fluent methods, PingPongStressTest still passes on all 3 TFMs. Plan 02 (engine grow/shrink + telemetry) is next.
 
 ## Current Position
 
@@ -55,7 +55,7 @@ progress:
 ### Key Decisions (from PROJECT.md)
 
 - Multi-target `net10.0;net9.0;net8.0` — covers active LTS + STS, zero polyfills required
-- Two NuGet packages: `Oragon.AdaptivePool.Core` + `Oragon.AdaptivePool.RabbitMQ`
+- Two NuGet packages: `Oragon.ElasticPool.Core` + `Oragon.ElasticPool.RabbitMQ`
 - Five-stage lifecycle hooks: `Factory` / `BeforeUse` / `Check` / `AfterUse` / `Release`
 - Built-in telemetry trio: `Meter` + `ActivitySource` + `ILogger<T>` (OTel-native)
 - Pluggable `IItemFailurePolicy<T>` (vs. fixed strategy)
@@ -78,8 +78,8 @@ These cannot be changed without breaking API:
 ### Decisions Made
 
 - [Phase 1 Plan 01]: Repository scaffolding green-baseline (CPM, SourceLink deterministic, PublicApiAnalyzers wired, xUnit v3+MTP test/stress projects, multi-TFM CI workflow)
-- [Phase 1 Plan 02]: 12 public types + sealed AdaptivePool<T> engine (Channel direct-handoff waiter, Interlocked counter rollback, dual IDisposable+IAsyncDisposable drain, eager warm-up via ReadyAsync(), IMeterFactory telemetry with Meter fallback, source-gen [LoggerMessage] logging) + DI extension `services.AddAdaptivePool<T>(name, configure)` with named-options + keyed singleton + non-keyed default-name fallback. PublicAPI.Unshipped.txt now has 75 declarations; full solution build green on net8/9/10.
-- [Phase 1 Plan 03]: 70 unit tests across 13 files + 1 stress test (`MaxSize=1` 256-thread × 40-iter ping-pong, ~300 ms runtime) + CI coverage gate at 90 % line coverage on `Oragon.AdaptivePool.Core` (achieved 92.8 %). Coverage gate uses coverlet.console wrapped over `dotnet <testdll>` (MTP runner does not honor `dotnet test --collect:"XPlat Code Coverage"` — Plan-sanctioned alternative path). xUnit1051 NoWarn at test-csproj level. Stress project remains EXCLUDED from CI default per CONTEXT.md.
+- [Phase 1 Plan 02]: 12 public types + sealed ElasticPool<T> engine (Channel direct-handoff waiter, Interlocked counter rollback, dual IDisposable+IAsyncDisposable drain, eager warm-up via ReadyAsync(), IMeterFactory telemetry with Meter fallback, source-gen [LoggerMessage] logging) + DI extension `services.AddElasticPool<T>(name, configure)` with named-options + keyed singleton + non-keyed default-name fallback. PublicAPI.Unshipped.txt now has 75 declarations; full solution build green on net8/9/10.
+- [Phase 1 Plan 03]: 70 unit tests across 13 files + 1 stress test (`MaxSize=1` 256-thread × 40-iter ping-pong, ~300 ms runtime) + CI coverage gate at 90 % line coverage on `Oragon.ElasticPool.Core` (achieved 92.8 %). Coverage gate uses coverlet.console wrapped over `dotnet <testdll>` (MTP runner does not honor `dotnet test --collect:"XPlat Code Coverage"` — Plan-sanctioned alternative path). xUnit1051 NoWarn at test-csproj level. Stress project remains EXCLUDED from CI default per CONTEXT.md.
 - [Phase ?]: Pass waiters+1 (caller as if parked) to PressureSampler.Evaluate to preserve Phase 1 grow-on-demand with default GrowOnWaiterCount=1
 - [Phase ?]: WaitBehavior.Throw fires when pressure says no-grow even below MaxSize; intentional Phase 2 elastic contract change
 - [Phase ?]: Sweep span uses HasListeners() guard explicitly; per-item HealthCheck spans use cheap StartActivity null-return path
@@ -123,3 +123,9 @@ These cannot be changed without breaking API:
 
 ---
 *State initialized: 2026-05-03 after roadmap creation*
+
+## Quick Tasks Completed
+
+| Date | Task | Result |
+|------|------|--------|
+| 2026-05-13 | Rename Oragon.AdaptivePool to Oragon.ElasticPool | Complete. Breaking rename applied to API, namespaces, packages, projects, docs, samples, telemetry, and GitHub Actions. All main solution builds/tests passed on net8.0/net9.0/net10.0; LiveDashboard sample builds passed on all three TFMs. |

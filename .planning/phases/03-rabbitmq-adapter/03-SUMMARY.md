@@ -4,19 +4,19 @@ plan: 03
 subsystem: rabbitmq-adapter
 tags: [rabbitmq, adapter, tests, integration, testcontainers, sample, bursty-publisher]
 requires:
-  - "Plan 01: AddAdaptiveConnectionPool + ConnectionFactoryResolver + AdapterDiagnosticsLog"
-  - "Plan 02: AddAdaptiveChannelPool + ChannelLeasePairing + ConnectionChannelTracker"
+  - "Plan 01: AddElasticConnectionPool + ConnectionFactoryResolver + AdapterDiagnosticsLog"
+  - "Plan 02: AddElasticChannelPool + ChannelLeasePairing + ConnectionChannelTracker"
   - "Testcontainers.RabbitMq 4.11.0 (RabbitMqBuilder)"
   - "Microsoft.Extensions.Hosting (sample + integration test)"
 provides:
-  - "Oragon.AdaptivePool.RabbitMQ.Tests project (29 unit tests × 3 TFMs)"
-  - "Oragon.AdaptivePool.RabbitMQ.IntegrationTests project (10 integration tests × 3 TFMs)"
-  - "samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher (RMQ-03 runnable demo)"
+  - "Oragon.ElasticPool.RabbitMQ.Tests project (29 unit tests × 3 TFMs)"
+  - "Oragon.ElasticPool.RabbitMQ.IntegrationTests project (10 integration tests × 3 TFMs)"
+  - "samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher (RMQ-03 runnable demo)"
   - "RabbitMqContainerFixture / LowChannelMaxFixture for the integration suite"
   - "CapturedLogEntries forward-copy in both test projects (Phase 2 SUMMARY decision)"
 affects:
   - "Directory.Packages.props (Testcontainers.RabbitMq 4.11.0 pin)"
-  - "Oragon.AdaptivePool.sln (3 new projects: Tests, IntegrationTests, Sample)"
+  - "Oragon.ElasticPool.sln (3 new projects: Tests, IntegrationTests, Sample)"
 tech-stack:
   added:
     - "Testcontainers.RabbitMq 4.11.0"
@@ -28,28 +28,28 @@ tech-stack:
     - "Per-iteration channel acquire in BurstyPublisher (Pitfall 10 — IChannel not thread-safe)"
 key-files:
   created:
-    - "tests/Oragon.AdaptivePool.RabbitMQ.Tests/Oragon.AdaptivePool.RabbitMQ.Tests.csproj (24 lines)"
-    - "tests/Oragon.AdaptivePool.RabbitMQ.Tests/TestSupport/CapturedLogEntries.cs (54 lines)"
-    - "tests/Oragon.AdaptivePool.RabbitMQ.Tests/ConnectionFactoryResolverTests.cs (137 lines, 8 tests)"
-    - "tests/Oragon.AdaptivePool.RabbitMQ.Tests/ConnectionChannelTrackerTests.cs (122 lines, 8 tests)"
-    - "tests/Oragon.AdaptivePool.RabbitMQ.Tests/ConnectionPoolUnitTests.cs (170 lines, 6 tests)"
-    - "tests/Oragon.AdaptivePool.RabbitMQ.Tests/ChannelPoolUnitTests.cs (272 lines, 7 tests)"
-    - "tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests.csproj (26 lines)"
-    - "tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/Fixtures/RabbitMqContainerFixture.cs (24 lines)"
-    - "tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/Fixtures/LowChannelMaxFixture.cs (29 lines)"
-    - "tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/TestSupport/CapturedLogEntries.cs (54 lines)"
-    - "tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/ConnectionPoolIntegrationTests.cs (75 lines, 3 tests)"
-    - "tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/ChannelPoolIntegrationTests.cs (139 lines, 3 tests)"
-    - "tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/ChannelSpreadIntegrationTests.cs (60 lines, 1 test)"
-    - "tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/AutomaticRecoveryOverrideTests.cs (78 lines, 2 tests)"
-    - "tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/BurstyPublisherIntegrationTests.cs (107 lines, 1 test)"
-    - "samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher.csproj (15 lines)"
-    - "samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/Program.cs (43 lines)"
-    - "samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/BurstyPublisherWorker.cs (108 lines)"
-    - "samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/README.md (~110 lines)"
+    - "tests/Oragon.ElasticPool.RabbitMQ.Tests/Oragon.ElasticPool.RabbitMQ.Tests.csproj (24 lines)"
+    - "tests/Oragon.ElasticPool.RabbitMQ.Tests/TestSupport/CapturedLogEntries.cs (54 lines)"
+    - "tests/Oragon.ElasticPool.RabbitMQ.Tests/ConnectionFactoryResolverTests.cs (137 lines, 8 tests)"
+    - "tests/Oragon.ElasticPool.RabbitMQ.Tests/ConnectionChannelTrackerTests.cs (122 lines, 8 tests)"
+    - "tests/Oragon.ElasticPool.RabbitMQ.Tests/ConnectionPoolUnitTests.cs (170 lines, 6 tests)"
+    - "tests/Oragon.ElasticPool.RabbitMQ.Tests/ChannelPoolUnitTests.cs (272 lines, 7 tests)"
+    - "tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/Oragon.ElasticPool.RabbitMQ.IntegrationTests.csproj (26 lines)"
+    - "tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/Fixtures/RabbitMqContainerFixture.cs (24 lines)"
+    - "tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/Fixtures/LowChannelMaxFixture.cs (29 lines)"
+    - "tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/TestSupport/CapturedLogEntries.cs (54 lines)"
+    - "tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/ConnectionPoolIntegrationTests.cs (75 lines, 3 tests)"
+    - "tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/ChannelPoolIntegrationTests.cs (139 lines, 3 tests)"
+    - "tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/ChannelSpreadIntegrationTests.cs (60 lines, 1 test)"
+    - "tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/AutomaticRecoveryOverrideTests.cs (78 lines, 2 tests)"
+    - "tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/BurstyPublisherIntegrationTests.cs (107 lines, 1 test)"
+    - "samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher.csproj (15 lines)"
+    - "samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/Program.cs (43 lines)"
+    - "samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/BurstyPublisherWorker.cs (108 lines)"
+    - "samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/README.md (~110 lines)"
   modified:
     - "Directory.Packages.props (+2 lines: Testcontainers.RabbitMq 4.11.0)"
-    - "Oragon.AdaptivePool.sln (3 project entries + samples folder + nesting)"
+    - "Oragon.ElasticPool.sln (3 project entries + samples folder + nesting)"
 decisions:
   - "ChannelPool layered-ownership clarification: each acquired IChannel holds its OWN IPoolItem<IConnection> lease (one-to-one). The MaxChannelsPerConnection tracker is a SAFEGUARD against pool reuse putting >max channels on the same IConnection — not a multiplexer. Tests written to match this model"
   - "Spread test: sequential channel acquisition (loop, not Task.WhenAll) to avoid the parallel-AcquireAsync × MaxSize-bound deadlock. With 50 channels and ConnectionPool MaxSize=64, the sequential loop completes in <2s and produces ≥5 distinct connections (validated: pool grew to ≥5)"
@@ -73,7 +73,7 @@ log, channel-spread tracker, and CWT lease pairing — plus 10 Testcontainers-ba
 integration tests proving connection-pool round-trip, channel-pool publish round-trip,
 eager spread under broker `channel_max=10`, lazy invalidation per RESEARCH Q1, and a
 scaled-down BurstyPublisher cycle. Shipped the runnable
-`samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher` (RMQ-03) — verified
+`samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher` (RMQ-03) — verified
 end-to-end via `dotnet run` against a Docker-managed broker.
 
 ## Tasks Executed
@@ -89,7 +89,7 @@ end-to-end via `dotnet run` against a Docker-managed broker.
 ### Build (Release)
 
 ```
-dotnet build Oragon.AdaptivePool.sln -c Release
+dotnet build Oragon.ElasticPool.sln -c Release
 ok dotnet build: 9 projects, 0 errors, 12 warnings (00:00:07.76)
 ```
 
@@ -155,12 +155,12 @@ Executed manually with a docker-managed broker:
 ```
 RABBITMQ_URI=amqp://guest:guest@localhost:35672/ \
 BURSTY_CYCLES=1 BURSTY_IDLE_SECONDS=1 BURSTY_BURST_COUNT=200 BURSTY_PARALLELISM=8 \
-  dotnet run --project samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher
+  dotnet run --project samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher
 ```
 
 Output excerpt:
 ```
-... warn: AutomaticRecoveryEnabled was true on the configured ConnectionFactory for pool 'sample'; Oragon.AdaptivePool overrides this to false (the pool owns lifecycle).
+... warn: AutomaticRecoveryEnabled was true on the configured ConnectionFactory for pool 'sample'; Oragon.ElasticPool overrides this to false (the pool owns lifecycle).
 ... info: Pool 'sample' grew 1->2 (tripWaiters=True, tripUtilization=True, tripP95=False).
 ... info: Cycle 1/1: burst complete in 78 ms (2553 msg/s)
 ... info: All cycles complete; idle for 1s before shutdown
@@ -175,7 +175,7 @@ smoke run, clean shutdown via `IHostApplicationLifetime.StopApplication()`.
 ### Phase 1+2 regression check
 
 ```
-dotnet test --project tests/Oragon.AdaptivePool.Core.Tests -c Release --no-build
+dotnet test --project tests/Oragon.ElasticPool.Core.Tests -c Release --no-build
 total: 432
 failed: 0
 succeeded: 432
@@ -300,24 +300,24 @@ Phase 3 is **complete** with empirical evidence covering RMQ-01, RMQ-02, RMQ-03,
 Files exist on disk:
 
 ```
-[ -f tests/Oragon.AdaptivePool.RabbitMQ.Tests/Oragon.AdaptivePool.RabbitMQ.Tests.csproj ] -> FOUND
-[ -f tests/Oragon.AdaptivePool.RabbitMQ.Tests/TestSupport/CapturedLogEntries.cs ] -> FOUND
-[ -f tests/Oragon.AdaptivePool.RabbitMQ.Tests/ConnectionFactoryResolverTests.cs ] -> FOUND
-[ -f tests/Oragon.AdaptivePool.RabbitMQ.Tests/ConnectionChannelTrackerTests.cs ] -> FOUND
-[ -f tests/Oragon.AdaptivePool.RabbitMQ.Tests/ConnectionPoolUnitTests.cs ] -> FOUND
-[ -f tests/Oragon.AdaptivePool.RabbitMQ.Tests/ChannelPoolUnitTests.cs ] -> FOUND
-[ -f tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests.csproj ] -> FOUND
-[ -f tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/Fixtures/RabbitMqContainerFixture.cs ] -> FOUND
-[ -f tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/Fixtures/LowChannelMaxFixture.cs ] -> FOUND
-[ -f tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/ConnectionPoolIntegrationTests.cs ] -> FOUND
-[ -f tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/ChannelPoolIntegrationTests.cs ] -> FOUND
-[ -f tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/ChannelSpreadIntegrationTests.cs ] -> FOUND
-[ -f tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/AutomaticRecoveryOverrideTests.cs ] -> FOUND
-[ -f tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/BurstyPublisherIntegrationTests.cs ] -> FOUND
-[ -f samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher.csproj ] -> FOUND
-[ -f samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/Program.cs ] -> FOUND
-[ -f samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/BurstyPublisherWorker.cs ] -> FOUND
-[ -f samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/README.md ] -> FOUND
+[ -f tests/Oragon.ElasticPool.RabbitMQ.Tests/Oragon.ElasticPool.RabbitMQ.Tests.csproj ] -> FOUND
+[ -f tests/Oragon.ElasticPool.RabbitMQ.Tests/TestSupport/CapturedLogEntries.cs ] -> FOUND
+[ -f tests/Oragon.ElasticPool.RabbitMQ.Tests/ConnectionFactoryResolverTests.cs ] -> FOUND
+[ -f tests/Oragon.ElasticPool.RabbitMQ.Tests/ConnectionChannelTrackerTests.cs ] -> FOUND
+[ -f tests/Oragon.ElasticPool.RabbitMQ.Tests/ConnectionPoolUnitTests.cs ] -> FOUND
+[ -f tests/Oragon.ElasticPool.RabbitMQ.Tests/ChannelPoolUnitTests.cs ] -> FOUND
+[ -f tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/Oragon.ElasticPool.RabbitMQ.IntegrationTests.csproj ] -> FOUND
+[ -f tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/Fixtures/RabbitMqContainerFixture.cs ] -> FOUND
+[ -f tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/Fixtures/LowChannelMaxFixture.cs ] -> FOUND
+[ -f tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/ConnectionPoolIntegrationTests.cs ] -> FOUND
+[ -f tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/ChannelPoolIntegrationTests.cs ] -> FOUND
+[ -f tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/ChannelSpreadIntegrationTests.cs ] -> FOUND
+[ -f tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/AutomaticRecoveryOverrideTests.cs ] -> FOUND
+[ -f tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/BurstyPublisherIntegrationTests.cs ] -> FOUND
+[ -f samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher.csproj ] -> FOUND
+[ -f samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/Program.cs ] -> FOUND
+[ -f samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/BurstyPublisherWorker.cs ] -> FOUND
+[ -f samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/README.md ] -> FOUND
 ```
 
 All three task commits present in git log: `bc4a68b`, `472f473`, `0496ecf`.

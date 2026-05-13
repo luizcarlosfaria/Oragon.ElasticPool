@@ -1,6 +1,6 @@
 # Pitfalls Research
 
-**Domain:** .NET adaptive object pool library + RabbitMQ adapter (Oragon.AdaptivePool)
+**Domain:** .NET adaptive object pool library + RabbitMQ adapter (Oragon.ElasticPool)
 **Researched:** 2026-05-02
 **Confidence:** HIGH on RabbitMQ-specific claims (verified against rabbitmq.com docs and v7 migration guide May 2026); HIGH on .NET BCL claims (verified against learn.microsoft.com); MEDIUM on cross-ecosystem pool wisdom (synthesized from HikariCP/commons-pool2 community).
 
@@ -23,7 +23,7 @@ Each critical pitfall has a Phase mapping. The recommended phase numbering align
 
 - **P1 — Core skeleton** (interfaces, builder, Factory/Release, basic Acquire/Release, no elasticity)
 - **P2 — Elasticity & health** (composite-signal grow, idle shrink, BeforeUse/Check/AfterUse hooks, failure policy)
-- **P3 — Telemetry & DI** (Meter, ActivitySource, ILogger, AddAdaptivePool extension)
+- **P3 — Telemetry & DI** (Meter, ActivitySource, ILogger, AddElasticPool extension)
 - **P4 — RabbitMQ adapter** (IConnection pool, layered IChannel pool, samples)
 - **P5 — Hardening** (stress/concurrency tests, chaos tests, OSS quality bar, NuGet pack)
 
@@ -138,7 +138,7 @@ The Check hook calls `IsOpen` (cheap) but in some adapters might do a real probe
 - **Sweep must back off when failure rate is high.** Track rolling failure rate; when above threshold (e.g., 50% of last 10 sweeps failed), dial back sweep frequency exponentially (30 s → 60 s → 120 s, capped at 5 min).
 - **Cap concurrent factory creation.** A `SemaphoreSlim(maxConcurrentCreations)` around `Factory()` prevents a sweep from spawning 100 simultaneous TCP-connect attempts.
 - **Distinguish "broken item" from "downstream unavailable".** When factory fails (not just health-check), backoff the entire pool's grow attempts, not just sweep.
-- Document the recipe: pair Adaptive Pool with a Polly circuit breaker around the consumer's `AcquireAsync` call so the application itself stops asking when downstream is dead.
+- Document the recipe: pair Elastic Pool with a Polly circuit breaker around the consumer's `AcquireAsync` call so the application itself stops asking when downstream is dead.
 
 **Warning signs:**
 - During a RabbitMQ outage, the application's outbound connection rate to RabbitMQ goes UP rather than down.
@@ -238,7 +238,7 @@ Two layers of recovery (RabbitMQ.Client's automatic recovery + our pool's failur
 
 **How to avoid:**
 - **Decision: pick one layer.** For pool-managed connections, **disable RabbitMQ.Client automatic recovery** (`AutomaticRecoveryEnabled = false`) and let the pool's failure policy handle replacement. Rationale: pool already does discard+replace, and pool grows/shrinks based on real demand — letting the client also try to recover creates unpredictable lifecycle.
-- **Document this clearly**: the adapter's `AddAdaptiveConnectionPool` MUST configure `ConnectionFactory.AutomaticRecoveryEnabled = false` by default, with an XML doc explaining why.
+- **Document this clearly**: the adapter's `AddElasticConnectionPool` MUST configure `ConnectionFactory.AutomaticRecoveryEnabled = false` by default, with an XML doc explaining why.
 - If a user really wants automatic recovery, document the contract: BeforeUse hook should treat the brief `IsOpen == false` window as transient (e.g., wait up to 100 ms before declaring broken). But this is an advanced opt-in.
 - For `IChannel`: channels are NEVER auto-recovered separately from connections; if the underlying connection is recovered, channels on it must be re-created. Pool's layered design handles this naturally: channel pool acquires fresh channels from connection pool.
 
@@ -247,7 +247,7 @@ Two layers of recovery (RabbitMQ.Client's automatic recovery + our pool's failur
 - `IConnection` references in app memory have stale endpoint info after a network blip.
 - Channel publishes throw `AlreadyClosedException` even though the pool just handed the channel out as healthy.
 
-**Phase to address:** P4 (RabbitMQ adapter) — encode the configuration default in the `AddAdaptiveConnectionPool` extension; explain in XML doc and README.
+**Phase to address:** P4 (RabbitMQ adapter) — encode the configuration default in the `AddElasticConnectionPool` extension; explain in XML doc and README.
 
 Source: [RabbitMQ .NET Client API Guide — Recovery section](https://www.rabbitmq.com/client-libraries/dotnet-api-guide#recovery) (HIGH confidence, May 2026).
 
@@ -321,7 +321,7 @@ Default heartbeat in RabbitMQ.Client is 60 seconds. App configures `RequestedHea
 
 **How to avoid:**
 - **Adapter default: keep `RequestedHeartbeat = TimeSpan.FromSeconds(60)`** (RabbitMQ.Client default) and **document why shortening or lengthening is risky**.
-- **Validation in `AddAdaptiveConnectionPool`**: if the user sets `RequestedHeartbeat > TimeSpan.FromMinutes(2)`, log a WARNING ("heartbeat exceeds typical NAT timeout — silent connection drops likely").
+- **Validation in `AddElasticConnectionPool`**: if the user sets `RequestedHeartbeat > TimeSpan.FromMinutes(2)`, log a WARNING ("heartbeat exceeds typical NAT timeout — silent connection drops likely").
 - **Sample includes heartbeat tuning section** with cloud-platform-specific recommendations (AWS NLB ~350 s, Azure Load Balancer 4 min default, etc.).
 - **Health sweep can compensate partially**: if BeforeUse calls `IsOpen` and trusts it, the sweep should ALSO try a no-op AMQP call periodically (every few minutes) to flush silent deaths — but NOT on the hot Acquire path (Pitfall 6).
 
@@ -413,15 +413,15 @@ Pool metrics include a tag `pool.name` (good — distinguishes multiple pools) a
 ### Pitfall 16: Meter and ActivitySource lifetime mismatch with pool lifetime
 
 **What goes wrong:**
-Pool is created with `new Meter("Oragon.AdaptivePool")` directly. Multiple `IAdaptivePool<T>` instances in the same app each create their own Meter with the same name. OTel registers them all, last-writer-wins for instruments — counters from one pool get overwritten by the other. Or: pool is disposed but the Meter/ActivitySource isn't, leaking measurement registrations.
+Pool is created with `new Meter("Oragon.ElasticPool")` directly. Multiple `IElasticPool<T>` instances in the same app each create their own Meter with the same name. OTel registers them all, last-writer-wins for instruments — counters from one pool get overwritten by the other. Or: pool is disposed but the Meter/ActivitySource isn't, leaking measurement registrations.
 
 **Why it happens:**
 - Direct `new Meter(...)` is the obvious API but isn't the recommended one in .NET 8+.
 - `IMeterFactory` exists specifically to manage Meter lifetime tied to DI scope — but it's easy to miss.
 
 **How to avoid:**
-- **Use `IMeterFactory` from DI** (`services.AddMetrics()` registers it; both .NET 8/9/10 have it in-box). The pool's constructor takes `IMeterFactory` and calls `factory.Create("Oragon.AdaptivePool")` — factory handles lifetime + dispose.
-- **Single ActivitySource per assembly**: declare `internal static readonly ActivitySource Source = new("Oragon.AdaptivePool");` once at the assembly level. Don't dispose it (ActivitySource lifetime = process lifetime is fine).
+- **Use `IMeterFactory` from DI** (`services.AddMetrics()` registers it; both .NET 8/9/10 have it in-box). The pool's constructor takes `IMeterFactory` and calls `factory.Create("Oragon.ElasticPool")` — factory handles lifetime + dispose.
+- **Single ActivitySource per assembly**: declare `internal static readonly ActivitySource Source = new("Oragon.ElasticPool");` once at the assembly level. Don't dispose it (ActivitySource lifetime = process lifetime is fine).
 - **For Meter, pool dispose disposes the meter** if the pool created it.
 - **Test**: create two pools of same type, verify metrics are tagged with `pool.name` and counts don't collide.
 
@@ -515,7 +515,7 @@ Developer reads about the new `System.Threading.Lock` in .NET 9 (a more efficien
 ### Pitfall 20: Pool's IAsyncDisposable not actually called by DI
 
 **What goes wrong:**
-Pool implements `IAsyncDisposable.DisposeAsync` to gracefully drain. User registers via `services.AddSingleton<IAdaptivePool<T>>(...)`. App stops; `ServiceProvider.Dispose()` is called (sync). Microsoft.Extensions.DI's container DOES call `DisposeAsync` for singletons IF you call `await serviceProvider.DisposeAsync()` instead of `Dispose()` — but many app patterns (especially older or hand-rolled hosts) only call `Dispose()`. Result: `DisposeAsync` is never invoked, drain never runs, in-flight publishes are silently dropped.
+Pool implements `IAsyncDisposable.DisposeAsync` to gracefully drain. User registers via `services.AddSingleton<IElasticPool<T>>(...)`. App stops; `ServiceProvider.Dispose()` is called (sync). Microsoft.Extensions.DI's container DOES call `DisposeAsync` for singletons IF you call `await serviceProvider.DisposeAsync()` instead of `Dispose()` — but many app patterns (especially older or hand-rolled hosts) only call `Dispose()`. Result: `DisposeAsync` is never invoked, drain never runs, in-flight publishes are silently dropped.
 
 **Why it happens:**
 - Sync vs async dispose disparity in DI.
@@ -574,7 +574,7 @@ RabbitMQ is partially down. Factory takes 25 s per attempt before timing out. Ap
 
 **How to avoid:**
 - **Aggregate failure tracking**: if factory has failed N times in last M seconds, enter "degraded" mode where new Acquires fast-fail with `PoolDegradedException` (within 100 ms) instead of waiting full timeout.
-- **Document Polly composition**: pair Adaptive Pool with a Polly circuit breaker. Show the recipe in README.
+- **Document Polly composition**: pair Elastic Pool with a Polly circuit breaker. Show the recipe in README.
 - **Surface degraded mode in metrics**: `pool.degraded` boolean gauge.
 - **Test**: simulate broker slow-failing for 30 s; verify Acquire times out fast (under 1 s) once degraded mode kicks in, instead of all consumers waiting 25 s.
 
@@ -590,7 +590,7 @@ RabbitMQ is partially down. Factory takes 25 s per attempt before timing out. Ap
 ### Pitfall 23: SemVer violation on pre-release / hidden breaking changes
 
 **What goes wrong:**
-v0.5.0 ships with `IAdaptivePool<T>.AcquireAsync(CancellationToken)`. v0.6.0-alpha refactors to `AcquireAsync(AcquireOptions, CancellationToken)`. Users on `[0.5.0,)` floating range get the alpha; their code breaks. SemVer says "anything before 1.0 has no compatibility guarantees", but in practice users assume 0.x.x is roughly stable and pin loose.
+v0.5.0 ships with `IElasticPool<T>.AcquireAsync(CancellationToken)`. v0.6.0-alpha refactors to `AcquireAsync(AcquireOptions, CancellationToken)`. Users on `[0.5.0,)` floating range get the alpha; their code breaks. SemVer says "anything before 1.0 has no compatibility guarantees", but in practice users assume 0.x.x is roughly stable and pin loose.
 
 **Why it happens:**
 - Pre-1.0 semver is technically unrestricted; in practice, users still expect minor-bump-=-no-break.
@@ -641,7 +641,7 @@ NuGet pack runs without `<IncludeSymbols>true</IncludeSymbols>` + `<SymbolPackag
 - **Pre-flight check**: use `Meziantou.Validation` or `dotnet validate package local` to lint the `.nupkg` for symbol/source-link compliance before push.
 
 **Warning signs:**
-- Users file issues like "cannot step into AdaptivePool source".
+- Users file issues like "cannot step into ElasticPool source".
 - NuGet Gallery package page does not show "Source repository" link.
 - Symbol package upload fails silently in CI.
 
@@ -683,7 +683,7 @@ Common mistakes when connecting to external services.
 | **RabbitMQ heartbeat** | Set heartbeat to 10 minutes "to reduce network noise" | Keep default 60 s; longer than NAT idle timeout = silent drop (Pitfall 12) |
 | **RabbitMQ channel_max** | Assume "unlimited" channels per connection | Default is 2047; design for hundreds, spread across multiple connections |
 | **Microsoft.Extensions.DI** | Rely on `Dispose` to drain | Implement both `IDisposable` AND `IAsyncDisposable`; document `DisposeAsync` requirement |
-| **OpenTelemetry .NET** | `new Meter(...)` directly in pool ctor | Inject `IMeterFactory`, call `factory.Create("Oragon.AdaptivePool")` |
+| **OpenTelemetry .NET** | `new Meter(...)` directly in pool ctor | Inject `IMeterFactory`, call `factory.Create("Oragon.ElasticPool")` |
 | **Polly v8** | Wrap pool internals with Polly | Document composition: `Polly.Pipeline → AcquireAsync` from consumer side |
 | **`Microsoft.Extensions.ObjectPool`** | Build on top as base class | Build directly on BCL primitives; M.E.OP is the wrong abstraction (fixed size, no health) |
 | **Testcontainers.RabbitMq v4** | Use static port mapping in tests | Let Testcontainers assign random ports; integrate via the `IContainer` API |
@@ -779,7 +779,7 @@ How roadmap phases should address these pitfalls.
 | 6. Costly BeforeUse on hot path | P2 (elasticity & health) | Benchmark: Acquire latency with vs without BeforeUse, p99 delta < 1 ms |
 | 7. Grow/shrink oscillation | P2 (elasticity & health) | Sinusoidal-load test, pool size doesn't oscillate >20% |
 | 8. Slow burst growth | P2 (elasticity & health) | Spike test: 200 simultaneous Acquires from pool=10, p99 < 500 ms, steady-state in 1 s |
-| 9. RabbitMQ auto-recovery conflict | P4 (RabbitMQ adapter) | `AddAdaptiveConnectionPool` sets `AutomaticRecoveryEnabled = false` by default; integration test verifies |
+| 9. RabbitMQ auto-recovery conflict | P4 (RabbitMQ adapter) | `AddElasticConnectionPool` sets `AutomaticRecoveryEnabled = false` by default; integration test verifies |
 | 10. Shared channel publishing | P4 (RabbitMQ adapter) | Sample demonstrates per-publish Acquire; README anti-pattern section |
 | 11. channel_max exhaustion | P4 (RabbitMQ adapter) | Integration test with `channel_max=10` on Testcontainers; channels spread across connections |
 | 12. Heartbeat misconfig | P4 (RabbitMQ adapter) | Default heartbeat 60 s; warning log when user sets > 2 min |
@@ -824,5 +824,5 @@ How roadmap phases should address these pitfalls.
 - Internal experience: composite-signal grow / hysteretic shrink algorithm shape — synthesized from cross-ecosystem pool research (MEDIUM)
 
 ---
-*Pitfalls research for: .NET adaptive object pool library + RabbitMQ adapter (Oragon.AdaptivePool)*
+*Pitfalls research for: .NET adaptive object pool library + RabbitMQ adapter (Oragon.ElasticPool)*
 *Researched: 2026-05-02*

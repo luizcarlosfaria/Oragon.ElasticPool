@@ -1,11 +1,11 @@
-# Oragon.AdaptivePool
+# Oragon.ElasticPool
 
 > Generic, elastic, self-healing object pool for .NET — with built-in OpenTelemetry.
 
-[![build](https://github.com/oragon/Oragon.AdaptivePool/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/oragon/Oragon.AdaptivePool/actions/workflows/build.yml)
-[![NuGet Core](https://img.shields.io/nuget/v/Oragon.AdaptivePool.Core.svg?label=Core)](https://www.nuget.org/packages/Oragon.AdaptivePool.Core)
-[![NuGet RabbitMQ](https://img.shields.io/nuget/v/Oragon.AdaptivePool.RabbitMQ.svg?label=RabbitMQ)](https://www.nuget.org/packages/Oragon.AdaptivePool.RabbitMQ)
-[![Downloads](https://img.shields.io/nuget/dt/Oragon.AdaptivePool.Core.svg)](https://www.nuget.org/packages/Oragon.AdaptivePool.Core)
+[![build](https://github.com/oragon/Oragon.ElasticPool/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/oragon/Oragon.ElasticPool/actions/workflows/build.yml)
+[![NuGet Core](https://img.shields.io/nuget/v/Oragon.ElasticPool.Core.svg?label=Core)](https://www.nuget.org/packages/Oragon.ElasticPool.Core)
+[![NuGet RabbitMQ](https://img.shields.io/nuget/v/Oragon.ElasticPool.RabbitMQ.svg?label=RabbitMQ)](https://www.nuget.org/packages/Oragon.ElasticPool.RabbitMQ)
+[![Downloads](https://img.shields.io/nuget/dt/Oragon.ElasticPool.Core.svg)](https://www.nuget.org/packages/Oragon.ElasticPool.Core)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ## What this is
@@ -19,8 +19,8 @@ replaced), and **fluent DX** (async-first, DI-first, builder pattern). Multi-tar
 
 | Package | NuGet | Purpose |
 |---------|-------|---------|
-| [`Oragon.AdaptivePool.Core`](src/Oragon.AdaptivePool.Core/README.md) | [![nuget](https://img.shields.io/nuget/v/Oragon.AdaptivePool.Core.svg)](https://www.nuget.org/packages/Oragon.AdaptivePool.Core) | Generic pool engine, hooks, telemetry, DI |
-| [`Oragon.AdaptivePool.RabbitMQ`](src/Oragon.AdaptivePool.RabbitMQ/README.md) | [![nuget](https://img.shields.io/nuget/v/Oragon.AdaptivePool.RabbitMQ.svg)](https://www.nuget.org/packages/Oragon.AdaptivePool.RabbitMQ) | `IConnection` + layered `IChannel` pools for RabbitMQ.Client v7+ |
+| [`Oragon.ElasticPool.Core`](src/Oragon.ElasticPool.Core/README.md) | [![nuget](https://img.shields.io/nuget/v/Oragon.ElasticPool.Core.svg)](https://www.nuget.org/packages/Oragon.ElasticPool.Core) | Generic pool engine, hooks, telemetry, DI |
+| [`Oragon.ElasticPool.RabbitMQ`](src/Oragon.ElasticPool.RabbitMQ/README.md) | [![nuget](https://img.shields.io/nuget/v/Oragon.ElasticPool.RabbitMQ.svg)](https://www.nuget.org/packages/Oragon.ElasticPool.RabbitMQ) | `IConnection` + layered `IChannel` pools for RabbitMQ.Client v7+ |
 
 ## 30-second quickstart
 
@@ -34,12 +34,12 @@ across hooks in the same pool.
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Oragon.AdaptivePool.Core.Abstractions;
-using Oragon.AdaptivePool.Core.DependencyInjection;
+using Oragon.ElasticPool.Core.Abstractions;
+using Oragon.ElasticPool.Core.DependencyInjection;
 
 var builder = Host.CreateApplicationBuilder(args);
 
-builder.Services.AddAdaptivePool<MyExpensiveClient>("default", pool =>
+builder.Services.AddElasticPool<MyExpensiveClient>("default", pool =>
 {
     pool.WithBounds(minSize: 1, maxSize: 16, initialSize: 2);
     pool.IdleTimeout(TimeSpan.FromMinutes(2));
@@ -50,8 +50,8 @@ builder.Services.AddAdaptivePool<MyExpensiveClient>("default", pool =>
 });
 
 using var host = builder.Build();
-// AddAdaptivePool registers a *keyed* singleton — match the name above.
-var pool = host.Services.GetRequiredKeyedService<IAdaptivePool<MyExpensiveClient>>("default");
+// AddElasticPool registers a *keyed* singleton — match the name above.
+var pool = host.Services.GetRequiredKeyedService<IElasticPool<MyExpensiveClient>>("default");
 
 await using var lease = await pool.AcquireAsync();
 lease.Value.DoWork();
@@ -61,7 +61,7 @@ lease.Value.DoWork();
 ### Async hooks (when you need I/O)
 
 ```csharp
-builder.Services.AddAdaptivePool<MyExpensiveClient>("default", pool =>
+builder.Services.AddElasticPool<MyExpensiveClient>("default", pool =>
 {
     pool.WithBounds(minSize: 1, maxSize: 16, initialSize: 2);
 
@@ -76,7 +76,7 @@ Sync and async overloads coexist — e.g., a sync `BeforeUse` paired with an asy
 
 ## Why not `Microsoft.Extensions.ObjectPool`?
 
-| Feature                            | `Microsoft.Extensions.ObjectPool` | `Oragon.AdaptivePool.Core` |
+| Feature                            | `Microsoft.Extensions.ObjectPool` | `Oragon.ElasticPool.Core` |
 |------------------------------------|-----------------------------------|----------------------------|
 | `Min` / `Max` bounds               | ❌ (only `MaximumRetained`)        | ✅                          |
 | Elastic grow under pressure        | ❌                                 | ✅ (composite signal: waiters + utilization + p95 wait) |
@@ -87,10 +87,10 @@ Sync and async overloads coexist — e.g., a sync `BeforeUse` paired with an asy
 | Pluggable failure policy           | ❌                                 | ✅ (`IItemFailurePolicy<T>`) |
 | Async-first API                    | ❌ (`Get()` is sync, blocks)       | ✅ (`AcquireAsync` returns `ValueTask`) |
 | Built-in OpenTelemetry             | Limited                           | ✅ (`Meter` + `ActivitySource` + source-gen `ILogger`) |
-| Layered pools (e.g., channel→conn) | N/A                               | ✅ (see `Oragon.AdaptivePool.RabbitMQ`) |
+| Layered pools (e.g., channel→conn) | N/A                               | ✅ (see `Oragon.ElasticPool.RabbitMQ`) |
 
 `Microsoft.Extensions.ObjectPool` is great for cheap, stateless, allocation-only
-pooling (e.g., `StringBuilder`). `Oragon.AdaptivePool.Core` is for expensive,
+pooling (e.g., `StringBuilder`). `Oragon.ElasticPool.Core` is for expensive,
 stateful, lifecycle-sensitive resources where elasticity and health matter.
 
 ## Elasticity benchmark
@@ -101,7 +101,7 @@ elasticity visible, not just raw throughput. Each instance costs 10 MB, takes
 `1 -> 10 -> 100 -> 1k -> 10k -> 20k -> 30k -> 20k -> 10k -> 1k -> 100 -> 10 -> 1 req/s`.
 
 ```bash
-dotnet run --project tests/Oragon.AdaptivePool.Core.Benchmarks -c Release -f net10.0 -- elasticity --profile readme
+dotnet run --project tests/Oragon.ElasticPool.Core.Benchmarks -c Release -f net10.0 -- elasticity --profile readme
 ```
 
 Latest local run with `MinSize=0` and `MaxSize=256`:
@@ -109,10 +109,10 @@ Latest local run with `MinSize=0` and `MaxSize=256`:
 | Strategy | Throughput at 30k target | p95 at 30k target | Final retained logical memory |
 |----------|--------------------------:|------------------:|------------------------------:|
 | No pool | 3,256 req/s | 105.44 ms | 0 MB |
-| `AdaptivePool<T>` | 21,175 req/s | 11.90 ms | 0 MB after cooldown |
+| `ElasticPool<T>` | 21,175 req/s | 11.90 ms | 0 MB after cooldown |
 | `Microsoft.Extensions.ObjectPool` | 21,234 req/s | 12.02 ms | 2,560 MB |
 
-Key interpretation: `AdaptivePool<T>` is not positioned as a faster warmed-up
+Key interpretation: `ElasticPool<T>` is not positioned as a faster warmed-up
 peak-throughput replacement for ObjectPool. Its value is reusing expensive
 objects under pressure and shrinking back to zero retained resources after the
 workload goes idle. With this workload and `MaxSize=256`, both pooled strategies
@@ -130,8 +130,8 @@ Reports:
 
 ## OpenTelemetry in 5 lines
 
-`Oragon.AdaptivePool` exposes a `Meter` and `ActivitySource` both named
-`"Oragon.AdaptivePool"`. Wire them to any OTel exporter:
+`Oragon.ElasticPool` exposes a `Meter` and `ActivitySource` both named
+`"Oragon.ElasticPool"`. Wire them to any OTel exporter:
 
 ```csharp
 using OpenTelemetry;
@@ -140,17 +140,17 @@ using OpenTelemetry.Trace;
 
 builder.Services
     .AddOpenTelemetry()
-    .WithMetrics(m => m.AddMeter("Oragon.AdaptivePool").AddConsoleExporter())
-    .WithTracing(t => t.AddSource("Oragon.AdaptivePool").AddConsoleExporter());
+    .WithMetrics(m => m.AddMeter("Oragon.ElasticPool").AddConsoleExporter())
+    .WithTracing(t => t.AddSource("Oragon.ElasticPool").AddConsoleExporter());
 // In production, swap AddConsoleExporter() for AddOtlpExporter() (Aspire / OTel collector / etc.).
 ```
 
 ## RabbitMQ bursty publisher
 
-See the runnable sample at [`samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher`](samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/README.md):
+See the runnable sample at [`samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher`](samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/README.md):
 
 ```bash
-dotnet run --project samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher
+dotnet run --project samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher
 ```
 
 The sample cycles between idle and 100k-simultaneous publish, demonstrating pool
@@ -160,16 +160,16 @@ locally configured via `RABBITMQ_URI`).
 ## RabbitMQ live dashboard
 
 For visual validation, see the Aspire + Blazor sample at
-[`samples/Oragon.AdaptivePool.RabbitMQ.Sample.LiveDashboard`](samples/Oragon.AdaptivePool.RabbitMQ.Sample.LiveDashboard/README.md).
+[`samples/Oragon.ElasticPool.RabbitMQ.Sample.LiveDashboard`](samples/Oragon.ElasticPool.RabbitMQ.Sample.LiveDashboard/README.md).
 It starts RabbitMQ from Aspire, publishes adjustable load, and refreshes connection
 and channel pool state at 10 Hz in a Web UI.
 
 ## Documentation
 
-- Core API + telemetry: [`src/Oragon.AdaptivePool.Core/README.md`](src/Oragon.AdaptivePool.Core/README.md)
-- RabbitMQ adapter (layered IConnection+IChannel): [`src/Oragon.AdaptivePool.RabbitMQ/README.md`](src/Oragon.AdaptivePool.RabbitMQ/README.md)
-- Sample bursty publisher: [`samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/README.md`](samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/README.md)
-- Sample live dashboard: [`samples/Oragon.AdaptivePool.RabbitMQ.Sample.LiveDashboard/README.md`](samples/Oragon.AdaptivePool.RabbitMQ.Sample.LiveDashboard/README.md)
+- Core API + telemetry: [`src/Oragon.ElasticPool.Core/README.md`](src/Oragon.ElasticPool.Core/README.md)
+- RabbitMQ adapter (layered IConnection+IChannel): [`src/Oragon.ElasticPool.RabbitMQ/README.md`](src/Oragon.ElasticPool.RabbitMQ/README.md)
+- Sample bursty publisher: [`samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/README.md`](samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/README.md)
+- Sample live dashboard: [`samples/Oragon.ElasticPool.RabbitMQ.Sample.LiveDashboard/README.md`](samples/Oragon.ElasticPool.RabbitMQ.Sample.LiveDashboard/README.md)
 - Elasticity benchmark report: [`BenchmarkReports/heavy-resource-elasticity-insights.html`](BenchmarkReports/heavy-resource-elasticity-insights.html)
 - Changelog: [`CHANGELOG.md`](CHANGELOG.md)
 
@@ -185,7 +185,7 @@ prerelease versions like `1.0.1-alpha.0.5+abc1234`.
 
 ## Contributing
 
-Issues and PRs welcome at https://github.com/oragon/Oragon.AdaptivePool. Run
+Issues and PRs welcome at https://github.com/oragon/Oragon.ElasticPool. Run
 `dotnet test` before submitting; CI requires green on the
 `ubuntu-latest × {net8.0, net9.0, net10.0}` matrix.
 

@@ -5,28 +5,28 @@ type: execute
 wave: 2
 depends_on: [01]
 files_modified:
-  - src/Oragon.AdaptivePool.Core/Abstractions/IAdaptivePool.cs
-  - src/Oragon.AdaptivePool.Core/Abstractions/IPoolItem.cs
-  - src/Oragon.AdaptivePool.Core/Abstractions/IItemFailurePolicy.cs
-  - src/Oragon.AdaptivePool.Core/Abstractions/PoolState.cs
-  - src/Oragon.AdaptivePool.Core/Abstractions/FailureKind.cs
-  - src/Oragon.AdaptivePool.Core/Abstractions/FailureDecision.cs
-  - src/Oragon.AdaptivePool.Core/Hooks/HookDelegates.cs
-  - src/Oragon.AdaptivePool.Core/Builder/AdaptiveObjectPoolFactory.cs
-  - src/Oragon.AdaptivePool.Core/Builder/AdaptivePoolBuilder.cs
-  - src/Oragon.AdaptivePool.Core/Builder/AdaptivePoolOptions.cs
-  - src/Oragon.AdaptivePool.Core/Builder/WaitBehavior.cs
-  - src/Oragon.AdaptivePool.Core/Policies/DiscardAndReplaceFailurePolicy.cs
-  - src/Oragon.AdaptivePool.Core/Exceptions/PoolExhaustedException.cs
-  - src/Oragon.AdaptivePool.Core/Internals/PoolEntry.cs
-  - src/Oragon.AdaptivePool.Core/Internals/PoolItem.cs
-  - src/Oragon.AdaptivePool.Core/Internals/PoolLifecycle.cs
-  - src/Oragon.AdaptivePool.Core/Internals/AdaptivePool.cs
-  - src/Oragon.AdaptivePool.Core/Telemetry/PoolMeterNames.cs
-  - src/Oragon.AdaptivePool.Core/Telemetry/TelemetryEmitter.cs
-  - src/Oragon.AdaptivePool.Core/Telemetry/PoolDiagnosticsLog.cs
-  - src/Oragon.AdaptivePool.Core/DependencyInjection/ServiceCollectionExtensions.cs
-  - src/Oragon.AdaptivePool.Core/PublicAPI.Unshipped.txt
+  - src/Oragon.ElasticPool.Core/Abstractions/IElasticPool.cs
+  - src/Oragon.ElasticPool.Core/Abstractions/IPoolItem.cs
+  - src/Oragon.ElasticPool.Core/Abstractions/IItemFailurePolicy.cs
+  - src/Oragon.ElasticPool.Core/Abstractions/PoolState.cs
+  - src/Oragon.ElasticPool.Core/Abstractions/FailureKind.cs
+  - src/Oragon.ElasticPool.Core/Abstractions/FailureDecision.cs
+  - src/Oragon.ElasticPool.Core/Hooks/HookDelegates.cs
+  - src/Oragon.ElasticPool.Core/Builder/ElasticObjectPoolFactory.cs
+  - src/Oragon.ElasticPool.Core/Builder/ElasticPoolBuilder.cs
+  - src/Oragon.ElasticPool.Core/Builder/ElasticPoolOptions.cs
+  - src/Oragon.ElasticPool.Core/Builder/WaitBehavior.cs
+  - src/Oragon.ElasticPool.Core/Policies/DiscardAndReplaceFailurePolicy.cs
+  - src/Oragon.ElasticPool.Core/Exceptions/PoolExhaustedException.cs
+  - src/Oragon.ElasticPool.Core/Internals/PoolEntry.cs
+  - src/Oragon.ElasticPool.Core/Internals/PoolItem.cs
+  - src/Oragon.ElasticPool.Core/Internals/PoolLifecycle.cs
+  - src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs
+  - src/Oragon.ElasticPool.Core/Telemetry/PoolMeterNames.cs
+  - src/Oragon.ElasticPool.Core/Telemetry/TelemetryEmitter.cs
+  - src/Oragon.ElasticPool.Core/Telemetry/PoolDiagnosticsLog.cs
+  - src/Oragon.ElasticPool.Core/DependencyInjection/ServiceCollectionExtensions.cs
+  - src/Oragon.ElasticPool.Core/PublicAPI.Unshipped.txt
 autonomous: true
 requirements:
   - API-01
@@ -49,10 +49,10 @@ user_setup: []
 
 must_haves:
   truths:
-    - "`IAdaptivePool<T>` exposes sync `Acquire()`, async `AcquireAsync(CancellationToken)` returning `ValueTask<IPoolItem<T>>`, and read-only `MaxSize`/`MinSize`/`Available`/`InUse` properties (per RESEARCH Pitfall 5)"
+    - "`IElasticPool<T>` exposes sync `Acquire()`, async `AcquireAsync(CancellationToken)` returning `ValueTask<IPoolItem<T>>`, and read-only `MaxSize`/`MinSize`/`Available`/`InUse` properties (per RESEARCH Pitfall 5)"
     - "`IPoolItem<T>` is a disposable wrapper exposing `.Value`; double-Dispose() and double-DisposeAsync() are no-ops via `Interlocked.Exchange`"
     - "Calling `IPoolItem<T>.Value` after dispose throws `ObjectDisposedException`"
-    - "`AdaptiveObjectPoolFactory.Build<T>(IServiceProvider, CancellationToken)` returns a fluent builder; `Build()` validates `0 ≤ Min ≤ Initial ≤ Max`, requires `Factory`, and throws on violation"
+    - "`ElasticObjectPoolFactory.Build<T>(IServiceProvider, CancellationToken)` returns a fluent builder; `Build()` validates `0 ≤ Min ≤ Initial ≤ Max`, requires `Factory`, and throws on violation"
     - "All five hook delegates (Factory, BeforeUse, Check, AfterUse, Release) accept `CancellationToken` and return `ValueTask` (or `ValueTask<PoolState>`); only Factory is required"
     - "`Factory` runs OUTSIDE any pool lock (engine increments counter atomically, then awaits factory)"
     - "When `Factory` throws, `_total` is decremented (counter rollback) and `IItemFailurePolicy<T>.HandleAsync` is invoked with `FailureKind.FactoryThrew` and the exception"
@@ -63,89 +63,89 @@ must_haves:
     - "Eager warm-up to `InitialSize` runs in parallel; `Task ReadyAsync()` returns the warm-up task so consumers can `await pool.ReadyAsync()` for readiness"
     - "Pool implements both `IDisposable` and `IAsyncDisposable`; `DisposeAsync` cancels lifetime CTS, drains idle queue invoking `Release` hook on each entry, and transitions to Closed"
     - "After dispose, new `AcquireAsync` / `Acquire` throw `ObjectDisposedException`"
-    - "`services.AddAdaptivePool<T>(name, configure)` registers the pool as a keyed singleton; consumers resolve via `GetRequiredKeyedService<IAdaptivePool<T>>(name)`; default name `string.Empty` is also resolvable as non-keyed `GetRequiredService<IAdaptivePool<T>>()`"
-    - "`Meter` named `\"Oragon.AdaptivePool\"` is created via `IMeterFactory` if registered, else via `new Meter(...)` fallback; emits at minimum `pool.acquire.count` and `pool.factory.failures` counters tagged with `pool.name`"
+    - "`services.AddElasticPool<T>(name, configure)` registers the pool as a keyed singleton; consumers resolve via `GetRequiredKeyedService<IElasticPool<T>>(name)`; default name `string.Empty` is also resolvable as non-keyed `GetRequiredService<IElasticPool<T>>()`"
+    - "`Meter` named `\"Oragon.ElasticPool\"` is created via `IMeterFactory` if registered, else via `new Meter(...)` fallback; emits at minimum `pool.acquire.count` and `pool.factory.failures` counters tagged with `pool.name`"
   artifacts:
-    - path: src/Oragon.AdaptivePool.Core/Abstractions/IAdaptivePool.cs
-      provides: "Public IAdaptivePool<T> contract"
+    - path: src/Oragon.ElasticPool.Core/Abstractions/IElasticPool.cs
+      provides: "Public IElasticPool<T> contract"
       contains: "ValueTask<IPoolItem<T>> AcquireAsync"
-    - path: src/Oragon.AdaptivePool.Core/Abstractions/IPoolItem.cs
+    - path: src/Oragon.ElasticPool.Core/Abstractions/IPoolItem.cs
       provides: "Public IPoolItem<out T> : IDisposable, IAsyncDisposable wrapper"
       contains: "T Value"
-    - path: src/Oragon.AdaptivePool.Core/Abstractions/IItemFailurePolicy.cs
+    - path: src/Oragon.ElasticPool.Core/Abstractions/IItemFailurePolicy.cs
       provides: "Public failure-policy extension point"
       contains: "ValueTask<FailureDecision> HandleAsync"
-    - path: src/Oragon.AdaptivePool.Core/Abstractions/PoolState.cs
+    - path: src/Oragon.ElasticPool.Core/Abstractions/PoolState.cs
       provides: "Healthy/Unhealthy enum"
       contains: "Healthy"
-    - path: src/Oragon.AdaptivePool.Core/Hooks/HookDelegates.cs
+    - path: src/Oragon.ElasticPool.Core/Hooks/HookDelegates.cs
       provides: "Five public hook delegate types — all accept CancellationToken, return ValueTask<...>"
       contains: "FactoryDelegate"
-    - path: src/Oragon.AdaptivePool.Core/Builder/AdaptiveObjectPoolFactory.cs
+    - path: src/Oragon.ElasticPool.Core/Builder/ElasticObjectPoolFactory.cs
       provides: "Public static entry point Build<T>(IServiceProvider, CancellationToken)"
-      contains: "AdaptivePoolBuilder<T>"
-    - path: src/Oragon.AdaptivePool.Core/Builder/AdaptivePoolBuilder.cs
+      contains: "ElasticPoolBuilder<T>"
+    - path: src/Oragon.ElasticPool.Core/Builder/ElasticPoolBuilder.cs
       provides: "Fluent builder with Factory/BeforeUse/Check/AfterUse/Release/WithBounds/WhenExhausted/WithFailurePolicy/WithTimeProvider, .Build() validates and constructs"
-      contains: "public IAdaptivePool<T> Build()"
-    - path: src/Oragon.AdaptivePool.Core/Builder/AdaptivePoolOptions.cs
+      contains: "public IElasticPool<T> Build()"
+    - path: src/Oragon.ElasticPool.Core/Builder/ElasticPoolOptions.cs
       provides: "Frozen init-only record carrying configured values into the engine"
       contains: "public required FactoryDelegate<T> Factory"
-    - path: src/Oragon.AdaptivePool.Core/Builder/WaitBehavior.cs
+    - path: src/Oragon.ElasticPool.Core/Builder/WaitBehavior.cs
       provides: "Wait | Throw enum for exhaustion behavior"
       contains: "Wait"
-    - path: src/Oragon.AdaptivePool.Core/Policies/DiscardAndReplaceFailurePolicy.cs
+    - path: src/Oragon.ElasticPool.Core/Policies/DiscardAndReplaceFailurePolicy.cs
       provides: "Default failure policy: always returns Discard"
       contains: "FailureDecision.Discard"
-    - path: src/Oragon.AdaptivePool.Core/Exceptions/PoolExhaustedException.cs
+    - path: src/Oragon.ElasticPool.Core/Exceptions/PoolExhaustedException.cs
       provides: "Thrown by sync Acquire() when no item free, or by WaitBehavior.Throw"
       contains: "MaxSize"
-    - path: src/Oragon.AdaptivePool.Core/Internals/AdaptivePool.cs
+    - path: src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs
       provides: "Sealed engine: ConcurrentQueue idle store, Channel waiter queue, Interlocked counters, lifecycle state machine, acquire/release paths with rollback, drain on dispose"
       min_lines: 200
       contains: "Channel<TaskCompletionSource"
-    - path: src/Oragon.AdaptivePool.Core/Internals/PoolItem.cs
+    - path: src/Oragon.ElasticPool.Core/Internals/PoolItem.cs
       provides: "Sealed wrapper: Interlocked _disposed flag, idempotent Dispose/DisposeAsync, finalizer for leak detection"
       contains: "Interlocked.Exchange"
-    - path: src/Oragon.AdaptivePool.Core/Telemetry/TelemetryEmitter.cs
+    - path: src/Oragon.ElasticPool.Core/Telemetry/TelemetryEmitter.cs
       provides: "Owns Meter (via IMeterFactory or fallback); exposes OnAcquire/OnFactoryFailure"
       contains: "IMeterFactory"
-    - path: src/Oragon.AdaptivePool.Core/Telemetry/PoolMeterNames.cs
-      provides: "Meter name 'Oragon.AdaptivePool' + counter name constants + pool.name tag key"
-      contains: "Oragon.AdaptivePool"
-    - path: src/Oragon.AdaptivePool.Core/Telemetry/PoolDiagnosticsLog.cs
+    - path: src/Oragon.ElasticPool.Core/Telemetry/PoolMeterNames.cs
+      provides: "Meter name 'Oragon.ElasticPool' + counter name constants + pool.name tag key"
+      contains: "Oragon.ElasticPool"
+    - path: src/Oragon.ElasticPool.Core/Telemetry/PoolDiagnosticsLog.cs
       provides: "[LoggerMessage] source-gen logging entries for ItemLeaked, FactoryFailed, BeforeUseUnhealthy, ReleaseHookFailedDuringDispose"
       contains: "LoggerMessage"
-    - path: src/Oragon.AdaptivePool.Core/DependencyInjection/ServiceCollectionExtensions.cs
-      provides: "AddAdaptivePool<T>(name, configure) DI extension with named options + keyed singleton registration; default-name (string.Empty) also registered non-keyed"
+    - path: src/Oragon.ElasticPool.Core/DependencyInjection/ServiceCollectionExtensions.cs
+      provides: "AddElasticPool<T>(name, configure) DI extension with named options + keyed singleton registration; default-name (string.Empty) also registered non-keyed"
       contains: "AddKeyedSingleton"
-    - path: src/Oragon.AdaptivePool.Core/PublicAPI.Unshipped.txt
+    - path: src/Oragon.ElasticPool.Core/PublicAPI.Unshipped.txt
       provides: "Updated public API surface for new Phase 1 types"
       min_lines: 20
   key_links:
-    - from: "src/Oragon.AdaptivePool.Core/Internals/AdaptivePool.cs"
-      to: "src/Oragon.AdaptivePool.Core/Telemetry/TelemetryEmitter.cs"
+    - from: "src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs"
+      to: "src/Oragon.ElasticPool.Core/Telemetry/TelemetryEmitter.cs"
       via: "private readonly TelemetryEmitter _telemetry — emits OnAcquire / OnFactoryFailure on hot paths"
       pattern: "_telemetry\\.OnAcquire|_telemetry\\.OnFactoryFailure"
-    - from: "src/Oragon.AdaptivePool.Core/Internals/AdaptivePool.cs"
-      to: "src/Oragon.AdaptivePool.Core/Internals/PoolItem.cs"
+    - from: "src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs"
+      to: "src/Oragon.ElasticPool.Core/Internals/PoolItem.cs"
       via: "AcquireAsync wraps the dequeued PoolEntry in a new PoolItem<T>(this, entry)"
       pattern: "new PoolItem<T>"
-    - from: "src/Oragon.AdaptivePool.Core/Internals/PoolItem.cs"
-      to: "src/Oragon.AdaptivePool.Core/Internals/AdaptivePool.cs"
+    - from: "src/Oragon.ElasticPool.Core/Internals/PoolItem.cs"
+      to: "src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs"
       via: "Dispose calls _owner.ReturnSync(_entry); DisposeAsync calls _owner.ReturnAsync(_entry); finalizer calls _owner.ReturnFromFinalizer(_entry)"
       pattern: "_owner\\.Return"
-    - from: "src/Oragon.AdaptivePool.Core/Internals/AdaptivePool.cs"
-      to: "src/Oragon.AdaptivePool.Core/Abstractions/IItemFailurePolicy.cs"
+    - from: "src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs"
+      to: "src/Oragon.ElasticPool.Core/Abstractions/IItemFailurePolicy.cs"
       via: "On factory throw: rollback counter, then await _options.FailurePolicy.HandleAsync(default, FailureKind.FactoryThrew, ex, ct). On BeforeUse Unhealthy: same with FailureKind.BeforeUseUnhealthy."
       pattern: "FailurePolicy\\.HandleAsync"
-    - from: "src/Oragon.AdaptivePool.Core/DependencyInjection/ServiceCollectionExtensions.cs"
-      to: "src/Oragon.AdaptivePool.Core/Builder/AdaptiveObjectPoolFactory.cs"
-      via: "AddKeyedSingleton<IAdaptivePool<T>>(name, factory) calls AdaptiveObjectPoolFactory.Build<T>(sp, ct), runs the user-configured Action<AdaptivePoolBuilder<T>>, then .Build()"
-      pattern: "AdaptiveObjectPoolFactory\\.Build"
+    - from: "src/Oragon.ElasticPool.Core/DependencyInjection/ServiceCollectionExtensions.cs"
+      to: "src/Oragon.ElasticPool.Core/Builder/ElasticObjectPoolFactory.cs"
+      via: "AddKeyedSingleton<IElasticPool<T>>(name, factory) calls ElasticObjectPoolFactory.Build<T>(sp, ct), runs the user-configured Action<ElasticPoolBuilder<T>>, then .Build()"
+      pattern: "ElasticObjectPoolFactory\\.Build"
 ---
 
 <objective>
-Implement the entire Phase 1 product surface in `Oragon.AdaptivePool.Core`: 12 public types + the sealed internal engine + DI extension + basic telemetry. The result is a fully-functional fixed-size pool that consumers can register via DI, acquire from sync or async, dispose with drain semantics, and observe via OpenTelemetry-compatible counters.
+Implement the entire Phase 1 product surface in `Oragon.ElasticPool.Core`: 12 public types + the sealed internal engine + DI extension + basic telemetry. The result is a fully-functional fixed-size pool that consumers can register via DI, acquire from sync or async, dispose with drain semantics, and observe via OpenTelemetry-compatible counters.
 
 Purpose: Lock in every non-retrofittable architectural decision identified in RESEARCH.md and PITFALLS.md — `ValueTask` returns, `CancellationToken` in every signature, `Channel<TCS>` direct-handoff waiter, `Interlocked` counter rollback, dual `IDisposable`+`IAsyncDisposable`, `IPoolItem<T>` wrapper with finalizer for leak detection, `TimeProvider` injection point, `IMeterFactory` resolution with fallback. Once shipped, none of these can change without a major version bump.
 
@@ -170,7 +170,7 @@ Output: A buildable Core assembly whose public API enables every success criteri
 <!-- Plan 01 produced the following inputs that this plan consumes: -->
 
 Project structure (from Plan 01):
-- src/Oragon.AdaptivePool.Core/ — empty C# project, multi-target net8/9/10, Nullable=enable, ImplicitUsings=enable, TreatWarningsAsErrors=true
+- src/Oragon.ElasticPool.Core/ — empty C# project, multi-target net8/9/10, Nullable=enable, ImplicitUsings=enable, TreatWarningsAsErrors=true
 - PublicApiAnalyzers active with empty Shipped.txt + Unshipped.txt baselines (this plan WILL update Unshipped.txt as new public types land)
 - Direct PackageReferences available: Microsoft.Extensions.Logging.Abstractions, Microsoft.Extensions.DependencyInjection.Abstractions, Microsoft.Extensions.Options
 - Versions pinned in Directory.Packages.props
@@ -182,7 +182,7 @@ Public-contract code patterns to follow VERBATIM (from RESEARCH.md):
 - Pattern 4 (Failure Policy): `IItemFailurePolicy<T>.HandleAsync(T?, FailureKind, Exception?, CancellationToken)` returning `ValueTask<FailureDecision>`; `DiscardAndReplaceFailurePolicy<T>` always returns `Discard`
 - Pattern 5 (Warm-up): parallel `Task.Run` over `InitialSize`, expose via `Task ReadyAsync()`
 - Pattern 6 (TelemetryEmitter): try `IMeterFactory` from DI, fallback to `new Meter`, dispose only the fallback
-- Pattern 7 (DI extension): `services.AddOptions<AdaptivePoolBuilderConfigurator<T>>(name).Configure(...)` + `TryAddKeyedSingleton<IAdaptivePool<T>>(name, factory)` — keyed for multi-pool, also non-keyed registration when name == string.Empty
+- Pattern 7 (DI extension): `services.AddOptions<ElasticPoolBuilderConfigurator<T>>(name).Configure(...)` + `TryAddKeyedSingleton<IElasticPool<T>>(name, factory)` — keyed for multi-pool, also non-keyed registration when name == string.Empty
 - Pattern 8 (CancellationToken linking): `using var linked = CTS.CreateLinkedTokenSource(callerCt, _lifetimeCts.Token)`, never skip the using
 - Pattern 9 (Dispose state machine): `Open → Closed` via `Interlocked.Exchange`, sync Dispose calls `DisposeAsync().AsTask().GetAwaiter().GetResult()`
 
@@ -190,13 +190,13 @@ Key API decisions LOCKED by CONTEXT.md (do not deviate):
 - `IPoolItem<T>.Value` (NOT `.Item` or `.Object`)
 - `WaitBehavior` enum: `Wait` (default) | `Throw`; `Throw` raises `PoolExhaustedException`
 - Builder: only `Factory` is required; `Build()` throws `InvalidOperationException` if missing
-- DI: `AddAdaptivePool<T>(name, configure)` requires `name` explicit; `string.Empty` for default; named-options pattern internally
+- DI: `AddElasticPool<T>(name, configure)` requires `name` explicit; `string.Empty` for default; named-options pattern internally
 - TimeProvider injection point present in builder + engine ctor (Phase 2 sweeper consumes it; Phase 1 only stamps `PoolEntry.CreatedAt`)
 - Telemetry: minimum counters `pool.acquire.count` + `pool.factory.failures`, tagged with `pool.name`
 - Sync `Acquire()` is fast-path only — RESEARCH Open Question 3 recommendation: throw `PoolExhaustedException` immediately if no free item (never block)
 
 Internal naming (Claude's discretion per CONTEXT.md):
-- Namespace `Oragon.AdaptivePool.Core` (root); sub-namespaces per folder (Abstractions, Builder, Hooks, Internals, Policies, Telemetry, DependencyInjection, Exceptions)
+- Namespace `Oragon.ElasticPool.Core` (root); sub-namespaces per folder (Abstractions, Builder, Hooks, Internals, Policies, Telemetry, DependencyInjection, Exceptions)
 - `PoolState` enum: `Healthy`, `Unhealthy` only (no `Quarantined` — reserved for v2)
 - `PoolExhaustedException` exposes `int MaxSize` and `TimeSpan? WaitTime` properties
 </interfaces>
@@ -207,28 +207,28 @@ Internal naming (Claude's discretion per CONTEXT.md):
 <task type="auto">
   <name>Task 1: Public API surface — abstractions, hooks, builder, options, exceptions, default failure policy</name>
   <files>
-    src/Oragon.AdaptivePool.Core/Abstractions/IAdaptivePool.cs,
-    src/Oragon.AdaptivePool.Core/Abstractions/IPoolItem.cs,
-    src/Oragon.AdaptivePool.Core/Abstractions/IItemFailurePolicy.cs,
-    src/Oragon.AdaptivePool.Core/Abstractions/PoolState.cs,
-    src/Oragon.AdaptivePool.Core/Abstractions/FailureKind.cs,
-    src/Oragon.AdaptivePool.Core/Abstractions/FailureDecision.cs,
-    src/Oragon.AdaptivePool.Core/Hooks/HookDelegates.cs,
-    src/Oragon.AdaptivePool.Core/Builder/WaitBehavior.cs,
-    src/Oragon.AdaptivePool.Core/Builder/AdaptivePoolOptions.cs,
-    src/Oragon.AdaptivePool.Core/Builder/AdaptivePoolBuilder.cs,
-    src/Oragon.AdaptivePool.Core/Builder/AdaptiveObjectPoolFactory.cs,
-    src/Oragon.AdaptivePool.Core/Policies/DiscardAndReplaceFailurePolicy.cs,
-    src/Oragon.AdaptivePool.Core/Exceptions/PoolExhaustedException.cs
+    src/Oragon.ElasticPool.Core/Abstractions/IElasticPool.cs,
+    src/Oragon.ElasticPool.Core/Abstractions/IPoolItem.cs,
+    src/Oragon.ElasticPool.Core/Abstractions/IItemFailurePolicy.cs,
+    src/Oragon.ElasticPool.Core/Abstractions/PoolState.cs,
+    src/Oragon.ElasticPool.Core/Abstractions/FailureKind.cs,
+    src/Oragon.ElasticPool.Core/Abstractions/FailureDecision.cs,
+    src/Oragon.ElasticPool.Core/Hooks/HookDelegates.cs,
+    src/Oragon.ElasticPool.Core/Builder/WaitBehavior.cs,
+    src/Oragon.ElasticPool.Core/Builder/ElasticPoolOptions.cs,
+    src/Oragon.ElasticPool.Core/Builder/ElasticPoolBuilder.cs,
+    src/Oragon.ElasticPool.Core/Builder/ElasticObjectPoolFactory.cs,
+    src/Oragon.ElasticPool.Core/Policies/DiscardAndReplaceFailurePolicy.cs,
+    src/Oragon.ElasticPool.Core/Exceptions/PoolExhaustedException.cs
   </files>
   <action>
-This task creates ONLY public-surface code (no engine yet). The engine in Task 2 implements `IAdaptivePool<T>` and references this surface. By writing the contracts first, Task 2 has nothing left to invent.
+This task creates ONLY public-surface code (no engine yet). The engine in Task 2 implements `IElasticPool<T>` and references this surface. By writing the contracts first, Task 2 has nothing left to invent.
 
-Reference: RESEARCH.md Patterns 1–4 (verbatim where shown). Use those code shapes exactly. Where types are referenced but not yet defined (e.g. `AdaptivePool<T>` in Pattern 3 — that goes in Task 2), forward-declare via class scaffolding only.
+Reference: RESEARCH.md Patterns 1–4 (verbatim where shown). Use those code shapes exactly. Where types are referenced but not yet defined (e.g. `ElasticPool<T>` in Pattern 3 — that goes in Task 2), forward-declare via class scaffolding only.
 
 1. `Abstractions/PoolState.cs`:
 ```csharp
-namespace Oragon.AdaptivePool.Core.Abstractions;
+namespace Oragon.ElasticPool.Core.Abstractions;
 
 /// <summary>Health verdict returned by lifecycle hooks (BeforeUse, Check, AfterUse).</summary>
 public enum PoolState
@@ -242,7 +242,7 @@ public enum PoolState
 
 2. `Abstractions/FailureKind.cs`:
 ```csharp
-namespace Oragon.AdaptivePool.Core.Abstractions;
+namespace Oragon.ElasticPool.Core.Abstractions;
 
 /// <summary>Reason the failure policy was invoked.</summary>
 public enum FailureKind
@@ -258,7 +258,7 @@ public enum FailureKind
 
 3. `Abstractions/FailureDecision.cs`:
 ```csharp
-namespace Oragon.AdaptivePool.Core.Abstractions;
+namespace Oragon.ElasticPool.Core.Abstractions;
 
 /// <summary>Action the engine should take based on the failure policy.</summary>
 public enum FailureDecision
@@ -271,7 +271,7 @@ public enum FailureDecision
 
 4. `Abstractions/IItemFailurePolicy.cs` — verbatim from RESEARCH Pattern 4 (failure policy contract):
 ```csharp
-namespace Oragon.AdaptivePool.Core.Abstractions;
+namespace Oragon.ElasticPool.Core.Abstractions;
 
 public interface IItemFailurePolicy<T>
 {
@@ -293,7 +293,7 @@ public interface IItemFailurePolicy<T>
 
 5. `Abstractions/IPoolItem.cs` — covariant disposable wrapper per RESEARCH Pattern 2:
 ```csharp
-namespace Oragon.AdaptivePool.Core.Abstractions;
+namespace Oragon.ElasticPool.Core.Abstractions;
 
 /// <summary>
 /// Disposable wrapper around a pooled item. Disposing returns the item to the pool.
@@ -306,17 +306,17 @@ public interface IPoolItem<out T> : IDisposable, IAsyncDisposable
 }
 ```
 
-6. `Abstractions/IAdaptivePool.cs` — public contract for the engine. Per RESEARCH Pitfall 5, expose read-only `MaxSize`/`MinSize`/`Available`/`InUse` for tests AND telemetry consumers. Per RESEARCH Pattern 5, expose `ReadyAsync()`. Per CONTEXT.md, sync `Acquire()` is fast-path only.
+6. `Abstractions/IElasticPool.cs` — public contract for the engine. Per RESEARCH Pitfall 5, expose read-only `MaxSize`/`MinSize`/`Available`/`InUse` for tests AND telemetry consumers. Per RESEARCH Pattern 5, expose `ReadyAsync()`. Per CONTEXT.md, sync `Acquire()` is fast-path only.
 ```csharp
-using Oragon.AdaptivePool.Core.Abstractions;
+using Oragon.ElasticPool.Core.Abstractions;
 
-namespace Oragon.AdaptivePool.Core.Abstractions;
+namespace Oragon.ElasticPool.Core.Abstractions;
 
 /// <summary>
 /// Generic, elastic pool of T. Phase 1 ships fixed-size behavior; elasticity arrives in Phase 2.
 /// Disposing the pool drains in-flight items and invokes the Release hook on each remaining entry.
 /// </summary>
-public interface IAdaptivePool<T> : IDisposable, IAsyncDisposable
+public interface IElasticPool<T> : IDisposable, IAsyncDisposable
     where T : notnull
 {
     /// <summary>Configured maximum pool size.</summary>
@@ -353,9 +353,9 @@ public interface IAdaptivePool<T> : IDisposable, IAsyncDisposable
 
 7. `Hooks/HookDelegates.cs` — verbatim from RESEARCH Pattern 1:
 ```csharp
-using Oragon.AdaptivePool.Core.Abstractions;
+using Oragon.ElasticPool.Core.Abstractions;
 
-namespace Oragon.AdaptivePool.Core.Hooks;
+namespace Oragon.ElasticPool.Core.Hooks;
 
 /// <summary>Creates a new pooled instance. Required hook. Runs OUTSIDE pool locks — slow factory work never blocks the acquire fast path.</summary>
 public delegate ValueTask<T> FactoryDelegate<T>(IServiceProvider services, CancellationToken cancellationToken);
@@ -375,7 +375,7 @@ public delegate ValueTask ReleaseDelegate<T>(T item, CancellationToken cancellat
 
 8. `Builder/WaitBehavior.cs`:
 ```csharp
-namespace Oragon.AdaptivePool.Core.Builder;
+namespace Oragon.ElasticPool.Core.Builder;
 
 /// <summary>Strategy when AcquireAsync is called and the pool is exhausted.</summary>
 public enum WaitBehavior
@@ -387,15 +387,15 @@ public enum WaitBehavior
 }
 ```
 
-9. `Builder/AdaptivePoolOptions.cs` — frozen record per RESEARCH Pattern 3:
+9. `Builder/ElasticPoolOptions.cs` — frozen record per RESEARCH Pattern 3:
 ```csharp
-using Oragon.AdaptivePool.Core.Abstractions;
-using Oragon.AdaptivePool.Core.Hooks;
+using Oragon.ElasticPool.Core.Abstractions;
+using Oragon.ElasticPool.Core.Hooks;
 
-namespace Oragon.AdaptivePool.Core.Builder;
+namespace Oragon.ElasticPool.Core.Builder;
 
-/// <summary>Frozen, init-only configuration produced by <see cref="AdaptivePoolBuilder{T}.Build"/>.</summary>
-public sealed record AdaptivePoolOptions<T>
+/// <summary>Frozen, init-only configuration produced by <see cref="ElasticPoolBuilder{T}.Build"/>.</summary>
+public sealed record ElasticPoolOptions<T>
     where T : notnull
 {
     public required FactoryDelegate<T> Factory { get; init; }
@@ -413,16 +413,16 @@ public sealed record AdaptivePoolOptions<T>
 }
 ```
 
-10. `Builder/AdaptivePoolBuilder.cs` — per RESEARCH Pattern 3, with one addition: `WithName(string)` so the DI extension can stamp the pool name into options for telemetry tagging:
+10. `Builder/ElasticPoolBuilder.cs` — per RESEARCH Pattern 3, with one addition: `WithName(string)` so the DI extension can stamp the pool name into options for telemetry tagging:
 ```csharp
-using Oragon.AdaptivePool.Core.Abstractions;
-using Oragon.AdaptivePool.Core.Hooks;
-using Oragon.AdaptivePool.Core.Internals;
-using Oragon.AdaptivePool.Core.Policies;
+using Oragon.ElasticPool.Core.Abstractions;
+using Oragon.ElasticPool.Core.Hooks;
+using Oragon.ElasticPool.Core.Internals;
+using Oragon.ElasticPool.Core.Policies;
 
-namespace Oragon.AdaptivePool.Core.Builder;
+namespace Oragon.ElasticPool.Core.Builder;
 
-public sealed class AdaptivePoolBuilder<T> where T : notnull
+public sealed class ElasticPoolBuilder<T> where T : notnull
 {
     private readonly IServiceProvider _services;
     private readonly CancellationToken _ct;
@@ -439,25 +439,25 @@ public sealed class AdaptivePoolBuilder<T> where T : notnull
     private TimeProvider _timeProvider = TimeProvider.System;
     private string _name = string.Empty;
 
-    internal AdaptivePoolBuilder(IServiceProvider services, CancellationToken ct)
+    internal ElasticPoolBuilder(IServiceProvider services, CancellationToken ct)
     { _services = services; _ct = ct; }
 
-    public AdaptivePoolBuilder<T> Factory(FactoryDelegate<T> factory)
+    public ElasticPoolBuilder<T> Factory(FactoryDelegate<T> factory)
     { _factory = factory ?? throw new ArgumentNullException(nameof(factory)); return this; }
-    public AdaptivePoolBuilder<T> BeforeUse(BeforeUseDelegate<T> hook) { _beforeUse = hook; return this; }
-    public AdaptivePoolBuilder<T> Check(CheckDelegate<T> hook) { _check = hook; return this; }
-    public AdaptivePoolBuilder<T> AfterUse(AfterUseDelegate<T> hook) { _afterUse = hook; return this; }
-    public AdaptivePoolBuilder<T> Release(ReleaseDelegate<T> hook) { _release = hook; return this; }
-    public AdaptivePoolBuilder<T> WithBounds(int minSize, int maxSize, int initialSize)
+    public ElasticPoolBuilder<T> BeforeUse(BeforeUseDelegate<T> hook) { _beforeUse = hook; return this; }
+    public ElasticPoolBuilder<T> Check(CheckDelegate<T> hook) { _check = hook; return this; }
+    public ElasticPoolBuilder<T> AfterUse(AfterUseDelegate<T> hook) { _afterUse = hook; return this; }
+    public ElasticPoolBuilder<T> Release(ReleaseDelegate<T> hook) { _release = hook; return this; }
+    public ElasticPoolBuilder<T> WithBounds(int minSize, int maxSize, int initialSize)
     { _minSize = minSize; _maxSize = maxSize; _initialSize = initialSize; return this; }
-    public AdaptivePoolBuilder<T> WhenExhausted(WaitBehavior behavior) { _whenExhausted = behavior; return this; }
-    public AdaptivePoolBuilder<T> WithFailurePolicy(IItemFailurePolicy<T> policy)
+    public ElasticPoolBuilder<T> WhenExhausted(WaitBehavior behavior) { _whenExhausted = behavior; return this; }
+    public ElasticPoolBuilder<T> WithFailurePolicy(IItemFailurePolicy<T> policy)
     { _failurePolicy = policy ?? throw new ArgumentNullException(nameof(policy)); return this; }
-    public AdaptivePoolBuilder<T> WithTimeProvider(TimeProvider timeProvider)
+    public ElasticPoolBuilder<T> WithTimeProvider(TimeProvider timeProvider)
     { _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider)); return this; }
-    internal AdaptivePoolBuilder<T> WithName(string name) { _name = name ?? string.Empty; return this; }
+    internal ElasticPoolBuilder<T> WithName(string name) { _name = name ?? string.Empty; return this; }
 
-    public IAdaptivePool<T> Build()
+    public IElasticPool<T> Build()
     {
         if (_factory is null)
             throw new InvalidOperationException("Factory hook is required. Call .Factory(...) before .Build().");
@@ -471,7 +471,7 @@ public sealed class AdaptivePoolBuilder<T> where T : notnull
             throw new InvalidOperationException(
                 $"InitialSize ({_initialSize}) must satisfy MinSize ({_minSize}) <= InitialSize <= MaxSize ({_maxSize}).");
 
-        var options = new AdaptivePoolOptions<T>
+        var options = new ElasticPoolOptions<T>
         {
             Factory = _factory,
             BeforeUse = _beforeUse,
@@ -487,31 +487,31 @@ public sealed class AdaptivePoolBuilder<T> where T : notnull
             PoolName = _name,
         };
 
-        return new AdaptivePool<T>(options, _services, _ct);
+        return new ElasticPool<T>(options, _services, _ct);
     }
 }
 ```
 
-11. `Builder/AdaptiveObjectPoolFactory.cs`:
+11. `Builder/ElasticObjectPoolFactory.cs`:
 ```csharp
-namespace Oragon.AdaptivePool.Core.Builder;
+namespace Oragon.ElasticPool.Core.Builder;
 
-public static class AdaptiveObjectPoolFactory
+public static class ElasticObjectPoolFactory
 {
-    public static AdaptivePoolBuilder<T> Build<T>(IServiceProvider services, CancellationToken cancellationToken = default)
+    public static ElasticPoolBuilder<T> Build<T>(IServiceProvider services, CancellationToken cancellationToken = default)
         where T : notnull
     {
         ArgumentNullException.ThrowIfNull(services);
-        return new AdaptivePoolBuilder<T>(services, cancellationToken);
+        return new ElasticPoolBuilder<T>(services, cancellationToken);
     }
 }
 ```
 
 12. `Policies/DiscardAndReplaceFailurePolicy.cs`:
 ```csharp
-using Oragon.AdaptivePool.Core.Abstractions;
+using Oragon.ElasticPool.Core.Abstractions;
 
-namespace Oragon.AdaptivePool.Core.Policies;
+namespace Oragon.ElasticPool.Core.Policies;
 
 /// <summary>
 /// Default failure policy. On any failure (factory throw or BeforeUse Unhealthy),
@@ -530,7 +530,7 @@ public sealed class DiscardAndReplaceFailurePolicy<T> : IItemFailurePolicy<T>
 
 13. `Exceptions/PoolExhaustedException.cs`:
 ```csharp
-namespace Oragon.AdaptivePool.Core.Exceptions;
+namespace Oragon.ElasticPool.Core.Exceptions;
 
 /// <summary>
 /// Thrown when:
@@ -551,40 +551,40 @@ public sealed class PoolExhaustedException : Exception
 }
 ```
 
-NOTE: At end of this task, build will FAIL because AdaptivePool<T> (referenced by Builder) does not yet exist. That is expected — Task 2 implements the engine and unblocks the build. Do not stub `AdaptivePool` in this task; doing so would create a partial type that must be merged later.
+NOTE: At end of this task, build will FAIL because ElasticPool<T> (referenced by Builder) does not yet exist. That is expected — Task 2 implements the engine and unblocks the build. Do not stub `ElasticPool` in this task; doing so would create a partial type that must be merged later.
 
 PUBLIC API surface tracking: do NOT update PublicAPI.Unshipped.txt yet — wait until Task 3 (after engine + DI complete). Build with `/p:RunAnalyzersDuringBuild=false` if needed during this task to bypass PublicApiAnalyzers transient errors.
   </action>
   <verify>
-    <automated>cd /mnt/p/dynamic-pool && find src/Oragon.AdaptivePool.Core -name '*.cs' -type f | wc -l | awk '{ if ($1 < 13) { print "MISSING-FILES:" $1; exit 1 } else print "FILES-OK:" $1 }' && grep -r 'public delegate ValueTask<T> FactoryDelegate' src/Oragon.AdaptivePool.Core/Hooks/ && grep -r 'public sealed record AdaptivePoolOptions' src/Oragon.AdaptivePool.Core/Builder/ && grep -r 'public IPoolItem<T> Acquire()' src/Oragon.AdaptivePool.Core/Abstractions/ && grep -r 'ValueTask<IPoolItem<T>> AcquireAsync' src/Oragon.AdaptivePool.Core/Abstractions/ && grep -r 'public sealed class PoolExhaustedException' src/Oragon.AdaptivePool.Core/Exceptions/ && grep -r 'public sealed class DiscardAndReplaceFailurePolicy' src/Oragon.AdaptivePool.Core/Policies/ && echo SURFACE-OK</automated>
+    <automated>cd /mnt/p/dynamic-pool && find src/Oragon.ElasticPool.Core -name '*.cs' -type f | wc -l | awk '{ if ($1 < 13) { print "MISSING-FILES:" $1; exit 1 } else print "FILES-OK:" $1 }' && grep -r 'public delegate ValueTask<T> FactoryDelegate' src/Oragon.ElasticPool.Core/Hooks/ && grep -r 'public sealed record ElasticPoolOptions' src/Oragon.ElasticPool.Core/Builder/ && grep -r 'public IPoolItem<T> Acquire()' src/Oragon.ElasticPool.Core/Abstractions/ && grep -r 'ValueTask<IPoolItem<T>> AcquireAsync' src/Oragon.ElasticPool.Core/Abstractions/ && grep -r 'public sealed class PoolExhaustedException' src/Oragon.ElasticPool.Core/Exceptions/ && grep -r 'public sealed class DiscardAndReplaceFailurePolicy' src/Oragon.ElasticPool.Core/Policies/ && echo SURFACE-OK</automated>
   </verify>
-  <done>13 source files exist with the verbatim shapes from RESEARCH.md Patterns 1–4. All public types declared; only `AdaptivePool<T>` (engine, Task 2) is referenced but not yet created — build will be intentionally red until Task 2 lands. No stubs left behind.</done>
+  <done>13 source files exist with the verbatim shapes from RESEARCH.md Patterns 1–4. All public types declared; only `ElasticPool<T>` (engine, Task 2) is referenced but not yet created — build will be intentionally red until Task 2 lands. No stubs left behind.</done>
 </task>
 
 <task type="auto">
-  <name>Task 2: Engine internals — PoolEntry, PoolItem wrapper, AdaptivePool sealed engine, lifecycle state machine, telemetry, logging</name>
+  <name>Task 2: Engine internals — PoolEntry, PoolItem wrapper, ElasticPool sealed engine, lifecycle state machine, telemetry, logging</name>
   <files>
-    src/Oragon.AdaptivePool.Core/Internals/PoolEntry.cs,
-    src/Oragon.AdaptivePool.Core/Internals/PoolLifecycle.cs,
-    src/Oragon.AdaptivePool.Core/Internals/PoolItem.cs,
-    src/Oragon.AdaptivePool.Core/Internals/AdaptivePool.cs,
-    src/Oragon.AdaptivePool.Core/Telemetry/PoolMeterNames.cs,
-    src/Oragon.AdaptivePool.Core/Telemetry/TelemetryEmitter.cs,
-    src/Oragon.AdaptivePool.Core/Telemetry/PoolDiagnosticsLog.cs
+    src/Oragon.ElasticPool.Core/Internals/PoolEntry.cs,
+    src/Oragon.ElasticPool.Core/Internals/PoolLifecycle.cs,
+    src/Oragon.ElasticPool.Core/Internals/PoolItem.cs,
+    src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs,
+    src/Oragon.ElasticPool.Core/Telemetry/PoolMeterNames.cs,
+    src/Oragon.ElasticPool.Core/Telemetry/TelemetryEmitter.cs,
+    src/Oragon.ElasticPool.Core/Telemetry/PoolDiagnosticsLog.cs
   </files>
   <action>
-This task implements the sealed engine `AdaptivePool<T>` plus all internal supporting types. After this task, the Core assembly compiles cleanly. Reference: RESEARCH Patterns 2 (PoolItem), 5 (warm-up), 6 (telemetry), 8 (CT linking), 9 (dispose state machine), and PITFALLS Pitfall 1/2/3/4.
+This task implements the sealed engine `ElasticPool<T>` plus all internal supporting types. After this task, the Core assembly compiles cleanly. Reference: RESEARCH Patterns 2 (PoolItem), 5 (warm-up), 6 (telemetry), 8 (CT linking), 9 (dispose state machine), and PITFALLS Pitfall 1/2/3/4.
 
 1. `Internals/PoolLifecycle.cs`:
 ```csharp
-namespace Oragon.AdaptivePool.Core.Internals;
+namespace Oragon.ElasticPool.Core.Internals;
 
 internal enum PoolLifecycle { Open = 0, Draining = 1, Closed = 2 }
 ```
 
 2. `Internals/PoolEntry.cs` — internal record stamping creation time (TimeProvider injection point per RESEARCH "TimeProvider injection point present"):
 ```csharp
-namespace Oragon.AdaptivePool.Core.Internals;
+namespace Oragon.ElasticPool.Core.Internals;
 
 internal sealed record PoolEntry<T>(T Item, DateTimeOffset CreatedAt) where T : notnull;
 ```
@@ -592,19 +592,19 @@ internal sealed record PoolEntry<T>(T Item, DateTimeOffset CreatedAt) where T : 
 3. `Internals/PoolItem.cs` — verbatim from RESEARCH Pattern 2 (idempotent dispose, finalizer). Adapt namespace + add `_log` injection for leak warning (per RESEARCH Pitfall 4 and Example 3 LoggerMessage):
 ```csharp
 using Microsoft.Extensions.Logging;
-using Oragon.AdaptivePool.Core.Abstractions;
-using Oragon.AdaptivePool.Core.Telemetry;
+using Oragon.ElasticPool.Core.Abstractions;
+using Oragon.ElasticPool.Core.Telemetry;
 
-namespace Oragon.AdaptivePool.Core.Internals;
+namespace Oragon.ElasticPool.Core.Internals;
 
 internal sealed class PoolItem<T> : IPoolItem<T>
     where T : notnull
 {
-    private readonly AdaptivePool<T> _owner;
+    private readonly ElasticPool<T> _owner;
     private readonly PoolEntry<T> _entry;
     private int _disposed;
 
-    public PoolItem(AdaptivePool<T> owner, PoolEntry<T> entry)
+    public PoolItem(ElasticPool<T> owner, PoolEntry<T> entry)
     {
         _owner = owner;
         _entry = entry;
@@ -651,11 +651,11 @@ internal sealed class PoolItem<T> : IPoolItem<T>
 
 4. `Telemetry/PoolMeterNames.cs` — verbatim from RESEARCH Pattern 6:
 ```csharp
-namespace Oragon.AdaptivePool.Core.Telemetry;
+namespace Oragon.ElasticPool.Core.Telemetry;
 
 internal static class PoolMeterNames
 {
-    public const string MeterName = "Oragon.AdaptivePool";
+    public const string MeterName = "Oragon.ElasticPool";
     public const string AcquireCount = "pool.acquire.count";
     public const string FactoryFailures = "pool.factory.failures";
     public const string PoolNameTag = "pool.name";
@@ -667,7 +667,7 @@ internal static class PoolMeterNames
 using System.Diagnostics.Metrics;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Oragon.AdaptivePool.Core.Telemetry;
+namespace Oragon.ElasticPool.Core.Telemetry;
 
 internal sealed class TelemetryEmitter : IDisposable
 {
@@ -716,7 +716,7 @@ internal sealed class TelemetryEmitter : IDisposable
 ```csharp
 using Microsoft.Extensions.Logging;
 
-namespace Oragon.AdaptivePool.Core.Telemetry;
+namespace Oragon.ElasticPool.Core.Telemetry;
 
 internal static partial class PoolDiagnosticsLog
 {
@@ -738,7 +738,7 @@ internal static partial class PoolDiagnosticsLog
 }
 ```
 
-7. `Internals/AdaptivePool.cs` — the sealed engine. Combine RESEARCH Pattern 5 (warm-up), Pattern 8 (CT linking), Pattern 9 (dispose), Pitfall 3 (counter rollback), Pitfall 1 (waiter queue lost-wakeup avoidance via Channel<TCS> direct-handoff). This is the largest file; aim ~250–350 lines.
+7. `Internals/ElasticPool.cs` — the sealed engine. Combine RESEARCH Pattern 5 (warm-up), Pattern 8 (CT linking), Pattern 9 (dispose), Pitfall 3 (counter rollback), Pitfall 1 (waiter queue lost-wakeup avoidance via Channel<TCS> direct-handoff). This is the largest file; aim ~250–350 lines.
 
 ```csharp
 using System.Collections.Concurrent;
@@ -746,17 +746,17 @@ using System.Threading.Channels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Oragon.AdaptivePool.Core.Abstractions;
-using Oragon.AdaptivePool.Core.Builder;
-using Oragon.AdaptivePool.Core.Exceptions;
-using Oragon.AdaptivePool.Core.Telemetry;
+using Oragon.ElasticPool.Core.Abstractions;
+using Oragon.ElasticPool.Core.Builder;
+using Oragon.ElasticPool.Core.Exceptions;
+using Oragon.ElasticPool.Core.Telemetry;
 
-namespace Oragon.AdaptivePool.Core.Internals;
+namespace Oragon.ElasticPool.Core.Internals;
 
-internal sealed class AdaptivePool<T> : IAdaptivePool<T>
+internal sealed class ElasticPool<T> : IElasticPool<T>
     where T : notnull
 {
-    private readonly AdaptivePoolOptions<T> _options;
+    private readonly ElasticPoolOptions<T> _options;
     private readonly IServiceProvider _services;
     private readonly TimeProvider _time;
     private readonly ConcurrentQueue<PoolEntry<T>> _idle = new();
@@ -777,7 +777,7 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
     public int Available => _idle.Count;
     public int InUse => Volatile.Read(ref _inUse);
 
-    internal AdaptivePool(AdaptivePoolOptions<T> options, IServiceProvider services, CancellationToken ct)
+    internal ElasticPool(ElasticPoolOptions<T> options, IServiceProvider services, CancellationToken ct)
     {
         _options = options;
         _services = services;
@@ -789,7 +789,7 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
 
         // Best-effort logger; if Logging is not registered, use NullLogger.
         var loggerFactory = services.GetService<ILoggerFactory>();
-        _log = loggerFactory?.CreateLogger($"Oragon.AdaptivePool.{typeof(T).Name}") ?? NullLogger.Instance;
+        _log = loggerFactory?.CreateLogger($"Oragon.ElasticPool.{typeof(T).Name}") ?? NullLogger.Instance;
 
         WarmupTask = WarmupAsync(_lifetimeCts.Token);
     }
@@ -910,7 +910,7 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
             // Re-throw caller's CT semantics per RESEARCH Pattern 8.
             if (cancellationToken.IsCancellationRequested)
                 throw new OperationCanceledException(cancellationToken);
-            throw new ObjectDisposedException(nameof(AdaptivePool<T>), "Pool was disposed during AcquireAsync.");
+            throw new ObjectDisposedException(nameof(ElasticPool<T>), "Pool was disposed during AcquireAsync.");
         }
     }
 
@@ -1017,7 +1017,7 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T>
     private void ThrowIfDisposed()
     {
         if (Volatile.Read(ref _lifecycle) != (int)PoolLifecycle.Open)
-            throw new ObjectDisposedException(nameof(AdaptivePool<T>));
+            throw new ObjectDisposedException(nameof(ElasticPool<T>));
     }
 
     public async ValueTask DisposeAsync()
@@ -1068,58 +1068,58 @@ Internal correctness notes (validated by Plan 03 tests):
 - `BeforeUse` recursion: at most `MaxSize` deep, bounded because `_total` only increments via CAS on capacity slots; in practice the path is tail-call-shaped.
   </action>
   <verify>
-    <automated>cd /mnt/p/dynamic-pool && find src/Oragon.AdaptivePool.Core/Internals -name '*.cs' | xargs grep -l 'sealed class AdaptivePool' && grep -q 'Channel<TaskCompletionSource' src/Oragon.AdaptivePool.Core/Internals/AdaptivePool.cs && grep -q 'Interlocked.Decrement(ref _total)' src/Oragon.AdaptivePool.Core/Internals/AdaptivePool.cs && grep -q 'Interlocked.Exchange(ref _disposed' src/Oragon.AdaptivePool.Core/Internals/PoolItem.cs && grep -q '\[LoggerMessage(EventId = 1001' src/Oragon.AdaptivePool.Core/Telemetry/PoolDiagnosticsLog.cs && grep -q 'IMeterFactory' src/Oragon.AdaptivePool.Core/Telemetry/TelemetryEmitter.cs && dotnet build src/Oragon.AdaptivePool.Core/Oragon.AdaptivePool.Core.csproj -c Release -p:RunAnalyzersDuringBuild=false 2>&1 | tee /tmp/build2.log && grep -qE 'Build succeeded' /tmp/build2.log && echo ENGINE-BUILD-OK</automated>
+    <automated>cd /mnt/p/dynamic-pool && find src/Oragon.ElasticPool.Core/Internals -name '*.cs' | xargs grep -l 'sealed class ElasticPool' && grep -q 'Channel<TaskCompletionSource' src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs && grep -q 'Interlocked.Decrement(ref _total)' src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs && grep -q 'Interlocked.Exchange(ref _disposed' src/Oragon.ElasticPool.Core/Internals/PoolItem.cs && grep -q '\[LoggerMessage(EventId = 1001' src/Oragon.ElasticPool.Core/Telemetry/PoolDiagnosticsLog.cs && grep -q 'IMeterFactory' src/Oragon.ElasticPool.Core/Telemetry/TelemetryEmitter.cs && dotnet build src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj -c Release -p:RunAnalyzersDuringBuild=false 2>&1 | tee /tmp/build2.log && grep -qE 'Build succeeded' /tmp/build2.log && echo ENGINE-BUILD-OK</automated>
   </verify>
-  <done>All 7 internal/telemetry files exist. `AdaptivePool<T>` implements `IAdaptivePool<T>` with Channel direct-handoff waiter queue, Interlocked counter rollback on factory failure, idempotent Dispose, drain semantics on dispose. PoolItem has Interlocked dispose flag, finalizer that swallows exceptions. TelemetryEmitter resolves IMeterFactory or falls back to `new Meter`. PoolDiagnosticsLog uses [LoggerMessage] source-gen. `dotnet build` of Core project succeeds (PublicApiAnalyzers may still emit warnings — addressed in Task 3).</done>
+  <done>All 7 internal/telemetry files exist. `ElasticPool<T>` implements `IElasticPool<T>` with Channel direct-handoff waiter queue, Interlocked counter rollback on factory failure, idempotent Dispose, drain semantics on dispose. PoolItem has Interlocked dispose flag, finalizer that swallows exceptions. TelemetryEmitter resolves IMeterFactory or falls back to `new Meter`. PoolDiagnosticsLog uses [LoggerMessage] source-gen. `dotnet build` of Core project succeeds (PublicApiAnalyzers may still emit warnings — addressed in Task 3).</done>
 </task>
 
 <task type="auto">
   <name>Task 3: DI extension + PublicApiAnalyzers Unshipped baseline + final build verification</name>
   <files>
-    src/Oragon.AdaptivePool.Core/DependencyInjection/ServiceCollectionExtensions.cs,
-    src/Oragon.AdaptivePool.Core/PublicAPI.Unshipped.txt
+    src/Oragon.ElasticPool.Core/DependencyInjection/ServiceCollectionExtensions.cs,
+    src/Oragon.ElasticPool.Core/PublicAPI.Unshipped.txt
   </files>
   <action>
 This task closes the loop: wire DI registration and bring PublicApiAnalyzers green.
 
-1. `DependencyInjection/ServiceCollectionExtensions.cs` — per RESEARCH Pattern 7. Important: do NOT take a hard dependency on `Microsoft.Extensions.Hosting.Abstractions`; the optional `IHostApplicationLifetime` resolution is via `GetService<>` (nullable). The `AdaptivePoolBuilderConfigurator<T>` carries the user-supplied `Action<AdaptivePoolBuilder<T>>` through Options.
+1. `DependencyInjection/ServiceCollectionExtensions.cs` — per RESEARCH Pattern 7. Important: do NOT take a hard dependency on `Microsoft.Extensions.Hosting.Abstractions`; the optional `IHostApplicationLifetime` resolution is via `GetService<>` (nullable). The `ElasticPoolBuilderConfigurator<T>` carries the user-supplied `Action<ElasticPoolBuilder<T>>` through Options.
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
-using Oragon.AdaptivePool.Core.Abstractions;
-using Oragon.AdaptivePool.Core.Builder;
+using Oragon.ElasticPool.Core.Abstractions;
+using Oragon.ElasticPool.Core.Builder;
 
-namespace Oragon.AdaptivePool.Core.DependencyInjection;
+namespace Oragon.ElasticPool.Core.DependencyInjection;
 
 public static class ServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers an <see cref="IAdaptivePool{T}"/> in DI under the given <paramref name="name"/>.
-    /// Use <c>string.Empty</c> for single-pool apps (also resolvable as non-keyed <c>IAdaptivePool&lt;T&gt;</c>).
+    /// Registers an <see cref="IElasticPool{T}"/> in DI under the given <paramref name="name"/>.
+    /// Use <c>string.Empty</c> for single-pool apps (also resolvable as non-keyed <c>IElasticPool&lt;T&gt;</c>).
     /// Multiple pools of the same T can coexist by name.
     /// </summary>
-    public static IServiceCollection AddAdaptivePool<T>(
+    public static IServiceCollection AddElasticPool<T>(
         this IServiceCollection services,
         string name,
-        Action<AdaptivePoolBuilder<T>> configure)
+        Action<ElasticPoolBuilder<T>> configure)
         where T : notnull
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(name);
         ArgumentNullException.ThrowIfNull(configure);
 
-        services.AddOptions<AdaptivePoolBuilderConfigurator<T>>(name)
+        services.AddOptions<ElasticPoolBuilderConfigurator<T>>(name)
                 .Configure(c => c.Configure = configure);
 
-        services.TryAddKeyedSingleton<IAdaptivePool<T>>(name, (sp, key) =>
+        services.TryAddKeyedSingleton<IElasticPool<T>>(name, (sp, key) =>
         {
             var keyName = (string)key!;
-            var configurator = sp.GetRequiredService<IOptionsMonitor<AdaptivePoolBuilderConfigurator<T>>>().Get(keyName);
+            var configurator = sp.GetRequiredService<IOptionsMonitor<ElasticPoolBuilderConfigurator<T>>>().Get(keyName);
             // Optional: pull application-stopping CT if the host registers it (no hard dep).
             var lifetimeCt = TryGetHostApplicationStoppingToken(sp);
-            var builder = AdaptiveObjectPoolFactory.Build<T>(sp, lifetimeCt);
-            // Internal — see Builder/AdaptivePoolBuilder.cs WithName(...).
+            var builder = ElasticObjectPoolFactory.Build<T>(sp, lifetimeCt);
+            // Internal — see Builder/ElasticPoolBuilder.cs WithName(...).
             BuilderInternals.SetName(builder, keyName);
             configurator.Configure(builder);
             return builder.Build();
@@ -1127,7 +1127,7 @@ public static class ServiceCollectionExtensions
 
         if (name.Length == 0)
         {
-            services.TryAddSingleton<IAdaptivePool<T>>(sp => sp.GetRequiredKeyedService<IAdaptivePool<T>>(string.Empty));
+            services.TryAddSingleton<IElasticPool<T>>(sp => sp.GetRequiredKeyedService<IElasticPool<T>>(string.Empty));
         }
 
         return services;
@@ -1145,17 +1145,17 @@ public static class ServiceCollectionExtensions
         return CancellationToken.None;
     }
 
-    private sealed class AdaptivePoolBuilderConfigurator<T> where T : notnull
+    private sealed class ElasticPoolBuilderConfigurator<T> where T : notnull
     {
-        public Action<AdaptivePoolBuilder<T>> Configure { get; set; } = static _ => { };
+        public Action<ElasticPoolBuilder<T>> Configure { get; set; } = static _ => { };
     }
 
-    // Internal sidedoor to call AdaptivePoolBuilder<T>.WithName(...) from the same assembly.
+    // Internal sidedoor to call ElasticPoolBuilder<T>.WithName(...) from the same assembly.
     internal static class BuilderInternals
     {
-        public static void SetName<T>(AdaptivePoolBuilder<T> builder, string name) where T : notnull
+        public static void SetName<T>(ElasticPoolBuilder<T> builder, string name) where T : notnull
         {
-            // Method exists on the builder as `internal AdaptivePoolBuilder<T> WithName(string)`.
+            // Method exists on the builder as `internal ElasticPoolBuilder<T> WithName(string)`.
             builder.GetType().GetMethod("WithName",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
                 ?.Invoke(builder, new object[] { name });
@@ -1164,11 +1164,11 @@ public static class ServiceCollectionExtensions
 }
 ```
 
-NOTE on the reflection sidedoor: The cleaner alternative is to mark `AdaptivePoolBuilder<T>.WithName` as `internal` and add `[InternalsVisibleTo("Oragon.AdaptivePool.Core")]` is unnecessary because both files are in the same assembly. Replace the reflection call with a direct `builder.WithName(keyName)` call (since `WithName` is `internal` in the same assembly, this works).
+NOTE on the reflection sidedoor: The cleaner alternative is to mark `ElasticPoolBuilder<T>.WithName` as `internal` and add `[InternalsVisibleTo("Oragon.ElasticPool.Core")]` is unnecessary because both files are in the same assembly. Replace the reflection call with a direct `builder.WithName(keyName)` call (since `WithName` is `internal` in the same assembly, this works).
 
 REVISED Task 3 simplification — replace `BuilderInternals` block with a direct call:
 ```csharp
-            var builder = AdaptiveObjectPoolFactory.Build<T>(sp, lifetimeCt);
+            var builder = ElasticObjectPoolFactory.Build<T>(sp, lifetimeCt);
             builder.WithName(keyName);  // internal method, same assembly
             configurator.Configure(builder);
             return builder.Build();
@@ -1177,97 +1177,97 @@ And delete `BuilderInternals` static class. This is the executor's preferred pat
 
 The `TryGetHostApplicationStoppingToken` reflection probe IS legitimate — it avoids pulling `Microsoft.Extensions.Hosting.Abstractions` into Core. Per RESEARCH Pattern 7 note: "IHostApplicationLifetime reference is optional — pulled from IServiceProvider if available, else CancellationToken.None. This avoids forcing a Microsoft.Extensions.Hosting.Abstractions dependency on Core."
 
-2. `src/Oragon.AdaptivePool.Core/PublicAPI.Unshipped.txt` — Populate with all NEW public API surface introduced in Phase 1. Format: one declaration per line, alphabetically sorted, prefixed with `#nullable enable`. Run a build first; PublicApiAnalyzers (RS0016) will list every missing declaration. Copy each into Unshipped.txt.
+2. `src/Oragon.ElasticPool.Core/PublicAPI.Unshipped.txt` — Populate with all NEW public API surface introduced in Phase 1. Format: one declaration per line, alphabetically sorted, prefixed with `#nullable enable`. Run a build first; PublicApiAnalyzers (RS0016) will list every missing declaration. Copy each into Unshipped.txt.
 
 Expected entries (alphabetically by type, then by member). Generate from compiler output rather than handwriting:
 ```
 #nullable enable
-Oragon.AdaptivePool.Core.Abstractions.FailureDecision
-Oragon.AdaptivePool.Core.Abstractions.FailureDecision.Discard = 0 -> Oragon.AdaptivePool.Core.Abstractions.FailureDecision
-Oragon.AdaptivePool.Core.Abstractions.FailureKind
-Oragon.AdaptivePool.Core.Abstractions.FailureKind.AfterUseUnhealthy = 2 -> Oragon.AdaptivePool.Core.Abstractions.FailureKind
-Oragon.AdaptivePool.Core.Abstractions.FailureKind.BeforeUseUnhealthy = 1 -> Oragon.AdaptivePool.Core.Abstractions.FailureKind
-Oragon.AdaptivePool.Core.Abstractions.FailureKind.FactoryThrew = 0 -> Oragon.AdaptivePool.Core.Abstractions.FailureKind
-Oragon.AdaptivePool.Core.Abstractions.IAdaptivePool<T>
-Oragon.AdaptivePool.Core.Abstractions.IAdaptivePool<T>.Acquire() -> Oragon.AdaptivePool.Core.Abstractions.IPoolItem<T>!
-Oragon.AdaptivePool.Core.Abstractions.IAdaptivePool<T>.AcquireAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<Oragon.AdaptivePool.Core.Abstractions.IPoolItem<T>!>
-Oragon.AdaptivePool.Core.Abstractions.IAdaptivePool<T>.Available.get -> int
-Oragon.AdaptivePool.Core.Abstractions.IAdaptivePool<T>.InUse.get -> int
-Oragon.AdaptivePool.Core.Abstractions.IAdaptivePool<T>.MaxSize.get -> int
-Oragon.AdaptivePool.Core.Abstractions.IAdaptivePool<T>.MinSize.get -> int
-Oragon.AdaptivePool.Core.Abstractions.IAdaptivePool<T>.ReadyAsync() -> System.Threading.Tasks.Task!
-Oragon.AdaptivePool.Core.Abstractions.IItemFailurePolicy<T>
-Oragon.AdaptivePool.Core.Abstractions.IItemFailurePolicy<T>.HandleAsync(T? failedItem, Oragon.AdaptivePool.Core.Abstractions.FailureKind failureKind, System.Exception? exception, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Oragon.AdaptivePool.Core.Abstractions.FailureDecision>
-Oragon.AdaptivePool.Core.Abstractions.IPoolItem<T>
-Oragon.AdaptivePool.Core.Abstractions.IPoolItem<T>.Value.get -> T
-Oragon.AdaptivePool.Core.Abstractions.PoolState
-Oragon.AdaptivePool.Core.Abstractions.PoolState.Healthy = 0 -> Oragon.AdaptivePool.Core.Abstractions.PoolState
-Oragon.AdaptivePool.Core.Abstractions.PoolState.Unhealthy = 1 -> Oragon.AdaptivePool.Core.Abstractions.PoolState
-Oragon.AdaptivePool.Core.Builder.AdaptiveObjectPoolFactory
-static Oragon.AdaptivePool.Core.Builder.AdaptiveObjectPoolFactory.Build<T>(System.IServiceProvider! services, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.AfterUse(Oragon.AdaptivePool.Core.Hooks.AfterUseDelegate<T>! hook) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.BeforeUse(Oragon.AdaptivePool.Core.Hooks.BeforeUseDelegate<T>! hook) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.Build() -> Oragon.AdaptivePool.Core.Abstractions.IAdaptivePool<T>!
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.Check(Oragon.AdaptivePool.Core.Hooks.CheckDelegate<T>! hook) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.Factory(Oragon.AdaptivePool.Core.Hooks.FactoryDelegate<T>! factory) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.Release(Oragon.AdaptivePool.Core.Hooks.ReleaseDelegate<T>! hook) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.WhenExhausted(Oragon.AdaptivePool.Core.Builder.WaitBehavior behavior) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.WithBounds(int minSize, int maxSize, int initialSize) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.WithFailurePolicy(Oragon.AdaptivePool.Core.Abstractions.IItemFailurePolicy<T>! policy) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.WithTimeProvider(System.TimeProvider! timeProvider) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.AdaptivePoolOptions() -> void
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.AfterUse.init -> void
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.AfterUse.get -> Oragon.AdaptivePool.Core.Hooks.AfterUseDelegate<T>?
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.BeforeUse.init -> void
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.BeforeUse.get -> Oragon.AdaptivePool.Core.Hooks.BeforeUseDelegate<T>?
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.Check.init -> void
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.Check.get -> Oragon.AdaptivePool.Core.Hooks.CheckDelegate<T>?
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.FailurePolicy.init -> void
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.FailurePolicy.get -> Oragon.AdaptivePool.Core.Abstractions.IItemFailurePolicy<T>!
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.Factory.init -> void
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.Factory.get -> Oragon.AdaptivePool.Core.Hooks.FactoryDelegate<T>!
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.InitialSize.init -> void
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.InitialSize.get -> int
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.MaxSize.init -> void
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.MaxSize.get -> int
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.MinSize.init -> void
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.MinSize.get -> int
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.PoolName.init -> void
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.PoolName.get -> string!
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.Release.init -> void
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.Release.get -> Oragon.AdaptivePool.Core.Hooks.ReleaseDelegate<T>?
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.TimeProvider.init -> void
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.TimeProvider.get -> System.TimeProvider!
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.WhenExhausted.init -> void
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.WhenExhausted.get -> Oragon.AdaptivePool.Core.Builder.WaitBehavior
-Oragon.AdaptivePool.Core.Builder.WaitBehavior
-Oragon.AdaptivePool.Core.Builder.WaitBehavior.Throw = 1 -> Oragon.AdaptivePool.Core.Builder.WaitBehavior
-Oragon.AdaptivePool.Core.Builder.WaitBehavior.Wait = 0 -> Oragon.AdaptivePool.Core.Builder.WaitBehavior
-Oragon.AdaptivePool.Core.DependencyInjection.ServiceCollectionExtensions
-static Oragon.AdaptivePool.Core.DependencyInjection.ServiceCollectionExtensions.AddAdaptivePool<T>(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, string! name, System.Action<Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!>! configure) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
-Oragon.AdaptivePool.Core.Exceptions.PoolExhaustedException
-Oragon.AdaptivePool.Core.Exceptions.PoolExhaustedException.MaxSize.get -> int
-Oragon.AdaptivePool.Core.Exceptions.PoolExhaustedException.PoolExhaustedException(int maxSize, System.TimeSpan? waitTime = null) -> void
-Oragon.AdaptivePool.Core.Exceptions.PoolExhaustedException.WaitTime.get -> System.TimeSpan?
-Oragon.AdaptivePool.Core.Hooks.AfterUseDelegate<T>
-Oragon.AdaptivePool.Core.Hooks.BeforeUseDelegate<T>
-Oragon.AdaptivePool.Core.Hooks.CheckDelegate<T>
-Oragon.AdaptivePool.Core.Hooks.FactoryDelegate<T>
-Oragon.AdaptivePool.Core.Hooks.ReleaseDelegate<T>
-Oragon.AdaptivePool.Core.Policies.DiscardAndReplaceFailurePolicy<T>
-Oragon.AdaptivePool.Core.Policies.DiscardAndReplaceFailurePolicy<T>.DiscardAndReplaceFailurePolicy() -> void
-Oragon.AdaptivePool.Core.Policies.DiscardAndReplaceFailurePolicy<T>.HandleAsync(T? failedItem, Oragon.AdaptivePool.Core.Abstractions.FailureKind failureKind, System.Exception? exception, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Oragon.AdaptivePool.Core.Abstractions.FailureDecision>
+Oragon.ElasticPool.Core.Abstractions.FailureDecision
+Oragon.ElasticPool.Core.Abstractions.FailureDecision.Discard = 0 -> Oragon.ElasticPool.Core.Abstractions.FailureDecision
+Oragon.ElasticPool.Core.Abstractions.FailureKind
+Oragon.ElasticPool.Core.Abstractions.FailureKind.AfterUseUnhealthy = 2 -> Oragon.ElasticPool.Core.Abstractions.FailureKind
+Oragon.ElasticPool.Core.Abstractions.FailureKind.BeforeUseUnhealthy = 1 -> Oragon.ElasticPool.Core.Abstractions.FailureKind
+Oragon.ElasticPool.Core.Abstractions.FailureKind.FactoryThrew = 0 -> Oragon.ElasticPool.Core.Abstractions.FailureKind
+Oragon.ElasticPool.Core.Abstractions.IElasticPool<T>
+Oragon.ElasticPool.Core.Abstractions.IElasticPool<T>.Acquire() -> Oragon.ElasticPool.Core.Abstractions.IPoolItem<T>!
+Oragon.ElasticPool.Core.Abstractions.IElasticPool<T>.AcquireAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<Oragon.ElasticPool.Core.Abstractions.IPoolItem<T>!>
+Oragon.ElasticPool.Core.Abstractions.IElasticPool<T>.Available.get -> int
+Oragon.ElasticPool.Core.Abstractions.IElasticPool<T>.InUse.get -> int
+Oragon.ElasticPool.Core.Abstractions.IElasticPool<T>.MaxSize.get -> int
+Oragon.ElasticPool.Core.Abstractions.IElasticPool<T>.MinSize.get -> int
+Oragon.ElasticPool.Core.Abstractions.IElasticPool<T>.ReadyAsync() -> System.Threading.Tasks.Task!
+Oragon.ElasticPool.Core.Abstractions.IItemFailurePolicy<T>
+Oragon.ElasticPool.Core.Abstractions.IItemFailurePolicy<T>.HandleAsync(T? failedItem, Oragon.ElasticPool.Core.Abstractions.FailureKind failureKind, System.Exception? exception, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Oragon.ElasticPool.Core.Abstractions.FailureDecision>
+Oragon.ElasticPool.Core.Abstractions.IPoolItem<T>
+Oragon.ElasticPool.Core.Abstractions.IPoolItem<T>.Value.get -> T
+Oragon.ElasticPool.Core.Abstractions.PoolState
+Oragon.ElasticPool.Core.Abstractions.PoolState.Healthy = 0 -> Oragon.ElasticPool.Core.Abstractions.PoolState
+Oragon.ElasticPool.Core.Abstractions.PoolState.Unhealthy = 1 -> Oragon.ElasticPool.Core.Abstractions.PoolState
+Oragon.ElasticPool.Core.Builder.ElasticObjectPoolFactory
+static Oragon.ElasticPool.Core.Builder.ElasticObjectPoolFactory.Build<T>(System.IServiceProvider! services, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.AfterUse(Oragon.ElasticPool.Core.Hooks.AfterUseDelegate<T>! hook) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.BeforeUse(Oragon.ElasticPool.Core.Hooks.BeforeUseDelegate<T>! hook) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.Build() -> Oragon.ElasticPool.Core.Abstractions.IElasticPool<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.Check(Oragon.ElasticPool.Core.Hooks.CheckDelegate<T>! hook) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.Factory(Oragon.ElasticPool.Core.Hooks.FactoryDelegate<T>! factory) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.Release(Oragon.ElasticPool.Core.Hooks.ReleaseDelegate<T>! hook) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.WhenExhausted(Oragon.ElasticPool.Core.Builder.WaitBehavior behavior) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.WithBounds(int minSize, int maxSize, int initialSize) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.WithFailurePolicy(Oragon.ElasticPool.Core.Abstractions.IItemFailurePolicy<T>! policy) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.WithTimeProvider(System.TimeProvider! timeProvider) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.ElasticPoolOptions() -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.AfterUse.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.AfterUse.get -> Oragon.ElasticPool.Core.Hooks.AfterUseDelegate<T>?
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.BeforeUse.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.BeforeUse.get -> Oragon.ElasticPool.Core.Hooks.BeforeUseDelegate<T>?
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.Check.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.Check.get -> Oragon.ElasticPool.Core.Hooks.CheckDelegate<T>?
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.FailurePolicy.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.FailurePolicy.get -> Oragon.ElasticPool.Core.Abstractions.IItemFailurePolicy<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.Factory.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.Factory.get -> Oragon.ElasticPool.Core.Hooks.FactoryDelegate<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.InitialSize.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.InitialSize.get -> int
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.MaxSize.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.MaxSize.get -> int
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.MinSize.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.MinSize.get -> int
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.PoolName.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.PoolName.get -> string!
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.Release.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.Release.get -> Oragon.ElasticPool.Core.Hooks.ReleaseDelegate<T>?
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.TimeProvider.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.TimeProvider.get -> System.TimeProvider!
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.WhenExhausted.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.WhenExhausted.get -> Oragon.ElasticPool.Core.Builder.WaitBehavior
+Oragon.ElasticPool.Core.Builder.WaitBehavior
+Oragon.ElasticPool.Core.Builder.WaitBehavior.Throw = 1 -> Oragon.ElasticPool.Core.Builder.WaitBehavior
+Oragon.ElasticPool.Core.Builder.WaitBehavior.Wait = 0 -> Oragon.ElasticPool.Core.Builder.WaitBehavior
+Oragon.ElasticPool.Core.DependencyInjection.ServiceCollectionExtensions
+static Oragon.ElasticPool.Core.DependencyInjection.ServiceCollectionExtensions.AddElasticPool<T>(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, string! name, System.Action<Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!>! configure) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+Oragon.ElasticPool.Core.Exceptions.PoolExhaustedException
+Oragon.ElasticPool.Core.Exceptions.PoolExhaustedException.MaxSize.get -> int
+Oragon.ElasticPool.Core.Exceptions.PoolExhaustedException.PoolExhaustedException(int maxSize, System.TimeSpan? waitTime = null) -> void
+Oragon.ElasticPool.Core.Exceptions.PoolExhaustedException.WaitTime.get -> System.TimeSpan?
+Oragon.ElasticPool.Core.Hooks.AfterUseDelegate<T>
+Oragon.ElasticPool.Core.Hooks.BeforeUseDelegate<T>
+Oragon.ElasticPool.Core.Hooks.CheckDelegate<T>
+Oragon.ElasticPool.Core.Hooks.FactoryDelegate<T>
+Oragon.ElasticPool.Core.Hooks.ReleaseDelegate<T>
+Oragon.ElasticPool.Core.Policies.DiscardAndReplaceFailurePolicy<T>
+Oragon.ElasticPool.Core.Policies.DiscardAndReplaceFailurePolicy<T>.DiscardAndReplaceFailurePolicy() -> void
+Oragon.ElasticPool.Core.Policies.DiscardAndReplaceFailurePolicy<T>.HandleAsync(T? failedItem, Oragon.ElasticPool.Core.Abstractions.FailureKind failureKind, System.Exception? exception, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Oragon.ElasticPool.Core.Abstractions.FailureDecision>
 ```
 Workflow: do an initial `dotnet build` of Core, capture every RS0016 line ("Symbol ... is not part of the declared API"), and append the suggested public-API line to PublicAPI.Unshipped.txt. Most IDEs offer a "Add to public API" code-fix that does this automatically — use it where available.
 
-3. Final verification: build Core + Tests projects together, ensuring no analyzer or compiler errors remain. Confirm `dotnet build Oragon.AdaptivePool.sln -c Release` is fully green with `TreatWarningsAsErrors=true`. Run the placeholder smoke test to confirm the assembly loads.
+3. Final verification: build Core + Tests projects together, ensuring no analyzer or compiler errors remain. Confirm `dotnet build Oragon.ElasticPool.sln -c Release` is fully green with `TreatWarningsAsErrors=true`. Run the placeholder smoke test to confirm the assembly loads.
   </action>
   <verify>
-    <automated>cd /mnt/p/dynamic-pool && test -f src/Oragon.AdaptivePool.Core/DependencyInjection/ServiceCollectionExtensions.cs && grep -q 'AddKeyedSingleton' src/Oragon.AdaptivePool.Core/DependencyInjection/ServiceCollectionExtensions.cs && grep -q 'IOptionsMonitor' src/Oragon.AdaptivePool.Core/DependencyInjection/ServiceCollectionExtensions.cs && grep -q '#nullable enable' src/Oragon.AdaptivePool.Core/PublicAPI.Unshipped.txt && grep -c 'Oragon.AdaptivePool.Core' src/Oragon.AdaptivePool.Core/PublicAPI.Unshipped.txt | awk '{ if ($1 < 30) { print "TOO-FEW-API-LINES:" $1; exit 1 } else print "API-LINES-OK:" $1 }' && dotnet build Oragon.AdaptivePool.sln -c Release 2>&1 | tee /tmp/build3.log && grep -qE 'Build succeeded' /tmp/build3.log && ! grep -qE '\b(error|Error) (CS|RS)[0-9]' /tmp/build3.log && dotnet test tests/Oragon.AdaptivePool.Core.Tests --no-build -c Release 2>&1 | tee /tmp/test3.log && grep -qE '(Passed:.*1|Passed!.*1)' /tmp/test3.log && echo PLAN-02-DONE</automated>
+    <automated>cd /mnt/p/dynamic-pool && test -f src/Oragon.ElasticPool.Core/DependencyInjection/ServiceCollectionExtensions.cs && grep -q 'AddKeyedSingleton' src/Oragon.ElasticPool.Core/DependencyInjection/ServiceCollectionExtensions.cs && grep -q 'IOptionsMonitor' src/Oragon.ElasticPool.Core/DependencyInjection/ServiceCollectionExtensions.cs && grep -q '#nullable enable' src/Oragon.ElasticPool.Core/PublicAPI.Unshipped.txt && grep -c 'Oragon.ElasticPool.Core' src/Oragon.ElasticPool.Core/PublicAPI.Unshipped.txt | awk '{ if ($1 < 30) { print "TOO-FEW-API-LINES:" $1; exit 1 } else print "API-LINES-OK:" $1 }' && dotnet build Oragon.ElasticPool.sln -c Release 2>&1 | tee /tmp/build3.log && grep -qE 'Build succeeded' /tmp/build3.log && ! grep -qE '\b(error|Error) (CS|RS)[0-9]' /tmp/build3.log && dotnet test tests/Oragon.ElasticPool.Core.Tests --no-build -c Release 2>&1 | tee /tmp/test3.log && grep -qE '(Passed:.*1|Passed!.*1)' /tmp/test3.log && echo PLAN-02-DONE</automated>
   </verify>
-  <done>DI extension `services.AddAdaptivePool<T>(name, configure)` registered with named-options + keyed singleton + non-keyed fallback for default name. PublicAPI.Unshipped.txt populated with all new public types/members (>= 30 API lines). `dotnet build Oragon.AdaptivePool.sln -c Release` is fully green with `TreatWarningsAsErrors=true`. Smoke test from Plan 01 still passes (Core assembly loads under the test runner).</done>
+  <done>DI extension `services.AddElasticPool<T>(name, configure)` registered with named-options + keyed singleton + non-keyed fallback for default name. PublicAPI.Unshipped.txt populated with all new public types/members (>= 30 API lines). `dotnet build Oragon.ElasticPool.sln -c Release` is fully green with `TreatWarningsAsErrors=true`. Smoke test from Plan 01 still passes (Core assembly loads under the test runner).</done>
 </task>
 
 </tasks>
@@ -1277,7 +1277,7 @@ Workflow: do an initial `dotnet build` of Core, capture every RS0016 line ("Symb
 
 | Boundary | Description |
 |----------|-------------|
-| Consumer code → IAdaptivePool<T> | Untrusted hook delegates supplied by consumer; engine must not assume well-behavior |
+| Consumer code → IElasticPool<T> | Untrusted hook delegates supplied by consumer; engine must not assume well-behavior |
 | Hook delegate → engine internals | Hook may throw, hang, return null, or attempt to escape via captured state |
 | Pool engine → CancellationToken sources | Linked CTSes leak registrations if not disposed |
 | Pool dispose → in-flight consumers | Consumers holding IPoolItem<T> after pool dispose must not corrupt engine state |
@@ -1302,16 +1302,16 @@ After all 3 tasks complete:
 
 ```bash
 cd /mnt/p/dynamic-pool
-dotnet build Oragon.AdaptivePool.sln -c Release   # GREEN, no warnings
-dotnet test tests/Oragon.AdaptivePool.Core.Tests --no-build -c Release  # 1 passed (Plan 01 smoke; Plan 03 adds real tests)
+dotnet build Oragon.ElasticPool.sln -c Release   # GREEN, no warnings
+dotnet test tests/Oragon.ElasticPool.Core.Tests --no-build -c Release  # 1 passed (Plan 01 smoke; Plan 03 adds real tests)
 ```
 
 Spot-check public surface:
-- `grep -r "public delegate ValueTask" src/Oragon.AdaptivePool.Core/Hooks/` — 5 delegates, every one accepts CancellationToken
-- `grep -r "Interlocked\." src/Oragon.AdaptivePool.Core/Internals/` — counters use atomic ops; dispose flag uses Exchange
-- `grep "Channel<TaskCompletionSource" src/Oragon.AdaptivePool.Core/Internals/AdaptivePool.cs` — direct-handoff waiter
-- `grep "IMeterFactory" src/Oragon.AdaptivePool.Core/Telemetry/TelemetryEmitter.cs` — DI resolution + fallback
-- `grep "AddKeyedSingleton" src/Oragon.AdaptivePool.Core/DependencyInjection/ServiceCollectionExtensions.cs` — keyed registration
+- `grep -r "public delegate ValueTask" src/Oragon.ElasticPool.Core/Hooks/` — 5 delegates, every one accepts CancellationToken
+- `grep -r "Interlocked\." src/Oragon.ElasticPool.Core/Internals/` — counters use atomic ops; dispose flag uses Exchange
+- `grep "Channel<TaskCompletionSource" src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs` — direct-handoff waiter
+- `grep "IMeterFactory" src/Oragon.ElasticPool.Core/Telemetry/TelemetryEmitter.cs` — DI resolution + fallback
+- `grep "AddKeyedSingleton" src/Oragon.ElasticPool.Core/DependencyInjection/ServiceCollectionExtensions.cs` — keyed registration
 
 Confirm PublicApiAnalyzers is silent:
 - No RS0016 ("not part of declared API") errors in build output
@@ -1321,9 +1321,9 @@ Confirm PublicApiAnalyzers is silent:
 <success_criteria>
 This plan is complete when:
 - [ ] All 22 source files exist and contain the specified content
-- [ ] `dotnet build Oragon.AdaptivePool.sln -c Release` is green with TreatWarningsAsErrors=true
+- [ ] `dotnet build Oragon.ElasticPool.sln -c Release` is green with TreatWarningsAsErrors=true
 - [ ] PublicApiAnalyzers reports no errors (Unshipped.txt fully reflects new surface)
-- [ ] `IAdaptivePool<T>` exposes Acquire / AcquireAsync / ReadyAsync / MaxSize / MinSize / Available / InUse
+- [ ] `IElasticPool<T>` exposes Acquire / AcquireAsync / ReadyAsync / MaxSize / MinSize / Available / InUse
 - [ ] `IPoolItem<T>` is covariant (`out T`), exposes `Value`, implements both Dispose and DisposeAsync idempotently
 - [ ] All five hook delegates accept CancellationToken and return ValueTask<...>
 - [ ] Builder validates `Factory != null`, `0 ≤ Min ≤ Initial ≤ Max`; throws on violation
@@ -1335,8 +1335,8 @@ This plan is complete when:
 - [ ] Sync `Acquire()` throws `PoolExhaustedException` when no idle item (NEVER blocks)
 - [ ] `DisposeAsync` cancels lifetime CTS, drains waiters (cancels them), drains idle queue (calls Release on each), is idempotent
 - [ ] Sync `Dispose()` calls `DisposeAsync().AsTask().GetAwaiter().GetResult()`
-- [ ] `services.AddAdaptivePool<T>(name, configure)` registers as keyed singleton; default name `string.Empty` also resolvable as non-keyed
-- [ ] `Meter` named `"Oragon.AdaptivePool"` resolved via `IMeterFactory` if available, else via `new Meter`
+- [ ] `services.AddElasticPool<T>(name, configure)` registers as keyed singleton; default name `string.Empty` also resolvable as non-keyed
+- [ ] `Meter` named `"Oragon.ElasticPool"` resolved via `IMeterFactory` if available, else via `new Meter`
 - [ ] At minimum `pool.acquire.count` and `pool.factory.failures` counters exist, both tagged with `pool.name`
 - [ ] `[LoggerMessage]` source-gen used for ItemLeaked, FactoryFailed, BeforeUseUnhealthy, ReleaseHookFailedDuringDispose
 - [ ] Plan 01 smoke test still passes (assembly loads under test runner)
@@ -1349,14 +1349,14 @@ This plan is complete when:
 - Criterion 1 (DI registration + sync Acquire + await using + idempotent dispose): ENABLED here (verified by tests in Plan 03)
 - Criterion 2 (MaxSize=1 ping-pong, no deadlocks/lost wake-ups): ENABLED here via Channel direct-handoff (verified by stress test in Plan 03)
 - Criterion 3 (Factory throw counter rollback + BeforeUse Unhealthy → policy): IMPLEMENTED here (verified by tests in Plan 03)
-- Criterion 4 (Meter "Oragon.AdaptivePool" via IMeterFactory + counters): IMPLEMENTED here (verified by MetricCollector test in Plan 03)
+- Criterion 4 (Meter "Oragon.ElasticPool" via IMeterFactory + counters): IMPLEMENTED here (verified by MetricCollector test in Plan 03)
 - Criterion 5 (IDisposable + IAsyncDisposable with drain): IMPLEMENTED here (verified by tests in Plan 03)
 - Criterion 6 (Eager warm-up awaitable + bounds validation): IMPLEMENTED here (verified by tests in Plan 03)
 
 **Requirements (REQ) addressed:**
-- API-01: `IAdaptivePool<T>` with sync + async — Task 1
+- API-01: `IElasticPool<T>` with sync + async — Task 1
 - API-02: `IPoolItem<T>` wrapper, idempotent — Task 1 (interface) + Task 2 (impl)
-- API-03: `AdaptiveObjectPoolFactory.Build<T>(...)` builder + validation — Task 1
+- API-03: `ElasticObjectPoolFactory.Build<T>(...)` builder + validation — Task 1
 - HOOK-01: Factory required, runs outside locks — Task 1 (delegate) + Task 2 (engine awaits factory after Interlocked CAS, before adding entry to idle)
 - HOOK-02: BeforeUse optional, fires in Acquire, failure → policy — Task 1 (delegate) + Task 2 (PrepareForUseAsync)
 - HOOK-03: Check optional, signature only in Phase 1 — Task 1 (delegate)
@@ -1366,8 +1366,8 @@ This plan is complete when:
 - BOUND-02: Eager warm-up awaitable, cancellable — Task 2 (WarmupAsync + ReadyAsync)
 - FAIL-01: `IItemFailurePolicy<T>` invoked on Unhealthy or Factory throw — Task 1 (interface) + Task 2 (engine invokes in catch + on BeforeUse Unhealthy)
 - FAIL-02: `DiscardAndReplaceFailurePolicy<T>` default — Task 1
-- TELEM-01: `Meter "Oragon.AdaptivePool"` via `IMeterFactory` + `pool.acquire.count` + `pool.factory.failures` — Task 2 (TelemetryEmitter)
-- DI-01: `services.AddAdaptivePool<T>(name, configure)` named options — Task 3
+- TELEM-01: `Meter "Oragon.ElasticPool"` via `IMeterFactory` + `pool.acquire.count` + `pool.factory.failures` — Task 2 (TelemetryEmitter)
+- DI-01: `services.AddElasticPool<T>(name, configure)` named options — Task 3
 - QUAL-01: CancellationToken end-to-end — Task 1 (every hook signature) + Task 2 (linked CTS in AcquireAsync, propagated to all hook calls)
 - QUAL-02: IDisposable + IAsyncDisposable drain — Task 2 (lifecycle state machine + DisposeAsync drain)
 
@@ -1375,7 +1375,7 @@ This plan is complete when:
 - `IPoolItem<T>.Value` (not .Item / .Object) — Task 1
 - `WaitBehavior` enum + `PoolExhaustedException` — Task 1
 - Builder requires Factory; throws on missing — Task 1
-- `services.AddAdaptivePool<T>(name, ...)` requires explicit name; string.Empty for default — Task 3
+- `services.AddElasticPool<T>(name, ...)` requires explicit name; string.Empty for default — Task 3
 - IMeterFactory resolution — Task 2
 
 **RESEARCH.md patterns implemented:** Patterns 1, 2, 3, 4, 5, 6, 7, 8, 9 (all of them)

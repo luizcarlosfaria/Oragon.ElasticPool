@@ -1,14 +1,14 @@
 # Phase 3: RabbitMQ Adapter — Research
 
 **Researched:** 2026-05-02
-**Domain:** RabbitMQ.Client v7.2.1 adapter on top of Oragon.AdaptivePool.Core (layered IConnection + IChannel pools, Testcontainers integration, bursty publisher sample)
+**Domain:** RabbitMQ.Client v7.2.1 adapter on top of Oragon.ElasticPool.Core (layered IConnection + IChannel pools, Testcontainers integration, bursty publisher sample)
 **Confidence:** HIGH (RabbitMQ v7 API and Testcontainers v4 verified live; Core API surface verified directly from Phase 1+2 source)
 
 ## Summary
 
 The RabbitMQ adapter is a thin DX layer over Core. Core already exposes everything needed
-(generic `IAdaptivePool<T>`, `Factory`/`BeforeUse`/`Check`/`Release` hooks with `CancellationToken`,
-`DiscardAndReplaceFailurePolicy<T>`, `services.AddAdaptivePool<T>(name, configure)` with named
+(generic `IElasticPool<T>`, `Factory`/`BeforeUse`/`Check`/`Release` hooks with `CancellationToken`,
+`DiscardAndReplaceFailurePolicy<T>`, `services.AddElasticPool<T>(name, configure)` with named
 keyed-singleton resolution + non-keyed fallback for `name = string.Empty`, telemetry tagged by
 `pool.name`). The adapter contributes (a) two opinionated extension methods that wire RabbitMQ-specific
 hooks into Core's builder; (b) a strict default of `AutomaticRecoveryEnabled = false`; (c) a layered
@@ -31,7 +31,7 @@ wants to avoid before publish). Document as a v2 enhancement and revisit after s
 failure modes in the integration test. This is flagged as Open Question Q1.
 
 **Primary recommendation:** Build two `Microsoft.Extensions.DependencyInjection` extension methods —
-`AddAdaptiveConnectionPool(name, configureFactory, configurePool)` and `AddAdaptiveChannelPool(name, connectionPoolName, configureChannelPool)` — that compose Core's `AddAdaptivePool<IConnection>` / `AddAdaptivePool<IChannel>` with RabbitMQ-specific hooks. Force `AutomaticRecoveryEnabled = false` with a Warning log if the consumer set it true. Pair channels with their connection lease via a `ConditionalWeakTable`. Default `MaxChannelsPerConnection = 100`. Use `RabbitMqBuilder().WithImage("rabbitmq:4-management")` + `IAsyncLifetime` for the integration test. Sample is a `BackgroundService` cycling 5 min idle → 30 s burst of 10k–100k publishes → 5 min idle.
+`AddElasticConnectionPool(name, configureFactory, configurePool)` and `AddElasticChannelPool(name, connectionPoolName, configureChannelPool)` — that compose Core's `AddElasticPool<IConnection>` / `AddElasticPool<IChannel>` with RabbitMQ-specific hooks. Force `AutomaticRecoveryEnabled = false` with a Warning log if the consumer set it true. Pair channels with their connection lease via a `ConditionalWeakTable`. Default `MaxChannelsPerConnection = 100`. Use `RabbitMqBuilder().WithImage("rabbitmq:4-management")` + `IAsyncLifetime` for the integration test. Sample is a `BackgroundService` cycling 5 min idle → 30 s burst of 10k–100k publishes → 5 min idle.
 
 ## Architectural Responsibility Map
 
@@ -42,7 +42,7 @@ failure modes in the integration test. This is flagged as Open Question Q1.
 | Health probing (IsOpen) | Adapter (BeforeUse + Check hooks) | Core (sweeper invokes Check) | Health predicate is RabbitMQ-specific; sweeper schedule is Core's |
 | Elastic grow / shrink | Core | — | Adapter is a pure consumer of Core's elasticity; no override |
 | Failure policy (discard + replace) | Core (`DiscardAndReplaceFailurePolicy<T>`) | — | Default policy works unchanged for both `IConnection` and `IChannel` |
-| DI registration | Adapter (extension methods) | Core (`AddAdaptivePool<T>`) | Adapter wraps Core's keyed-singleton DI pattern with RabbitMQ-specific configuration helpers |
+| DI registration | Adapter (extension methods) | Core (`AddElasticPool<T>`) | Adapter wraps Core's keyed-singleton DI pattern with RabbitMQ-specific configuration helpers |
 | Telemetry emission | Core (Meter + ActivitySource) | Adapter (sets `pool.name` tag) | Telemetry surface is Core's; adapter only labels its pools (`"rabbitmq.connection"`, `"rabbitmq.channel"`) |
 | Connection-spread across channels | Adapter (channel pool's Factory) | Core (grow signals trigger new factory calls) | Channel-per-connection ceiling is RabbitMQ-specific; Core has no concept |
 | Cross-pool invalidation (eager) | Adapter (DEFERRED) | — | Recommended deferred to v2 — see Open Question Q1 |
@@ -56,7 +56,7 @@ failure modes in the integration test. This is flagged as Open Question Q1.
 | `RabbitMQ.Client` | **7.2.1** | `IConnection`/`IChannel` types being pooled | Async-first v7 line; pinned in Phase 1 STACK [VERIFIED: rabbitmq.github.io API docs] |
 | `Microsoft.Extensions.DependencyInjection.Abstractions` | **10.0.6** | Adapter `services.Add...` extension surface | Already used by Core; consistent transitive surface [VERIFIED: Directory.Packages.props line 14] |
 | `Microsoft.Extensions.Logging.Abstractions` | **10.0.6** | Adapter-level Warning when AutomaticRecoveryEnabled is overridden | Already used by Core [VERIFIED: Directory.Packages.props line 13] |
-| `Microsoft.Extensions.Options` | **10.0.6** | Bind `AdaptiveConnectionPoolOptions` from `IConfiguration` (the third probe mode in CONTEXT D-IDX) | Already used by Core [VERIFIED: Directory.Packages.props line 15] |
+| `Microsoft.Extensions.Options` | **10.0.6** | Bind `ElasticConnectionPoolOptions` from `IConfiguration` (the third probe mode in CONTEXT D-IDX) | Already used by Core [VERIFIED: Directory.Packages.props line 15] |
 
 ### Supporting (test + sample only — no consumer cost)
 
@@ -78,7 +78,7 @@ failure modes in the integration test. This is flagged as Open Question Q1.
 | Instead of | Could Use | Tradeoff |
 |---|---|---|
 | `Testcontainers.RabbitMq` 4.11.0 | docker-compose + ad-hoc broker | Testcontainers is the lib's own canonical choice (docs show `RabbitMqBuilder` directly) [VERIFIED: dotnet.testcontainers.org/modules/rabbitmq/]; docker-compose adds CI/local divergence |
-| `ConditionalWeakTable<IChannel, IPoolItem<IConnection>>` | Wrapper type `ChannelLease : IChannel` (decorator) | The decorator route forces `IAdaptivePool<IChannel>` callers to receive a wrapper type, breaking the "channel just looks like an IChannel" contract. ARCHITECTURE.md explicitly chose `ConditionalWeakTable` for this reason. [CITED: .planning/research/ARCHITECTURE.md line 485] |
+| `ConditionalWeakTable<IChannel, IPoolItem<IConnection>>` | Wrapper type `ChannelLease : IChannel` (decorator) | The decorator route forces `IElasticPool<IChannel>` callers to receive a wrapper type, breaking the "channel just looks like an IChannel" contract. ARCHITECTURE.md explicitly chose `ConditionalWeakTable` for this reason. [CITED: .planning/research/ARCHITECTURE.md line 485] |
 | Forced `AutomaticRecoveryEnabled = false` (silent override) | Throw at registration if consumer set true | Throwing makes the adapter brittle for clients copying old config. CONTEXT D-AR specifies log Warning + override silently. [CITED: 03-CONTEXT.md "Connection factory configuration warning"] |
 | Eager cross-pool invalidation (callback) | Lazy invalidation only (BeforeUse re-probes) | Eager wins on latency at the cost of new Core API surface or significant adapter-side reverse-index complexity. **Phase 3 v1 ships lazy only**; eager deferred to v2. See Q1. |
 
@@ -93,11 +93,11 @@ failure modes in the integration test. This is flagged as Open Question Q1.
                                   │  await ch.Value.BasicPublishAsync(exchange, key, body, ct);
                                   ▼
         ┌───────────────────────────────────────────────────────────────┐
-        │  Oragon.AdaptivePool.RabbitMQ (this phase)                    │
+        │  Oragon.ElasticPool.RabbitMQ (this phase)                    │
         │                                                               │
         │  ┌──────────────────────┐    ┌─────────────────────────────┐  │
         │  │  Connection pool     │    │  Channel pool (LAYERED)     │  │
-        │  │  IAdaptivePool<      │◄───│  Factory(): acquires from   │  │
+        │  │  IElasticPool<      │◄───│  Factory(): acquires from   │  │
         │  │    IConnection>      │    │   connection pool, pairs    │  │
         │  │                      │    │   IChannel ↔               │  │
         │  │  Factory: connFac    │    │   IPoolItem<IConnection>    │  │
@@ -115,10 +115,10 @@ failure modes in the integration test. This is flagged as Open Question Q1.
                     │                              │
                     ▼                              ▼
         ┌──────────────────────────────────────────────────┐
-        │  Oragon.AdaptivePool.Core                        │
-        │  AdaptiveObjectPoolFactory.Build<T>(...)         │
+        │  Oragon.ElasticPool.Core                        │
+        │  ElasticObjectPoolFactory.Build<T>(...)         │
         │  Builder: .Factory/.BeforeUse/.Check/.Release    │
-        │  AddAdaptivePool<T>(name, configure)             │
+        │  AddElasticPool<T>(name, configure)             │
         │  Sweeper, elasticity, telemetry (single Meter)   │
         └──────────────────────────────────────────────────┘
                     │                              │
@@ -143,25 +143,25 @@ failure modes in the integration test. This is flagged as Open Question Q1.
 
 ```
 src/
-├── Oragon.AdaptivePool.Core/                      # existing (Phase 1+2)
-└── Oragon.AdaptivePool.RabbitMQ/                  # NEW
+├── Oragon.ElasticPool.Core/                      # existing (Phase 1+2)
+└── Oragon.ElasticPool.RabbitMQ/                  # NEW
     ├── Builder/
-    │   ├── AdaptiveConnectionPoolBuilder.cs       # connection-specific options + factory probe
-    │   └── AdaptiveChannelPoolBuilder.cs          # channel-specific options (MaxChannelsPerConnection)
+    │   ├── ElasticConnectionPoolBuilder.cs       # connection-specific options + factory probe
+    │   └── ElasticChannelPoolBuilder.cs          # channel-specific options (MaxChannelsPerConnection)
     ├── DependencyInjection/
-    │   └── ServiceCollectionExtensions.cs         # AddAdaptiveConnectionPool / AddAdaptiveChannelPool
+    │   └── ServiceCollectionExtensions.cs         # AddElasticConnectionPool / AddElasticChannelPool
     ├── Internals/
     │   └── ChannelLeasePairing.cs                 # ConditionalWeakTable wrapper utility
     ├── Options/
-    │   ├── AdaptiveConnectionPoolOptions.cs       # IOptions-bindable settings
-    │   └── AdaptiveChannelPoolOptions.cs
-    ├── Oragon.AdaptivePool.RabbitMQ.csproj
+    │   ├── ElasticConnectionPoolOptions.cs       # IOptions-bindable settings
+    │   └── ElasticChannelPoolOptions.cs
+    ├── Oragon.ElasticPool.RabbitMQ.csproj
     ├── PublicAPI.Shipped.txt
     └── PublicAPI.Unshipped.txt
 
 tests/
-├── Oragon.AdaptivePool.RabbitMQ.Tests/            # unit (NSubstitute IConnection/IChannel)
-└── Oragon.AdaptivePool.RabbitMQ.IntegrationTests/ # Testcontainers
+├── Oragon.ElasticPool.RabbitMQ.Tests/            # unit (NSubstitute IConnection/IChannel)
+└── Oragon.ElasticPool.RabbitMQ.IntegrationTests/ # Testcontainers
     ├── Fixtures/
     │   └── RabbitMqContainerFixture.cs            # IClassFixture w/ IAsyncLifetime
     ├── ConnectionPoolIntegrationTests.cs
@@ -169,36 +169,36 @@ tests/
     └── BurstyPublisherIntegrationTests.cs
 
 samples/
-└── Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/
+└── Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/
     ├── Program.cs                                 # builder.Services.Add* + console OTel exporter
     ├── BurstyPublisherWorker.cs                   # BackgroundService cycling idle→burst→idle
-    └── Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher.csproj
+    └── Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher.csproj
 ```
 
 ### Pattern 1: ConnectionPool registration (with the three-mode `IConnectionFactory` probe)
 
-**What:** `AddAdaptiveConnectionPool` resolves the `IConnectionFactory` in priority order: keyed singleton by `name` → closure callback → `IOptions<AdaptiveConnectionPoolOptions>`.
+**What:** `AddElasticConnectionPool` resolves the `IConnectionFactory` in priority order: keyed singleton by `name` → closure callback → `IOptions<ElasticConnectionPoolOptions>`.
 
-**When to use:** Every consumer call to `AddAdaptiveConnectionPool`.
+**When to use:** Every consumer call to `AddElasticConnectionPool`.
 
 **Example:**
 
 ```csharp
 // Source: Phase 1 ServiceCollectionExtensions pattern + RabbitMQ.Client v7 docs.
-public static IServiceCollection AddAdaptiveConnectionPool(
+public static IServiceCollection AddElasticConnectionPool(
     this IServiceCollection services,
     string name,
     Action<ConnectionFactory>? configureFactory,
-    Action<AdaptiveConnectionPoolBuilder> configurePool)
+    Action<ElasticConnectionPoolBuilder> configurePool)
 {
     ArgumentNullException.ThrowIfNull(services);
     ArgumentNullException.ThrowIfNull(name);
     ArgumentNullException.ThrowIfNull(configurePool);
 
-    var poolBuilder = new AdaptiveConnectionPoolBuilder();
+    var poolBuilder = new ElasticConnectionPoolBuilder();
     configurePool(poolBuilder);
 
-    services.AddAdaptivePool<IConnection>(name, builder =>
+    services.AddElasticPool<IConnection>(name, builder =>
     {
         builder
             .Factory(async (sp, ct) =>
@@ -240,7 +240,7 @@ private static IConnectionFactory ResolveConnectionFactory(
     }
 
     // 3) IOptions binding
-    var opts = sp.GetService<IOptionsMonitor<AdaptiveConnectionPoolOptions>>()?.Get(name);
+    var opts = sp.GetService<IOptionsMonitor<ElasticConnectionPoolOptions>>()?.Get(name);
     if (opts is not null && !string.IsNullOrEmpty(opts.HostName))
     {
         return new ConnectionFactory
@@ -255,7 +255,7 @@ private static IConnectionFactory ResolveConnectionFactory(
     }
 
     throw new InvalidOperationException(
-        $"AddAdaptiveConnectionPool: no IConnectionFactory found for pool '{name}'. " +
+        $"AddElasticConnectionPool: no IConnectionFactory found for pool '{name}'. " +
         "Provide one via keyed singleton, configureFactory closure, or IOptions binding.");
 }
 
@@ -264,10 +264,10 @@ private static void ForceAutomaticRecoveryDisabled(IConnectionFactory factory, I
     if (factory is ConnectionFactory cf && cf.AutomaticRecoveryEnabled)
     {
         sp.GetService<ILoggerFactory>()
-          ?.CreateLogger("Oragon.AdaptivePool.RabbitMQ")
+          ?.CreateLogger("Oragon.ElasticPool.RabbitMQ")
            .LogWarning(
                "AutomaticRecoveryEnabled was true on the configured ConnectionFactory; " +
-               "Oragon.AdaptivePool overrides this to false (the pool owns lifecycle). " +
+               "Oragon.ElasticPool overrides this to false (the pool owns lifecycle). " +
                "See https://github.com/.../docs/automatic-recovery.md");
         cf.AutomaticRecoveryEnabled = false;
     }
@@ -276,7 +276,7 @@ private static void ForceAutomaticRecoveryDisabled(IConnectionFactory factory, I
 
 [VERIFIED: ConnectionFactory.CreateConnectionAsync signature has overload `CreateConnectionAsync(CancellationToken cancellationToken = default)` — confirmed via rabbitmq.github.io/rabbitmq-dotnet-client/api/RabbitMQ.Client.ConnectionFactory.html]
 [VERIFIED: AutomaticRecoveryEnabled is a settable `bool` property defaulting to `true` — confirmed via same source]
-[VERIFIED: Phase 1 `AddAdaptivePool<T>(name, configure)` accepts `Action<AdaptivePoolBuilder<T>>` — confirmed via src/Oragon.AdaptivePool.Core/DependencyInjection/ServiceCollectionExtensions.cs:16]
+[VERIFIED: Phase 1 `AddElasticPool<T>(name, configure)` accepts `Action<ElasticPoolBuilder<T>>` — confirmed via src/Oragon.ElasticPool.Core/DependencyInjection/ServiceCollectionExtensions.cs:16]
 
 ### Pattern 2: ChannelPool registration (LAYERED — Factory acquires from connection pool)
 
@@ -288,28 +288,28 @@ private static void ForceAutomaticRecoveryDisabled(IConnectionFactory factory, I
 
 ```csharp
 // Source: ARCHITECTURE.md "Adapter Composition" section, adapted to Core's actual API.
-public static IServiceCollection AddAdaptiveChannelPool(
+public static IServiceCollection AddElasticChannelPool(
     this IServiceCollection services,
     string name,
     string connectionPoolName,
-    Action<AdaptiveChannelPoolBuilder> configure)
+    Action<ElasticChannelPoolBuilder> configure)
 {
     ArgumentNullException.ThrowIfNull(services);
     ArgumentNullException.ThrowIfNull(configure);
 
-    var chBuilder = new AdaptiveChannelPoolBuilder();
+    var chBuilder = new ElasticChannelPoolBuilder();
     configure(chBuilder);
 
-    // ConditionalWeakTable lives in the closure captured by the AddAdaptivePool delegate.
+    // ConditionalWeakTable lives in the closure captured by the AddElasticPool delegate.
     // It is created once per pool instance — same lifetime as the pool itself.
     var leaseMap = new ConditionalWeakTable<IChannel, IPoolItem<IConnection>>();
 
-    services.AddAdaptivePool<IChannel>(name, builder =>
+    services.AddElasticPool<IChannel>(name, builder =>
     {
         builder
             .Factory(async (sp, ct) =>
             {
-                var connectionPool = sp.GetRequiredKeyedService<IAdaptivePool<IConnection>>(connectionPoolName);
+                var connectionPool = sp.GetRequiredKeyedService<IElasticPool<IConnection>>(connectionPoolName);
                 var connLease = await connectionPool.AcquireAsync(ct).ConfigureAwait(false);
                 try
                 {
@@ -352,9 +352,9 @@ public static IServiceCollection AddAdaptiveChannelPool(
 ```
 
 [VERIFIED: `IConnection.CreateChannelAsync(CreateChannelOptions? options = null, CancellationToken cancellationToken = default)` — confirmed via WebSearch on rabbitmq.github.io API docs]
-[VERIFIED: Core's `IAdaptivePool<T>.AcquireAsync(CancellationToken)` returns `ValueTask<IPoolItem<T>>` — src/Oragon.AdaptivePool.Core/Abstractions/IAdaptivePool.cs:32]
-[VERIFIED: Core's `IPoolItem<T>` exposes `.Value` (NOT `.Object` as ARCHITECTURE.md draft showed) — src/Oragon.AdaptivePool.Core/Abstractions/IPoolItem.cs:9. The ARCHITECTURE.md sample is stale on this naming.]
-[VERIFIED: Core's `name`-based DI uses `services.GetRequiredKeyedService<IAdaptivePool<T>>(name)` — confirmed via ServiceCollectionExtensions.cs:39]
+[VERIFIED: Core's `IElasticPool<T>.AcquireAsync(CancellationToken)` returns `ValueTask<IPoolItem<T>>` — src/Oragon.ElasticPool.Core/Abstractions/IElasticPool.cs:32]
+[VERIFIED: Core's `IPoolItem<T>` exposes `.Value` (NOT `.Object` as ARCHITECTURE.md draft showed) — src/Oragon.ElasticPool.Core/Abstractions/IPoolItem.cs:9. The ARCHITECTURE.md sample is stale on this naming.]
+[VERIFIED: Core's `name`-based DI uses `services.GetRequiredKeyedService<IElasticPool<T>>(name)` — confirmed via ServiceCollectionExtensions.cs:39]
 
 ### Pattern 3: `CreateChannelOptions` defaults (per CONTEXT and Pitfall 13)
 
@@ -364,7 +364,7 @@ public static IServiceCollection AddAdaptiveChannelPool(
 
 ```csharp
 // Source: rabbitmq.github.io API docs (verified) — CreateChannelOptions ctor.
-public sealed class AdaptiveChannelPoolBuilder
+public sealed class ElasticChannelPoolBuilder
 {
     public CreateChannelOptions ChannelOptions { get; private set; } =
         new CreateChannelOptions(
@@ -373,7 +373,7 @@ public sealed class AdaptiveChannelPoolBuilder
             outstandingPublisherConfirmationsRateLimiter: null,
             consumerDispatchConcurrency: 1);
 
-    public AdaptiveChannelPoolBuilder WithChannelOptions(CreateChannelOptions options)
+    public ElasticChannelPoolBuilder WithChannelOptions(CreateChannelOptions options)
     { ChannelOptions = options ?? throw new ArgumentNullException(nameof(options)); return this; }
     // ... MinSize / MaxSize / InitialSize / IdleTimeout / MaxChannelsPerConnection
 }
@@ -412,13 +412,13 @@ public sealed class ConnectionPoolIntegrationTests(RabbitMqContainerFixture fx)
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddAdaptiveConnectionPool(
+        services.AddElasticConnectionPool(
             name: "default",
             configureFactory: f => f.Uri = new Uri(fx.ConnectionString),
             configurePool: p => p.WithBounds(min: 0, max: 4, initial: 1));
 
         await using var sp = services.BuildServiceProvider();
-        var pool = sp.GetRequiredKeyedService<IAdaptivePool<IConnection>>("default");
+        var pool = sp.GetRequiredKeyedService<IElasticPool<IConnection>>("default");
 
         await using (var lease = await pool.AcquireAsync(TestContext.Current.CancellationToken))
         {
@@ -443,11 +443,11 @@ public sealed class ConnectionPoolIntegrationTests(RabbitMqContainerFixture fx)
 ```csharp
 // Source: Composed from RabbitMQ tutorial-seven-dotnet + sister Oragon.RabbitMQ conventions.
 public sealed class BurstyPublisherWorker(
-    [FromKeyedServices("default")] IAdaptivePool<IChannel> channelPool,
+    [FromKeyedServices("default")] IElasticPool<IChannel> channelPool,
     ILogger<BurstyPublisherWorker> logger)
     : BackgroundService
 {
-    private const string Exchange = "oragon.adaptivepool.sample";
+    private const string Exchange = "oragon.elasticpool.sample";
     private const string RoutingKey = "bursty.demo";
 
     protected override async Task ExecuteAsync(CancellationToken ct)
@@ -459,11 +459,11 @@ public sealed class BurstyPublisherWorker(
                 Exchange, ExchangeType.Direct, durable: true, autoDelete: false,
                 arguments: null, cancellationToken: ct);
             await setup.Value.QueueDeclareAsync(
-                queue: "oragon.adaptivepool.sample.queue",
+                queue: "oragon.elasticpool.sample.queue",
                 durable: true, exclusive: false, autoDelete: false,
                 arguments: null, cancellationToken: ct);
             await setup.Value.QueueBindAsync(
-                queue: "oragon.adaptivepool.sample.queue",
+                queue: "oragon.elasticpool.sample.queue",
                 exchange: Exchange, routingKey: RoutingKey,
                 arguments: null, cancellationToken: ct);
         }
@@ -530,7 +530,7 @@ These are extracted from `.planning/research/PITFALLS.md` (Pitfalls 9–13 are R
 
 ### Pitfall A: AutomaticRecoveryEnabled vs pool's discard-replace (Pitfall 9)
 
-**Mitigation:** `AddAdaptiveConnectionPool` overrides `factory.AutomaticRecoveryEnabled = false` after the consumer's `configureFactory` runs. Logs Warning if previously true. Document in XML doc on the extension method and in README.
+**Mitigation:** `AddElasticConnectionPool` overrides `factory.AutomaticRecoveryEnabled = false` after the consumer's `configureFactory` runs. Logs Warning if previously true. Document in XML doc on the extension method and in README.
 
 ### Pitfall B: Channel sharing for concurrent publishing (Pitfall 10)
 
@@ -539,7 +539,7 @@ These are extracted from `.planning/research/PITFALLS.md` (Pitfalls 9–13 are R
 ### Pitfall C: Channel-per-connection ceiling (Pitfall 11)
 
 **Mitigation:**
-1. `AdaptiveChannelPoolBuilder.MaxChannelsPerConnection` (default 100, soft limit, well below broker's 2047 default).
+1. `ElasticChannelPoolBuilder.MaxChannelsPerConnection` (default 100, soft limit, well below broker's 2047 default).
 2. Channel pool's Factory hook tracks "channels per connection" via `ConcurrentDictionary<IConnection, int>`. When the leased connection is at limit, the factory calls `connectionPool.AcquireAsync` again to get a different connection, releasing the saturated one back. **The simple version (no tracking) is acceptable for v1**: relying on the connection pool's own elasticity to grow when channel pool growth pressure cascades — but document the tradeoff. The spread-test (`channel_max=10`) below validates this.
 3. Integration test forces low `channel_max=10` via Testcontainers env var (`RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS` or `definitions.json`) and asserts connection count > 1 when publishing 50 simultaneously.
 
@@ -615,7 +615,7 @@ These are extracted from `.planning/research/PITFALLS.md` (Pitfalls 9–13 are R
 
 **What's unclear:**
 - Is the eager path needed for v1, or does the lazy path satisfy REQ-RMQ-02 success criteria?
-- If eager IS needed, is the right shape (a) a new public Core API (`IAdaptivePool<T>.ItemDiscarded` event), or (b) a private adapter-side reverse-index (`ConcurrentDictionary<IConnection, ImmutableHashSet<IChannel>>`)?
+- If eager IS needed, is the right shape (a) a new public Core API (`IElasticPool<T>.ItemDiscarded` event), or (b) a private adapter-side reverse-index (`ConcurrentDictionary<IConnection, ImmutableHashSet<IChannel>>`)?
 
 **Recommendation:** **Ship lazy-only for Phase 3 v1.** Rationale:
 1. CONTEXT.md success criterion 5 explicitly says: "If any Core API gap is surfaced ... it is resolved by refactoring Core BEFORE proceeding to Phase 4 — adapter does NOT add Core abstractions itself." Choosing eager forces a Core API decision; choosing lazy first lets the integration test reveal whether the gap is real.
@@ -667,13 +667,13 @@ These are extracted from `.planning/research/PITFALLS.md` (Pitfalls 9–13 are R
 - **`AutomaticRecoveryEnabled = false` always**, with Warning log on override.
 - **Cross-pool channel-orphan handling:** notify channel pool when connection discarded — but per Q1, the **lazy** form ships in v1 and the eager form is deferred unless integration test surfaces a defect.
 - **DI extension surface:**
-  - `services.AddAdaptiveConnectionPool(name, configureFactory, configurePool)`
-  - `services.AddAdaptiveChannelPool(name, connectionPoolName, configureChannelPool)`
+  - `services.AddElasticConnectionPool(name, configureFactory, configurePool)`
+  - `services.AddElasticChannelPool(name, connectionPoolName, configureChannelPool)`
 - **3-mode `IConnectionFactory` resolution** in priority order: keyed singleton → closure → IOptions.
 - **`pool.name` default = `string.Empty`** (consistent with Core).
 - **Testcontainers image:** `rabbitmq:4-management`.
 - **Fixture pattern:** `IClassFixture<RabbitMqContainer>` per test class.
-- **Sample location:** `samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/`.
+- **Sample location:** `samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/`.
 - **Sample scenario:** 5 min idle → 30 s burst of ~100k → 5 min idle, repeated 3×.
 - **`AfterUse` hook MUST NOT swallow publisher-confirms exceptions** (per Pitfall 12 reasoning).
 - **Conventions aligned with sister `Oragon.RabbitMQ`:** fluent builder, factory pattern, DI-first, RabbitMQ.Client v7+ async-first.
@@ -683,15 +683,15 @@ These are extracted from `.planning/research/PITFALLS.md` (Pitfalls 9–13 are R
 - **Cross-pool invalidation shape:** *Recommendation* — lazy `BeforeUse` re-probe via weak-table for v1; eager callback deferred to v2 unless integration test forces it (Q1).
 - **Warning message + log level for AutomaticRecoveryEnabled override:** *Recommendation* — `LogLevel.Warning`, message points at a docs URL.
 - **3-mode probe strategy:** *Recommendation* — runtime check inside the `Factory` delegate (probe each mode in order, throw if all three fail with a clear message). Avoid `IServiceCollection` scan at registration time — it adds complexity for little benefit.
-- **Naming `AdaptiveConnectionPoolOptions` / `AdaptiveChannelPoolOptions`:** *Recommendation* — match Core convention (`AdaptivePoolOptions<T>` is internal-ish, public surface is the builder). Use the names verbatim — they read naturally and self-document.
-- **Sample message shape:** *Recommendation* — small JSON `{Idx, Cycle}` (~30 bytes), exchange `"oragon.adaptivepool.sample"`, queue `"oragon.adaptivepool.sample.queue"`, durable + classic queue (avoid quorum for the demo — quorum requires 3-node cluster). Exchange type direct.
+- **Naming `ElasticConnectionPoolOptions` / `ElasticChannelPoolOptions`:** *Recommendation* — match Core convention (`ElasticPoolOptions<T>` is internal-ish, public surface is the builder). Use the names verbatim — they read naturally and self-document.
+- **Sample message shape:** *Recommendation* — small JSON `{Idx, Cycle}` (~30 bytes), exchange `"oragon.elasticpool.sample"`, queue `"oragon.elasticpool.sample.queue"`, durable + classic queue (avoid quorum for the demo — quorum requires 3-node cluster). Exchange type direct.
 - **Whether to expose `ConnectionFactoryDefaults` helper:** *Recommendation* — **NO** (see Q3).
 
 ### Deferred Ideas (OUT OF SCOPE for Phase 3)
 
 - HttpClient adapter
 - Npgsql/DbConnection adapter
-- Aspire integration package `Oragon.AdaptivePool.RabbitMQ.AspireClient`
+- Aspire integration package `Oragon.ElasticPool.RabbitMQ.AspireClient`
 - Per-tenant/keyed sub-pools (vhost-keyed)
 - Built-in publisher confirms wrapper (adapter doesn't interfere with confirms; AfterUse never swallows confirm exceptions)
 - Connection string parsing helper
@@ -704,22 +704,22 @@ These are extracted from `.planning/research/PITFALLS.md` (Pitfalls 9–13 are R
 
 | ID | Description | Research Support |
 |---|---|---|
-| RMQ-01 | `services.AddAdaptiveConnectionPool(name, configure)` configuring pool of `IConnection` with `BeforeUse`/`Check` baseados em `IsOpen`, `Release` chamando `CloseAsync()`, e `AutomaticRecoveryEnabled = false` por padrão | Architecture Pattern 1 (full code sketch); Pitfall A mitigation; verified RabbitMQ.Client API for IsOpen + CloseAsync + AutomaticRecoveryEnabled |
-| RMQ-02 | `services.AddAdaptiveChannelPool(name, configure)` configurando pool de `IChannel` em camada (factory adquire connection do pool interno via `ConditionalWeakTable` para pareamento, release fecha channel e devolve connection) | Architecture Pattern 2 (full code sketch); Pitfall C mitigation; verified Core's `IPoolItem<T>.Value` API |
+| RMQ-01 | `services.AddElasticConnectionPool(name, configure)` configuring pool of `IConnection` with `BeforeUse`/`Check` baseados em `IsOpen`, `Release` chamando `CloseAsync()`, e `AutomaticRecoveryEnabled = false` por padrão | Architecture Pattern 1 (full code sketch); Pitfall A mitigation; verified RabbitMQ.Client API for IsOpen + CloseAsync + AutomaticRecoveryEnabled |
+| RMQ-02 | `services.AddElasticChannelPool(name, configure)` configurando pool de `IChannel` em camada (factory adquire connection do pool interno via `ConditionalWeakTable` para pareamento, release fecha channel e devolve connection) | Architecture Pattern 2 (full code sketch); Pitfall C mitigation; verified Core's `IPoolItem<T>.Value` API |
 | RMQ-03 | Sample executável publicador-bursty demonstrando ciclo "algumas/hora → centenas-de-milhares simultâneas → ocioso" usando o pool em camadas | Architecture Pattern 5 (full BackgroundService sketch); Testcontainers Pattern 4 for end-to-end runnable; project structure section |
-| RMQ-04 | Convenções de nomenclatura, builder, e DI consistentes com `Oragon.RabbitMQ` (sister library para o lado consumidor) | Pattern 1+2 follow `services.AddAdaptive...` naming; fluent builder mirrors Core's `AdaptivePoolBuilder<T>`; namespace `Oragon.AdaptivePool.RabbitMQ.*` matches sister-library prefix |
+| RMQ-04 | Convenções de nomenclatura, builder, e DI consistentes com `Oragon.RabbitMQ` (sister library para o lado consumidor) | Pattern 1+2 follow `services.AddElastic...` naming; fluent builder mirrors Core's `ElasticPoolBuilder<T>`; namespace `Oragon.ElasticPool.RabbitMQ.*` matches sister-library prefix |
 
 ## Sources
 
 ### Primary (HIGH confidence)
 
 - **Core source code (verified directly):**
-  - `src/Oragon.AdaptivePool.Core/Abstractions/IAdaptivePool.cs` — `IAdaptivePool<T>` surface (Acquire, AcquireAsync, MaxSize/MinSize/Available/InUse, ReadyAsync)
-  - `src/Oragon.AdaptivePool.Core/Abstractions/IPoolItem.cs` — `.Value` property (NOT `.Object`)
-  - `src/Oragon.AdaptivePool.Core/Abstractions/PoolState.cs` — `Healthy` / `Unhealthy` enum
-  - `src/Oragon.AdaptivePool.Core/Hooks/HookDelegates.cs` — exact delegate signatures (all `ValueTask`-returning, `CancellationToken`-accepting, `BeforeUse` returns `PoolState`)
-  - `src/Oragon.AdaptivePool.Core/DependencyInjection/ServiceCollectionExtensions.cs` — keyed-singleton + non-keyed fallback for empty name
-  - `src/Oragon.AdaptivePool.Core/Builder/AdaptivePoolBuilder.cs` — fluent surface (Factory, BeforeUse, Check, AfterUse, Release, WithBounds, IdleTimeout, etc.)
+  - `src/Oragon.ElasticPool.Core/Abstractions/IElasticPool.cs` — `IElasticPool<T>` surface (Acquire, AcquireAsync, MaxSize/MinSize/Available/InUse, ReadyAsync)
+  - `src/Oragon.ElasticPool.Core/Abstractions/IPoolItem.cs` — `.Value` property (NOT `.Object`)
+  - `src/Oragon.ElasticPool.Core/Abstractions/PoolState.cs` — `Healthy` / `Unhealthy` enum
+  - `src/Oragon.ElasticPool.Core/Hooks/HookDelegates.cs` — exact delegate signatures (all `ValueTask`-returning, `CancellationToken`-accepting, `BeforeUse` returns `PoolState`)
+  - `src/Oragon.ElasticPool.Core/DependencyInjection/ServiceCollectionExtensions.cs` — keyed-singleton + non-keyed fallback for empty name
+  - `src/Oragon.ElasticPool.Core/Builder/ElasticPoolBuilder.cs` — fluent surface (Factory, BeforeUse, Check, AfterUse, Release, WithBounds, IdleTimeout, etc.)
   - `Directory.Packages.props` — actual versions (xunit.v3 3.2.2, AwesomeAssertions 9.4.0, M.E.* 10.0.6, Hosting present)
 - **CONTEXT.md** (`.planning/phases/03-rabbitmq-adapter/03-CONTEXT.md`) — locked decisions
 - **ARCHITECTURE.md** (`.planning/research/ARCHITECTURE.md` lines 368–488) — adapter composition pattern (note: uses outdated `.Object` naming — corrected to `.Value` in this research)

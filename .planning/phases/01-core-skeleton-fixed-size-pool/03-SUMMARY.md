@@ -4,11 +4,11 @@ plan: 03
 subsystem: core-tests
 tags: [tests, stress, coverage, ci, telemetry-tests, di-tests, awesomeassertions, nsubstitute, metriccollector]
 requires:
-  - Plan 02 sealed AdaptivePool<T> engine + 12 public types + DI extension (Channel direct-handoff waiter, Interlocked counter rollback, idempotent Dispose, IMeterFactory + Counter<long> emitters, source-gen [LoggerMessage] partial class, AddAdaptivePool<T>(name, configure) keyed/non-keyed)
+  - Plan 02 sealed ElasticPool<T> engine + 12 public types + DI extension (Channel direct-handoff waiter, Interlocked counter rollback, idempotent Dispose, IMeterFactory + Counter<long> emitters, source-gen [LoggerMessage] partial class, AddElasticPool<T>(name, configure) keyed/non-keyed)
 provides:
-  - 13 unit-test files (62 + 8 closing tests = 70 [Fact]/[Theory] tests) under tests/Oragon.AdaptivePool.Core.Tests/, organized by Builder/Pool/DependencyInjection/Telemetry/TimeProvider/TestSupport
-  - PingPongStressTest in tests/Oragon.AdaptivePool.Core.Stress/ — MaxSize=1 with 256 threads × 40 iterations under 25 s logical watchdog and 5 s per-call timeout (Phase 1 anchor gate per ROADMAP success criterion 2)
-  - 90 % line-coverage gate on `Oragon.AdaptivePool.Core` enforced in CI (`.github/workflows/build.yml`) via coverlet.console + reportgenerator with `+Oragon.AdaptivePool.Core` filter
+  - 13 unit-test files (62 + 8 closing tests = 70 [Fact]/[Theory] tests) under tests/Oragon.ElasticPool.Core.Tests/, organized by Builder/Pool/DependencyInjection/Telemetry/TimeProvider/TestSupport
+  - PingPongStressTest in tests/Oragon.ElasticPool.Core.Stress/ — MaxSize=1 with 256 threads × 40 iterations under 25 s logical watchdog and 5 s per-call timeout (Phase 1 anchor gate per ROADMAP success criterion 2)
+  - 90 % line-coverage gate on `Oragon.ElasticPool.Core` enforced in CI (`.github/workflows/build.yml`) via coverlet.console + reportgenerator with `+Oragon.ElasticPool.Core` filter
   - Stress project still excluded from CI default per CONTEXT.md
   - Reusable test infrastructure for Phase 2 (FakeTimeProvider injection point exercised, MetricCollector pattern, NSubstitute on IItemFailurePolicy<T>)
 affects:
@@ -19,7 +19,7 @@ tech-stack:
   added:
     - Microsoft.Extensions.Diagnostics 10.0.6 (CPM) — required to register IMeterFactory via services.AddMetrics(); not present in Plan 01 because TelemetryEmitter falls back to `new Meter` and Plan 01 had no telemetry tests
     - coverlet.console 10.0.0 (CI global tool) — wraps `dotnet <testdll>` to collect cobertura without going through `dotnet test --collect`, which the MTP runner does not honor (RESEARCH Pitfall 7)
-    - dotnet-reportgenerator-globaltool 5.5.9 (CI global tool) — parses cobertura, applies `+Oragon.AdaptivePool.Core` assembly filter, emits TextSummary for the 90 % gate
+    - dotnet-reportgenerator-globaltool 5.5.9 (CI global tool) — parses cobertura, applies `+Oragon.ElasticPool.Core` assembly filter, emits TextSummary for the 90 % gate
   patterns:
     - Coverlet "data-collector" path implemented via console-tool wrapper rather than VSTest `--collect:"XPlat Code Coverage"`; resilient under MTP and avoids the `--report-trx` injection failure
     - MetricCollector<long> + IMeterFactory tagged measurement assertions (vs. ad-hoc MeterListener) — establishes the canonical telemetry-test pattern for Phase 2
@@ -28,34 +28,34 @@ tech-stack:
     - GC.Collect/WaitForPendingFinalizers handshake in FinalizerTests — assertion is loose because finalizers are not deterministic (PITFALLS Pitfall 4); covers the path without flake-prone strict assertions
 key-files:
   created:
-    - tests/Oragon.AdaptivePool.Core.Tests/TestSupport/Resource.cs
-    - tests/Oragon.AdaptivePool.Core.Tests/Builder/BuilderValidationTests.cs
-    - tests/Oragon.AdaptivePool.Core.Tests/Pool/AcquireAndReturnTests.cs
-    - tests/Oragon.AdaptivePool.Core.Tests/Pool/PoolItemDisposeTests.cs
-    - tests/Oragon.AdaptivePool.Core.Tests/Pool/FactoryFailureTests.cs
-    - tests/Oragon.AdaptivePool.Core.Tests/Pool/BeforeUseUnhealthyTests.cs
-    - tests/Oragon.AdaptivePool.Core.Tests/Pool/WaitBehaviorTests.cs
-    - tests/Oragon.AdaptivePool.Core.Tests/Pool/WarmupAndBoundsTests.cs
-    - tests/Oragon.AdaptivePool.Core.Tests/Pool/DisposeDrainTests.cs
-    - tests/Oragon.AdaptivePool.Core.Tests/Pool/AfterUseAndExceptionTests.cs
-    - tests/Oragon.AdaptivePool.Core.Tests/Pool/FinalizerTests.cs
-    - tests/Oragon.AdaptivePool.Core.Tests/DependencyInjection/ServiceCollectionExtensionsTests.cs
-    - tests/Oragon.AdaptivePool.Core.Tests/Telemetry/MeterAndCounterTests.cs
-    - tests/Oragon.AdaptivePool.Core.Tests/TimeProvider/TimeProviderInjectionTests.cs
-    - tests/Oragon.AdaptivePool.Core.Stress/PingPongStressTest.cs
+    - tests/Oragon.ElasticPool.Core.Tests/TestSupport/Resource.cs
+    - tests/Oragon.ElasticPool.Core.Tests/Builder/BuilderValidationTests.cs
+    - tests/Oragon.ElasticPool.Core.Tests/Pool/AcquireAndReturnTests.cs
+    - tests/Oragon.ElasticPool.Core.Tests/Pool/PoolItemDisposeTests.cs
+    - tests/Oragon.ElasticPool.Core.Tests/Pool/FactoryFailureTests.cs
+    - tests/Oragon.ElasticPool.Core.Tests/Pool/BeforeUseUnhealthyTests.cs
+    - tests/Oragon.ElasticPool.Core.Tests/Pool/WaitBehaviorTests.cs
+    - tests/Oragon.ElasticPool.Core.Tests/Pool/WarmupAndBoundsTests.cs
+    - tests/Oragon.ElasticPool.Core.Tests/Pool/DisposeDrainTests.cs
+    - tests/Oragon.ElasticPool.Core.Tests/Pool/AfterUseAndExceptionTests.cs
+    - tests/Oragon.ElasticPool.Core.Tests/Pool/FinalizerTests.cs
+    - tests/Oragon.ElasticPool.Core.Tests/DependencyInjection/ServiceCollectionExtensionsTests.cs
+    - tests/Oragon.ElasticPool.Core.Tests/Telemetry/MeterAndCounterTests.cs
+    - tests/Oragon.ElasticPool.Core.Tests/TimeProvider/TimeProviderInjectionTests.cs
+    - tests/Oragon.ElasticPool.Core.Stress/PingPongStressTest.cs
   modified:
-    - tests/Oragon.AdaptivePool.Core.Tests/PlaceholderSmokeTest.cs (replaced trivial placeholder with full DI roundtrip smoke)
-    - tests/Oragon.AdaptivePool.Core.Tests/Oragon.AdaptivePool.Core.Tests.csproj (added Microsoft.Extensions.Diagnostics package reference + xUnit1051 NoWarn)
-    - tests/Oragon.AdaptivePool.Core.Stress/Oragon.AdaptivePool.Core.Stress.csproj (xUnit1051 NoWarn)
-    - tests/Oragon.AdaptivePool.Core.Stress/PlaceholderStressFact.cs (reduced to comment-only sentinel)
+    - tests/Oragon.ElasticPool.Core.Tests/PlaceholderSmokeTest.cs (replaced trivial placeholder with full DI roundtrip smoke)
+    - tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj (added Microsoft.Extensions.Diagnostics package reference + xUnit1051 NoWarn)
+    - tests/Oragon.ElasticPool.Core.Stress/Oragon.ElasticPool.Core.Stress.csproj (xUnit1051 NoWarn)
+    - tests/Oragon.ElasticPool.Core.Stress/PlaceholderStressFact.cs (reduced to comment-only sentinel)
     - Directory.Packages.props (pinned Microsoft.Extensions.Diagnostics 10.0.6)
-    - .github/workflows/build.yml (coverlet.console + reportgenerator + 90 % line gate restricted to `+Oragon.AdaptivePool.Core`)
+    - .github/workflows/build.yml (coverlet.console + reportgenerator + 90 % line gate restricted to `+Oragon.ElasticPool.Core`)
 decisions:
-  - Coverage gate uses coverlet.console wrapped over `dotnet <testdll>` rather than `dotnet test --collect:"XPlat Code Coverage"`. MTP runner injects `--report-trx` which is unsupported by `Oragon.AdaptivePool.Core.Tests.dll`, so VSTest-style collection fails. The console-tool path is functionally equivalent and matches the intent of CONTEXT.md (data-collector path via coverlet).
+  - Coverage gate uses coverlet.console wrapped over `dotnet <testdll>` rather than `dotnet test --collect:"XPlat Code Coverage"`. MTP runner injects `--report-trx` which is unsupported by `Oragon.ElasticPool.Core.Tests.dll`, so VSTest-style collection fails. The console-tool path is functionally equivalent and matches the intent of CONTEXT.md (data-collector path via coverlet).
   - xUnit1051 (advisory: thread `TestContext.Current.CancellationToken` through every CT-accepting call) is suppressed at the test-project level via `<NoWarn>$(NoWarn);xUnit1051</NoWarn>`. The analyzer became fatal because `Directory.Build.props` sets `TreatWarningsAsErrors=true`. Tests already manage their own CTS lifetimes for cancellation-matrix tests; the indirection adds noise without behavioral benefit. Same suppression applied to the Stress csproj for the per-acquire timeout pattern.
   - The shared `TestSupport/Resource` POCO is **public** (not `internal`) — Castle DynamicProxy via NSubstitute requires the substituted-type's generic argument to be accessible; making the test assembly add `[InternalsVisibleTo("DynamicProxyGenAssembly2")]` was rejected as ceremony for a 6-line stand-in.
   - No `[ExcludeFromCodeCoverage]` markers were added. Plan 03 explicitly said "apply them only if necessary AFTER attempting genuine coverage". The closing tests (AfterUseAndExceptionTests, FinalizerTests) lifted line coverage from 84.09 % to 92.85 %, comfortably above the 90 % gate, without resorting to attribute suppression. Lines that remain uncovered are: the reflection-based `IHostApplicationLifetime` probe in `ServiceCollectionExtensions` (requires a real host), specific source-gen `IsEnabled`-short-circuit branches in `LoggerMessage.g.cs` (hit only when a log filter excludes the level), and the few defensive `catch` branches inside the engine's race-condition recovery paths.
-  - The Stress project is run **manually**, not in CI default. The build.yml workflow only invokes `tests/Oragon.AdaptivePool.Core.Tests/...csproj`. A nightly stress job is part of Phase 4 (OSS-01 expansion).
+  - The Stress project is run **manually**, not in CI default. The build.yml workflow only invokes `tests/Oragon.ElasticPool.Core.Tests/...csproj`. A nightly stress job is part of Phase 4 (OSS-01 expansion).
 metrics:
   duration: ~22m
   completed: 2026-05-03
@@ -72,13 +72,13 @@ metrics:
 
 # Phase 1 Plan 03: Tests + Stress + Coverage Gate Summary
 
-**One-liner:** Converted every Phase 1 must-have truth into automated tests (70 unit tests across 13 files), shipped the anchor `MaxSize=1` 256-thread × 40-iteration ping-pong stress test (passes in ~300 ms), and wired a 90 % line-coverage gate on `Oragon.AdaptivePool.Core` into CI via coverlet.console + reportgenerator (achieved 92.8 %). Every Phase 1 ROADMAP success criterion (1–6) is now backed by at least one passing test on net8.0/net9.0/net10.0.
+**One-liner:** Converted every Phase 1 must-have truth into automated tests (70 unit tests across 13 files), shipped the anchor `MaxSize=1` 256-thread × 40-iteration ping-pong stress test (passes in ~300 ms), and wired a 90 % line-coverage gate on `Oragon.ElasticPool.Core` into CI via coverlet.console + reportgenerator (achieved 92.8 %). Every Phase 1 ROADMAP success criterion (1–6) is now backed by at least one passing test on net8.0/net9.0/net10.0.
 
 ## What Was Built
 
 ### Task 1 — Unit test suite (commit 58c0916)
 
-13 .cs files under `tests/Oragon.AdaptivePool.Core.Tests/` (incl. shared `TestSupport/Resource.cs` POCO):
+13 .cs files under `tests/Oragon.ElasticPool.Core.Tests/` (incl. shared `TestSupport/Resource.cs` POCO):
 
 | File | Tests | Covers |
 | --- | ---: | --- |
@@ -91,17 +91,17 @@ metrics:
 | `Pool/WarmupAndBoundsTests.cs` | 5 | `ReadyAsync` completes after `InitialSize` items created, propagates Factory exceptions, dispose-during-warmup cancels, `InitialSize=0` skips factory entirely, `ReadyAsync` is reusable |
 | `Pool/DisposeDrainTests.cs` | 5 | `DisposeAsync` invokes Release on every idle entry, post-dispose Acquire throws `ObjectDisposedException`, double-DisposeAsync idempotent, sync `Dispose()` drains within 5 s, parked waiters cancelled on dispose |
 | `Pool/AfterUseAndExceptionTests.cs` | 8 | (Closing tests) AfterUse Healthy/Unhealthy/throws paths, `PoolExhaustedException` ctor matrix (with/without WaitTime), DisposeAsync continues drain through Release-throw, in-flight item disposed after pool dispose triggers `TryReleaseFireAndForget` |
-| `Pool/FinalizerTests.cs` | 1 | (Closing test) Best-effort GC handshake exercising the `~PoolItem()` finalizer + `AdaptivePool.ReturnFromFinalizer` path |
+| `Pool/FinalizerTests.cs` | 1 | (Closing test) Best-effort GC handshake exercising the `~PoolItem()` finalizer + `ElasticPool.ReturnFromFinalizer` path |
 | `DependencyInjection/ServiceCollectionExtensionsTests.cs` | 6 | Default-name (`string.Empty`) registers BOTH keyed and non-keyed (same singleton), named-only is keyed-only (non-keyed returns null), two named pools of the same `T` coexist, ArgumentNull theory matrix, `pool.name` tag flows to telemetry |
-| `Telemetry/MeterAndCounterTests.cs` | 4 | Meter named `Oragon.AdaptivePool` via IMeterFactory + tag, `pool.factory.failures` increments by exact count, manual `MeterListener` observes counters (proves OTel-listenability), without `services.AddMetrics()` the engine falls back to `new Meter` and counters still emit |
+| `Telemetry/MeterAndCounterTests.cs` | 4 | Meter named `Oragon.ElasticPool` via IMeterFactory + tag, `pool.factory.failures` increments by exact count, manual `MeterListener` observes counters (proves OTel-listenability), without `services.AddMetrics()` the engine falls back to `new Meter` and counters still emit |
 | `TimeProvider/TimeProviderInjectionTests.cs` | 2 | `WithTimeProvider(FakeTimeProvider)` builds and acquires; default TimeProvider is System without `WithTimeProvider()` |
-| `PlaceholderSmokeTest.cs` (rewritten) | 1 | Full DI smoke: `services.AddAdaptivePool<T>("smoke", …)` → `await pool.AcquireAsync()` → `await using` → assertions on `InUse`/`Available` |
+| `PlaceholderSmokeTest.cs` (rewritten) | 1 | Full DI smoke: `services.AddElasticPool<T>("smoke", …)` → `await pool.AcquireAsync()` → `await using` → assertions on `InUse`/`Available` |
 
 **70 tests total, 0 failed across net8.0 + net9.0 + net10.0** (210 test invocations).
 
 ### Task 2 — `MaxSize=1` ping-pong stress (commit 481fec1)
 
-`tests/Oragon.AdaptivePool.Core.Stress/PingPongStressTest.cs`:
+`tests/Oragon.ElasticPool.Core.Stress/PingPongStressTest.cs`:
 
 - **Workload:** 256 threads × 40 iterations = 10 240 acquire/release cycles against a `MaxSize=1` pool.
 - **Watchdogs:** 25 s logical watchdog (`CancellationTokenSource(TimeSpan.FromSeconds(25))`) + 5 s per-call linked CTS (`CreateLinkedTokenSource` + `CancelAfter`); xUnit `Timeout=60_000` outer safety net.
@@ -120,7 +120,7 @@ This is the Phase 1 anchor gate per ROADMAP success criterion 2. It proves end-t
 The Stress project is **NOT** invoked by `.github/workflows/build.yml`. Run manually:
 
 ```bash
-dotnet test --project tests/Oragon.AdaptivePool.Core.Stress/Oragon.AdaptivePool.Core.Stress.csproj --configuration Release
+dotnet test --project tests/Oragon.ElasticPool.Core.Stress/Oragon.ElasticPool.Core.Stress.csproj --configuration Release
 ```
 
 A nightly Stress job is on the Phase 4 OSS-01 list.
@@ -130,21 +130,21 @@ A nightly Stress job is on the Phase 4 OSS-01 list.
 `.github/workflows/build.yml` updates:
 
 - New step: `install coverlet.console + reportgenerator` (`dotnet tool install -g`)
-- New step: `collect coverage on Core.Tests` — runs `coverlet ./Oragon.AdaptivePool.Core.Tests.dll --target dotnet --targetargs Oragon.AdaptivePool.Core.Tests.dll --format cobertura --output … --include "[Oragon.AdaptivePool.Core]*"` per matrix TFM
-- New step: `enforce 90% line coverage on Core` — runs `reportgenerator -assemblyfilters:+Oragon.AdaptivePool.Core -reporttypes:TextSummary`, parses `Line coverage: NN.N%`, fails if `< 90.0`
+- New step: `collect coverage on Core.Tests` — runs `coverlet ./Oragon.ElasticPool.Core.Tests.dll --target dotnet --targetargs Oragon.ElasticPool.Core.Tests.dll --format cobertura --output … --include "[Oragon.ElasticPool.Core]*"` per matrix TFM
+- New step: `enforce 90% line coverage on Core` — runs `reportgenerator -assemblyfilters:+Oragon.ElasticPool.Core -reporttypes:TextSummary`, parses `Line coverage: NN.N%`, fails if `< 90.0`
 - New step: `upload coverage report (artifact)` — uploads the `coverage-report/` folder as `coverage-${tfm}` on every CI run regardless of pass/fail (diagnosability)
-- **Stress project still NOT invoked** (verified: `! grep -q 'Oragon.AdaptivePool.Core.Stress' .github/workflows/build.yml`)
+- **Stress project still NOT invoked** (verified: `! grep -q 'Oragon.ElasticPool.Core.Stress' .github/workflows/build.yml`)
 
-The plan recommended `dotnet test --collect:"XPlat Code Coverage"`, but the MTP runner v1.x does not honor that legacy VSTest data-collector contract — it injects `--report-trx` which `Oragon.AdaptivePool.Core.Tests.dll` rejects with `Unknown option`. The console-tool path implements the same intent (data-collector via coverlet, not MSBuild integration per RESEARCH Pitfall 7) without the runner-coupling failure.
+The plan recommended `dotnet test --collect:"XPlat Code Coverage"`, but the MTP runner v1.x does not honor that legacy VSTest data-collector contract — it injects `--report-trx` which `Oragon.ElasticPool.Core.Tests.dll` rejects with `Unknown option`. The console-tool path implements the same intent (data-collector via coverlet, not MSBuild integration per RESEARCH Pitfall 7) without the runner-coupling failure.
 
 ## ROADMAP Success Criterion → Test Map
 
 | Criterion | File(s) | Test method(s) |
 | --- | --- | --- |
-| **1 — DI + sync Acquire + await using + idempotent dispose** | `DependencyInjection/ServiceCollectionExtensionsTests.cs`, `Pool/AcquireAndReturnTests.cs`, `Pool/PoolItemDisposeTests.cs`, `PlaceholderSmokeTest.cs` | `AddAdaptivePool_DefaultName_RegistersAsKeyedAndNonKeyed`, `Acquire_FastPath_ReturnsItemImmediately`, `AwaitUsing_ReturnsItemToPool`, `Dispose_IsIdempotent_NoDoubleReturn`, `DisposeAsync_IsIdempotent`, `DI_Build_Acquire_Dispose_Roundtrip_Works` |
-| **2 — `MaxSize=1` ping-pong stress, no deadlocks, CT honored** | `tests/Oragon.AdaptivePool.Core.Stress/PingPongStressTest.cs` | `MaxSize1_HundredsOfThreads_TenThousandIterations_NoDeadlock` |
+| **1 — DI + sync Acquire + await using + idempotent dispose** | `DependencyInjection/ServiceCollectionExtensionsTests.cs`, `Pool/AcquireAndReturnTests.cs`, `Pool/PoolItemDisposeTests.cs`, `PlaceholderSmokeTest.cs` | `AddElasticPool_DefaultName_RegistersAsKeyedAndNonKeyed`, `Acquire_FastPath_ReturnsItemImmediately`, `AwaitUsing_ReturnsItemToPool`, `Dispose_IsIdempotent_NoDoubleReturn`, `DisposeAsync_IsIdempotent`, `DI_Build_Acquire_Dispose_Roundtrip_Works` |
+| **2 — `MaxSize=1` ping-pong stress, no deadlocks, CT honored** | `tests/Oragon.ElasticPool.Core.Stress/PingPongStressTest.cs` | `MaxSize1_HundredsOfThreads_TenThousandIterations_NoDeadlock` |
 | **3 — Factory throw counter rollback + BeforeUse Unhealthy → policy + replace** | `Pool/FactoryFailureTests.cs`, `Pool/BeforeUseUnhealthyTests.cs` | `FactoryThrows_DecrementsTotal_AllowsSubsequentAcquireToReachMaxSize`, `FactoryThrows_InvokesFailurePolicy_WithFailureKindFactoryThrew_AndException`, `BeforeUseUnhealthy_DiscardAndReplace_DefaultPolicy_ProducesFreshItem`, `BeforeUseUnhealthy_InvokesFailurePolicy_WithFailureKindBeforeUseUnhealthy` |
-| **4 — Meter via IMeterFactory + counters consumable by OTel listener** | `Telemetry/MeterAndCounterTests.cs` | `Meter_IsNamedOragonAdaptivePool_AndCreatedViaIMeterFactory`, `FactoryFailure_IncrementsCounter`, `OtelListener_ObservesPoolMeter`, `PoolWithoutAddMetrics_FallbackMeterUsed_AndPoolStillFunctions` |
+| **4 — Meter via IMeterFactory + counters consumable by OTel listener** | `Telemetry/MeterAndCounterTests.cs` | `Meter_IsNamedOragonElasticPool_AndCreatedViaIMeterFactory`, `FactoryFailure_IncrementsCounter`, `OtelListener_ObservesPoolMeter`, `PoolWithoutAddMetrics_FallbackMeterUsed_AndPoolStillFunctions` |
 | **5 — IDisposable + IAsyncDisposable drain** | `Pool/DisposeDrainTests.cs`, `Pool/AfterUseAndExceptionTests.cs` | `DisposeAsync_InvokesReleaseOnEachIdleEntry`, `DisposeAsync_AfterDispose_NewAcquireThrowsObjectDisposed`, `DisposeAsync_IsIdempotent`, `Dispose_Sync_DrainsPoolWithoutHanging`, `DisposeAsync_CancelsPendingWaiters`, `DisposeAsync_ReleaseHookThrows_DrainContinues_AndIsLogged` |
 | **6 — Eager warm-up awaitable + bounds validation** | `Pool/WarmupAndBoundsTests.cs`, `Builder/BuilderValidationTests.cs` | `ReadyAsync_CompletesWhenWarmedUp`, `ReadyAsync_PropagatesFactoryException`, `PoolDispose_DuringWarmup_CancelsWarmupTask`, `InitialSizeZero_NoFactoryCallsAtStartup`, `Build_WithInvalidBounds_Throws`, `Build_WithValidBounds_Succeeds` |
 
@@ -158,12 +158,12 @@ Method coverage: 98.5%   (66  / 67)
 
 | Class | Line | Notes |
 | --- | ---: | --- |
-| `Builder.AdaptiveObjectPoolFactory` | 100 % | Trivial entry-point class |
-| `Builder.AdaptivePoolBuilder<T>` | 97.6 % | Fully covered modulo a defensive null-check branch in `WithName` |
-| `Builder.AdaptivePoolOptions<T>` | 100 % | Init-only record |
+| `Builder.ElasticObjectPoolFactory` | 100 % | Trivial entry-point class |
+| `Builder.ElasticPoolBuilder<T>` | 97.6 % | Fully covered modulo a defensive null-check branch in `WithName` |
+| `Builder.ElasticPoolOptions<T>` | 100 % | Init-only record |
 | `DependencyInjection.ServiceCollectionExtensions` | ~88 % | `TryGetHostApplicationStoppingToken` reflection probe is hard to exercise without a real host (Phase 2 work) |
 | `Exceptions.PoolExhaustedException` | 100 % | Both ctor paths covered by `AfterUseAndExceptionTests` |
-| `Internals.AdaptivePool<T>` | ~95 % | After AfterUse + dispose-drain closing tests; remaining gaps are the OperationCanceledException catch in WarmupAsync (race-only) and some failure-recursion edges |
+| `Internals.ElasticPool<T>` | ~95 % | After AfterUse + dispose-drain closing tests; remaining gaps are the OperationCanceledException catch in WarmupAsync (race-only) and some failure-recursion edges |
 | `Internals.PoolEntry<T>` | 100 % | Trivial record |
 | `Internals.PoolItem<T>` | ~88 % | Finalizer best-effort (PITFALLS Pitfall 4: GC.Collect handshake is non-deterministic) |
 | `Policies.DiscardAndReplaceFailurePolicy<T>` | 100 % | One method, fully covered |
@@ -177,14 +177,14 @@ Method coverage: 98.5%   (66  / 67)
 **1. [Rule 3 — Blocking] Added `Microsoft.Extensions.Diagnostics 10.0.6` to CPM**
 - **Found during:** Task 1 build.
 - **Issue:** Tests need `services.AddMetrics()` to register `IMeterFactory` so MetricCollector can attach. The extension is in `Microsoft.Extensions.Diagnostics` — **not** in `Microsoft.Extensions.Diagnostics.Testing` (which only provides `MetricCollector`). Plan 01's CPM didn't pin it because Plan 02's engine falls back to `new Meter` when no factory is registered — there were no telemetry tests to need the factory yet.
-- **Fix:** Pinned `Microsoft.Extensions.Diagnostics 10.0.6` in `Directory.Packages.props` (matching the rest of the M.E.* 10.0.6 alignment from Plan 01) and added `<PackageReference Include="Microsoft.Extensions.Diagnostics" />` to `Oragon.AdaptivePool.Core.Tests.csproj`.
-- **Files modified:** `Directory.Packages.props`, `tests/Oragon.AdaptivePool.Core.Tests/Oragon.AdaptivePool.Core.Tests.csproj`.
+- **Fix:** Pinned `Microsoft.Extensions.Diagnostics 10.0.6` in `Directory.Packages.props` (matching the rest of the M.E.* 10.0.6 alignment from Plan 01) and added `<PackageReference Include="Microsoft.Extensions.Diagnostics" />` to `Oragon.ElasticPool.Core.Tests.csproj`.
+- **Files modified:** `Directory.Packages.props`, `tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj`.
 - **Commit:** 58c0916.
 
 **2. [Rule 3 — Blocking] Suppressed xUnit1051 in test projects**
 - **Found during:** Task 1 build.
 - **Issue:** `Directory.Build.props` sets `TreatWarningsAsErrors=true`. The xUnit v3 analyzer rule xUnit1051 fires on every CT-accepting call inside a test method, demanding `TestContext.Current.CancellationToken` be threaded through. With ~50 such call sites in a CI / matrix / cancellation-aware test suite, this is pure ceremony. The build broke on 200+ "errors" of this advisory rule.
-- **Fix:** Added `<NoWarn>$(NoWarn);xUnit1051</NoWarn>` to both test projects (`Oragon.AdaptivePool.Core.Tests.csproj` and `Oragon.AdaptivePool.Core.Stress.csproj`). Tests own their CTS lifetimes directly (per-acquire timeouts, cancellation matrix tests); threading TestContext's CT adds noise without behavioral benefit at this scope.
+- **Fix:** Added `<NoWarn>$(NoWarn);xUnit1051</NoWarn>` to both test projects (`Oragon.ElasticPool.Core.Tests.csproj` and `Oragon.ElasticPool.Core.Stress.csproj`). Tests own their CTS lifetimes directly (per-acquire timeouts, cancellation matrix tests); threading TestContext's CT adds noise without behavioral benefit at this scope.
 - **Files modified:** Both test csproj files.
 - **Commit:** 58c0916 (Tests), 481fec1 (Stress).
 
@@ -192,14 +192,14 @@ Method coverage: 98.5%   (66  / 67)
 - **Found during:** First test run.
 - **Issue:** Test used `Assert.ThrowsAsync<OperationCanceledException>` (exact type). The engine's pre-canceled-CT path goes through `Channel.WriteAsync(tcs, ct)` which surfaces `TaskCanceledException` (a subclass of OCE). Since xUnit's `ThrowsAsync<T>` requires exact type match, the test failed with `Expected: OperationCanceledException, Actual: TaskCanceledException`.
 - **Fix:** Changed to `Assert.ThrowsAnyAsync<OperationCanceledException>` (accepts the subclass). Applied the same relaxation to `WaitBehaviorWait_RespectsCancellationToken` for symmetry — that one's path goes through `tcs.TrySetCanceled()` and DOES produce a plain OCE, but accepting the subclass keeps the test resilient.
-- **Files modified:** `tests/Oragon.AdaptivePool.Core.Tests/Pool/WaitBehaviorTests.cs`.
+- **Files modified:** `tests/Oragon.ElasticPool.Core.Tests/Pool/WaitBehaviorTests.cs`.
 - **Commit:** 58c0916.
 
 **4. [Rule 3 — Blocking] `Resource` POCO must be `public` for NSubstitute proxy**
 - **Found during:** First test run.
 - **Issue:** Castle DynamicProxy (used internally by NSubstitute) needs visibility into the type-arguments of the substituted interface. `Substitute.For<IItemFailurePolicy<Resource>>()` with `internal sealed class Resource` raised: *"Can not create proxy for type IItemFailurePolicy`1[Resource] because type Resource is not accessible. Make it public, or internal and mark your assembly with `[InternalsVisibleTo("DynamicProxyGenAssembly2")]`"*.
 - **Fix:** Changed `Resource` to `public sealed class Resource`. Cleaner than adding `InternalsVisibleTo("DynamicProxyGenAssembly2")` ceremony for a 6-line stand-in.
-- **Files modified:** `tests/Oragon.AdaptivePool.Core.Tests/TestSupport/Resource.cs`.
+- **Files modified:** `tests/Oragon.ElasticPool.Core.Tests/TestSupport/Resource.cs`.
 - **Commit:** 58c0916.
 
 ### Plan-sanctioned alternative
@@ -207,7 +207,7 @@ Method coverage: 98.5%   (66  / 67)
 **5. CI coverage path: coverlet.console wrapper instead of `dotnet test --collect`**
 - **Plan said:** "Per RESEARCH Pitfall 7, prefer the data-collector path over MSBuild integration under MTP runner. Use `dotnet test --collect:"XPlat Code Coverage"`."
 - **Reality:** MTP runner under .NET 10 SDK (10.0.107 here) ignores the legacy VSTest `--collect` contract entirely. `dotnet test --project … --collect:"XPlat Code Coverage"` injects `--report-trx` into the MTP runner which the test executable rejects with `Unknown option '--report-trx'`. Result: zero tests run, coverage data never produced. Locally reproducible, would fail in CI the same way.
-- **Fix:** Used coverlet.console as a wrapper over `dotnet <test.dll>` directly. Same data-collector mechanism (coverlet instrumenting the assembly), same cobertura output, same reportgenerator + `+Oragon.AdaptivePool.Core` filter. Documented inline in `build.yml` and called out in this SUMMARY.
+- **Fix:** Used coverlet.console as a wrapper over `dotnet <test.dll>` directly. Same data-collector mechanism (coverlet instrumenting the assembly), same cobertura output, same reportgenerator + `+Oragon.ElasticPool.Core` filter. Documented inline in `build.yml` and called out in this SUMMARY.
 - **Files modified:** `.github/workflows/build.yml`.
 - **Commit:** c7b6191.
 
@@ -238,7 +238,7 @@ The test infrastructure built here is reusable:
 3. **NSubstitute on `IItemFailurePolicy<T>`** works because the policy is a public interface and `Resource` is public. Phase 2 may add `IPoolHealthSweeper<T>` etc. — keep them as public interfaces with public POCO type-arguments to preserve NSubstitute compat.
 4. **xUnit1051 NoWarn** is set at the test-project level; it should remain set into Phase 2.
 5. **The coverlet.console wrapper pattern** in CI is required as long as MTP+VSTest data-collector compatibility remains broken. If a future SDK fixes that, the simpler `dotnet test --collect:"XPlat Code Coverage"` will become viable; until then keep the wrapper.
-6. **The `MaxSize=1` ping-pong test** is Phase 1's anchor gate. Phase 2's elasticity / sweeper additions must NOT regress it. Run it before merging any engine-internals change: `dotnet test --project tests/Oragon.AdaptivePool.Core.Stress/Oragon.AdaptivePool.Core.Stress.csproj`.
+6. **The `MaxSize=1` ping-pong test** is Phase 1's anchor gate. Phase 2's elasticity / sweeper additions must NOT regress it. Run it before merging any engine-internals change: `dotnet test --project tests/Oragon.ElasticPool.Core.Stress/Oragon.ElasticPool.Core.Stress.csproj`.
 
 ## Commits
 
@@ -253,8 +253,8 @@ The test infrastructure built here is reusable:
 - All 15 created test files exist on disk (verified via `find`).
 - All 6 modified files reflect the documented changes (verified via `git diff` against parent).
 - All 3 task commits exist in `git log` (`58c0916`, `481fec1`, `c7b6191`).
-- `dotnet build tests/Oragon.AdaptivePool.Core.Tests/...` exits 0 with only the expected SourceLink local-only warnings.
-- `dotnet <Oragon.AdaptivePool.Core.Tests.dll>` reports `total: 70, failed: 0, succeeded: 70` on net8.0 + net9.0 + net10.0 (210 successful test invocations).
-- `dotnet <Oragon.AdaptivePool.Core.Stress.dll>` reports `total: 1, failed: 0, succeeded: 1` on all 3 TFMs in ~300 ms each (well under the 25 s logical watchdog and 60 s xUnit Timeout).
-- Local coverage probe via `coverlet --include "[Oragon.AdaptivePool.Core]*"` followed by `reportgenerator -assemblyfilters:"+Oragon.AdaptivePool.Core"`: **Line coverage 92.8 %** — passes the 90 % gate.
-- Negative grep confirmed: `! grep -r 'using FluentAssertions' tests/` and `! grep -q 'Oragon.AdaptivePool.Core.Stress' .github/workflows/build.yml` both return clean.
+- `dotnet build tests/Oragon.ElasticPool.Core.Tests/...` exits 0 with only the expected SourceLink local-only warnings.
+- `dotnet <Oragon.ElasticPool.Core.Tests.dll>` reports `total: 70, failed: 0, succeeded: 70` on net8.0 + net9.0 + net10.0 (210 successful test invocations).
+- `dotnet <Oragon.ElasticPool.Core.Stress.dll>` reports `total: 1, failed: 0, succeeded: 1` on all 3 TFMs in ~300 ms each (well under the 25 s logical watchdog and 60 s xUnit Timeout).
+- Local coverage probe via `coverlet --include "[Oragon.ElasticPool.Core]*"` followed by `reportgenerator -assemblyfilters:"+Oragon.ElasticPool.Core"`: **Line coverage 92.8 %** — passes the 90 % gate.
+- Negative grep confirmed: `! grep -r 'using FluentAssertions' tests/` and `! grep -q 'Oragon.ElasticPool.Core.Stress' .github/workflows/build.yml` both return clean.

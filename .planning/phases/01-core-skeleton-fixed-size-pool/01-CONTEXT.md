@@ -6,7 +6,7 @@
 <domain>
 ## Phase Boundary
 
-Entregar um pool de tamanho fixo (`MinSize == MaxSize == InitialSize`) totalmente funcional e testado em `Oragon.AdaptivePool.Core`, com toda a superfície pública e decisões arquiteturais não-retrofitáveis travadas corretamente: assinaturas dos 5 hooks, contrato `ValueTask<IPoolItem<T>>`, dispose síncrono+assíncrono com idempotência, builder fluente, integração DI, contagem de itens com rollback em falha de Factory, política de falha plugável (com `DiscardAndReplace` default), telemetria base via `IMeterFactory`. **Fora desta fase:** crescimento elástico (Phase 2), sweeper em background (Phase 2), adapter RabbitMQ (Phase 3), pipeline de release OSS (Phase 4).
+Entregar um pool de tamanho fixo (`MinSize == MaxSize == InitialSize`) totalmente funcional e testado em `Oragon.ElasticPool.Core`, com toda a superfície pública e decisões arquiteturais não-retrofitáveis travadas corretamente: assinaturas dos 5 hooks, contrato `ValueTask<IPoolItem<T>>`, dispose síncrono+assíncrono com idempotência, builder fluente, integração DI, contagem de itens com rollback em falha de Factory, política de falha plugável (com `DiscardAndReplace` default), telemetria base via `IMeterFactory`. **Fora desta fase:** crescimento elástico (Phase 2), sweeper em background (Phase 2), adapter RabbitMQ (Phase 3), pipeline de release OSS (Phase 4).
 
 </domain>
 
@@ -15,7 +15,7 @@ Entregar um pool de tamanho fixo (`MinSize == MaxSize == InitialSize`) totalment
 
 ### Repository Layout & Solution Structure
 - Estrutura: `src/` (projetos publicáveis) + `tests/` (unit + integration) + `samples/` + `.github/workflows/`
-- Nomes de projetos: `Oragon.AdaptivePool.Core`, `Oragon.AdaptivePool.RabbitMQ` (Phase 3), `Oragon.AdaptivePool.Core.Tests`, `Oragon.AdaptivePool.Core.Stress` (projeto separado, fora da CI default), `Oragon.AdaptivePool.Core.Benchmarks` (Phase 4)
+- Nomes de projetos: `Oragon.ElasticPool.Core`, `Oragon.ElasticPool.RabbitMQ` (Phase 3), `Oragon.ElasticPool.Core.Tests`, `Oragon.ElasticPool.Core.Stress` (projeto separado, fora da CI default), `Oragon.ElasticPool.Core.Benchmarks` (Phase 4)
 - `PublicAPI.Shipped.txt` / `PublicAPI.Unshipped.txt` por projeto (cada `.csproj` mantém os seus)
 - `README.md` único na raiz do repositório com seções por pacote
 
@@ -23,17 +23,17 @@ Entregar um pool de tamanho fixo (`MinSize == MaxSize == InitialSize`) totalment
 - `IPoolItem<T>.Value` expõe a instância pooled (alinha com `Lazy<T>.Value`, `Nullable<T>.Value`)
 - Esgotamento (`MaxSize` atingido + todos in-use): comportamento **configurável via builder** — `.WhenExhausted(WaitBehavior.Wait)` (default) ou `.WhenExhausted(WaitBehavior.Throw)` lança `PoolExhaustedException` imediatamente; `Wait` respeita `CancellationToken` do `AcquireAsync`
 - Builder: apenas `Factory` é obrigatório; `Build()` lança `InvalidOperationException` se ausente; demais hooks (`BeforeUse`, `Check`, `AfterUse`, `Release`) são opcionais com defaults no-op
-- `services.AddAdaptivePool<T>(name, configure)` requer `name` explícito; default = `string.Empty` para apps single-pool; usa named options pattern internamente para múltiplos pools tipados no mesmo `T`
+- `services.AddElasticPool<T>(name, configure)` requer `name` explícito; default = `string.Empty` para apps single-pool; usa named options pattern internamente para múltiplos pools tipados no mesmo `T`
 
 ### Test & Tooling Infrastructure
 - Test framework: **xUnit v3 + Microsoft.Testing.Platform + Awesome Assertions + NSubstitute** (Awesome Assertions = fork OSS recente do FluentAssertions com mesma sintaxe, mantido após mudança de licença Xceed)
-- Stress tests: projeto separado `Oragon.AdaptivePool.Core.Stress` excluído da CI default (job dedicado nightly em Phase 4)
+- Stress tests: projeto separado `Oragon.ElasticPool.Core.Stress` excluído da CI default (job dedicado nightly em Phase 4)
 - Time mocking: `Microsoft.Extensions.TimeProvider.Testing.FakeTimeProvider` para todo teste sensível a tempo (per PITFALLS.md recommendation)
 - Code coverage: gate de **90% no Core** na CI; sem gate em adapters/samples (apenas relatório); ferramentas: coverlet + ReportGenerator → Codecov
 
 ### Claude's Discretion
 - Escolha exata de quais counters expor em TELEM-01 (mínimo: `pool.acquire.count`, `pool.factory.failures`; resto fica para Phase 2 quando grow/shrink/health surgem)
-- Política de naming interno (private/internal classes) e estrutura de namespaces dentro de `Oragon.AdaptivePool.Core`
+- Política de naming interno (private/internal classes) e estrutura de namespaces dentro de `Oragon.ElasticPool.Core`
 - Detalhes do `PoolState` enum (incluir `Quarantined`? por ora apenas `Healthy`/`Unhealthy`, com espaço para extensão em v2)
 - Forma exata da exception `PoolExhaustedException` (mensagem, properties como `MaxSize`, `WaitTime`)
 - Estratégia exata de double-dispose detection (Interlocked flag, Disposed property pública?)
@@ -51,10 +51,10 @@ Entregar um pool de tamanho fixo (`MinSize == MaxSize == InitialSize`) totalment
 - **Microsoft.Extensions.ObjectPool** (`DefaultObjectPool<T>`) serve como referência de implementação interna em alguns aspectos (estrutura de fila, counters), mas o produto é fundamentalmente diferente (elástico vs fixo).
 
 ### Integration Points
-- Microsoft.Extensions.DependencyInjection.Abstractions — extension `services.AddAdaptivePool<T>(...)` integra com `IServiceCollection` e named options pattern
+- Microsoft.Extensions.DependencyInjection.Abstractions — extension `services.AddElasticPool<T>(...)` integra com `IServiceCollection` e named options pattern
 - Microsoft.Extensions.Logging.Abstractions — `ILogger<T>` consumido nos hooks via DI
 - System.Diagnostics.Metrics.IMeterFactory — Meter obtido via DI (não `new Meter(...)`)
-- System.Diagnostics.ActivitySource — instanciado uma vez no Core, namespace `"Oragon.AdaptivePool"`
+- System.Diagnostics.ActivitySource — instanciado uma vez no Core, namespace `"Oragon.ElasticPool"`
 
 </code_context>
 
@@ -71,8 +71,8 @@ Entregar um pool de tamanho fixo (`MinSize == MaxSize == InitialSize`) totalment
 <deferred>
 ## Deferred Ideas
 
-- `Oragon.AdaptivePool.OpenTelemetry` companion package com pre-wiring de OTel — defer até Phase 4 baseado em demanda
-- `Oragon.AdaptivePool.Polly` glue package — defer para v1.x baseado em demanda
+- `Oragon.ElasticPool.OpenTelemetry` companion package com pre-wiring de OTel — defer até Phase 4 baseado em demanda
+- `Oragon.ElasticPool.Polly` glue package — defer para v1.x baseado em demanda
 - Suporte a `Microsoft.Extensions.Diagnostics.HealthChecks` integration (auto-register pool como health check) — defer para Phase 2 ou v1.x
 - `PoolItemContext` / state bag rico nos hooks — defer; em v1, hooks recebem apenas `(T item, CancellationToken ct)`
 - Quarentena com backoff (FAIL-V2-01) — explicitamente v2 conforme REQUIREMENTS.md

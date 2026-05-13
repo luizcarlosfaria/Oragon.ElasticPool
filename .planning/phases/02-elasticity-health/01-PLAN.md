@@ -5,69 +5,69 @@ type: execute
 wave: 1
 depends_on: []
 files_modified:
-  - src/Oragon.AdaptivePool.Core/Internals/UtilizationSampler.cs
-  - src/Oragon.AdaptivePool.Core/Internals/WaitDurationHistogram.cs
-  - src/Oragon.AdaptivePool.Core/Internals/PressureSampler.cs
-  - src/Oragon.AdaptivePool.Core/Internals/SweepBackoffState.cs
-  - src/Oragon.AdaptivePool.Core/Internals/BackgroundSweeper.cs
-  - src/Oragon.AdaptivePool.Core/Internals/PoolEntry.cs
-  - src/Oragon.AdaptivePool.Core/Internals/AdaptivePool.cs
-  - src/Oragon.AdaptivePool.Core/Builder/AdaptivePoolOptions.cs
-  - src/Oragon.AdaptivePool.Core/Builder/AdaptivePoolBuilder.cs
-  - src/Oragon.AdaptivePool.Core/PublicAPI.Unshipped.txt
+  - src/Oragon.ElasticPool.Core/Internals/UtilizationSampler.cs
+  - src/Oragon.ElasticPool.Core/Internals/WaitDurationHistogram.cs
+  - src/Oragon.ElasticPool.Core/Internals/PressureSampler.cs
+  - src/Oragon.ElasticPool.Core/Internals/SweepBackoffState.cs
+  - src/Oragon.ElasticPool.Core/Internals/BackgroundSweeper.cs
+  - src/Oragon.ElasticPool.Core/Internals/PoolEntry.cs
+  - src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs
+  - src/Oragon.ElasticPool.Core/Builder/ElasticPoolOptions.cs
+  - src/Oragon.ElasticPool.Core/Builder/ElasticPoolBuilder.cs
+  - src/Oragon.ElasticPool.Core/PublicAPI.Unshipped.txt
 autonomous: true
 requirements: [ELASTIC-01, ELASTIC-02]
 must_haves:
   truths:
-    - "AdaptivePoolOptions<T> exposes init-only props for the 7 Phase 2 tunables (GrowOnWaiterCount, GrowOnUtilizationPercent, UtilizationWindow, GrowOnWaitTimeP95, IdleTimeout, ShrinkCooldownWindows, SweepInterval, MaxBackoff) with the locked defaults."
-    - "AdaptivePoolBuilder<T> exposes 7 fluent methods returning the builder, each validating its argument and surfacing in PublicAPI.Unshipped.txt."
-    - "AdaptivePool<T> ctor constructs UtilizationSampler, PressureSampler, SweepBackoffState, and BackgroundSweeper without breaking any Phase 1 public surface."
+    - "ElasticPoolOptions<T> exposes init-only props for the 7 Phase 2 tunables (GrowOnWaiterCount, GrowOnUtilizationPercent, UtilizationWindow, GrowOnWaitTimeP95, IdleTimeout, ShrinkCooldownWindows, SweepInterval, MaxBackoff) with the locked defaults."
+    - "ElasticPoolBuilder<T> exposes 7 fluent methods returning the builder, each validating its argument and surfacing in PublicAPI.Unshipped.txt."
+    - "ElasticPool<T> ctor constructs UtilizationSampler, PressureSampler, SweepBackoffState, and BackgroundSweeper without breaking any Phase 1 public surface."
     - "BackgroundSweeper.SweepLoopAsync is started from the engine ctor on a Task.Run, awaits PeriodicTimer.WaitForNextTickAsync(_lifetimeCts.Token), and terminates cleanly on DisposeAsync."
     - "PoolEntry<T> records LastReturnedAt; engine sets it on every return path (sync, async, finalizer)."
     - "Phase 1 PingPongStressTest still passes — Phase 2 wiring is non-regressive on the fixed-size hot path."
   artifacts:
-    - path: "src/Oragon.AdaptivePool.Core/Internals/UtilizationSampler.cs"
+    - path: "src/Oragon.ElasticPool.Core/Internals/UtilizationSampler.cs"
       provides: "Allocation-free ring-buffer rolling-window sampler over (timestamp, inUse, total)"
       min_lines: 50
-    - path: "src/Oragon.AdaptivePool.Core/Internals/WaitDurationHistogram.cs"
+    - path: "src/Oragon.ElasticPool.Core/Internals/WaitDurationHistogram.cs"
       provides: "100-sample acquire-wait p95 estimator (ring-buffered TimeSpan[])"
       min_lines: 25
-    - path: "src/Oragon.AdaptivePool.Core/Internals/PressureSampler.cs"
+    - path: "src/Oragon.ElasticPool.Core/Internals/PressureSampler.cs"
       provides: "Composite-signal grow evaluator returning GrowDecision struct (OR-combined, all 3 signals computed for telemetry)"
       min_lines: 40
-    - path: "src/Oragon.AdaptivePool.Core/Internals/SweepBackoffState.cs"
+    - path: "src/Oragon.ElasticPool.Core/Internals/SweepBackoffState.cs"
       provides: "Exponential backoff state machine (30s -> 60s -> 120s -> MaxBackoff cap on >=3 consecutive failure windows; reset on first clean sweep)"
       min_lines: 40
-    - path: "src/Oragon.AdaptivePool.Core/Internals/BackgroundSweeper.cs"
+    - path: "src/Oragon.ElasticPool.Core/Internals/BackgroundSweeper.cs"
       provides: "PeriodicTimer-driven sweep loop with adaptive Period adjustment, cancellation-safe lifecycle"
       min_lines: 60
-    - path: "src/Oragon.AdaptivePool.Core/Builder/AdaptivePoolOptions.cs"
+    - path: "src/Oragon.ElasticPool.Core/Builder/ElasticPoolOptions.cs"
       provides: "Init-only options record extended with 8 Phase 2 properties (defaults locked per CONTEXT)"
       contains: "GrowOnWaiterCount"
-    - path: "src/Oragon.AdaptivePool.Core/Builder/AdaptivePoolBuilder.cs"
+    - path: "src/Oragon.ElasticPool.Core/Builder/ElasticPoolBuilder.cs"
       provides: "Fluent builder extended with GrowOnWaiterCount/GrowOnUtilizationPercent/GrowOnWaitTimeP95/IdleTimeout/ShrinkCooldownWindows/SweepInterval/MaxBackoff"
       contains: ".SweepInterval"
   key_links:
-    - from: "src/Oragon.AdaptivePool.Core/Internals/AdaptivePool.cs"
-      to: "src/Oragon.AdaptivePool.Core/Internals/BackgroundSweeper.cs"
+    - from: "src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs"
+      to: "src/Oragon.ElasticPool.Core/Internals/BackgroundSweeper.cs"
       via: "ctor instantiation, _lifetimeCts.Token threaded for cancellation, DisposeAsync awaits sweeper shutdown"
       pattern: "new BackgroundSweeper"
-    - from: "src/Oragon.AdaptivePool.Core/Internals/AdaptivePool.cs"
-      to: "src/Oragon.AdaptivePool.Core/Internals/UtilizationSampler.cs"
+    - from: "src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs"
+      to: "src/Oragon.ElasticPool.Core/Internals/UtilizationSampler.cs"
       via: "Sample(inUse, total) called on Acquire/Release transitions with 1s debounce"
       pattern: "_util.Sample"
-    - from: "src/Oragon.AdaptivePool.Core/Builder/AdaptivePoolBuilder.cs"
-      to: "src/Oragon.AdaptivePool.Core/Builder/AdaptivePoolOptions.cs"
+    - from: "src/Oragon.ElasticPool.Core/Builder/ElasticPoolBuilder.cs"
+      to: "src/Oragon.ElasticPool.Core/Builder/ElasticPoolOptions.cs"
       via: "Build() copies all 7 new fields onto the options record"
       pattern: "GrowOnWaiterCount = _growOnWaiterCount"
 ---
 
 <objective>
-Add the four new internal sealed components that Phase 2 needs (UtilizationSampler, PressureSampler, SweepBackoffState, BackgroundSweeper) plus the WaitDurationHistogram p95 helper. Extend AdaptivePoolOptions<T> and AdaptivePoolBuilder<T> with the 7 locked tunables. Wire the components into AdaptivePool<T>'s constructor and DisposeAsync. NO grow/shrink behavior is implemented yet — Plan 02 enables grow/shrink and telemetry. NO new tests are added — Plan 03 owns the test suite.
+Add the four new internal sealed components that Phase 2 needs (UtilizationSampler, PressureSampler, SweepBackoffState, BackgroundSweeper) plus the WaitDurationHistogram p95 helper. Extend ElasticPoolOptions<T> and ElasticPoolBuilder<T> with the 7 locked tunables. Wire the components into ElasticPool<T>'s constructor and DisposeAsync. NO grow/shrink behavior is implemented yet — Plan 02 enables grow/shrink and telemetry. NO new tests are added — Plan 03 owns the test suite.
 
 Purpose: Give Plan 02 and Plan 03 a stable, compiling foundation: every type they reference exists, every option they set is wired, every lifecycle they coordinate (sweep loop start/stop) is deterministic. The Phase 1 fixed-size engine continues to pass its anchor stress test (PingPongStressTest) because none of the new components fire grow/shrink decisions yet — the sweeper runs, but its body is a no-op pending Plan 02.
 
-Output: 5 new internal sealed types under src/Oragon.AdaptivePool.Core/Internals/, modifications to AdaptivePool.cs ctor/DisposeAsync/PoolEntry, extensions to AdaptivePoolOptions and AdaptivePoolBuilder, updated PublicAPI.Unshipped.txt.
+Output: 5 new internal sealed types under src/Oragon.ElasticPool.Core/Internals/, modifications to ElasticPool.cs ctor/DisposeAsync/PoolEntry, extensions to ElasticPoolOptions and ElasticPoolBuilder, updated PublicAPI.Unshipped.txt.
 </objective>
 
 <execution_context>
@@ -84,20 +84,20 @@ Output: 5 new internal sealed types under src/Oragon.AdaptivePool.Core/Internals
 @.planning/phases/01-core-skeleton-fixed-size-pool/03-SUMMARY.md
 
 # Phase 1 source — do not re-read in full; the interfaces below are the contract.
-@src/Oragon.AdaptivePool.Core/Internals/AdaptivePool.cs
-@src/Oragon.AdaptivePool.Core/Builder/AdaptivePoolBuilder.cs
-@src/Oragon.AdaptivePool.Core/Builder/AdaptivePoolOptions.cs
-@src/Oragon.AdaptivePool.Core/Internals/PoolEntry.cs
-@src/Oragon.AdaptivePool.Core/PublicAPI.Unshipped.txt
+@src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs
+@src/Oragon.ElasticPool.Core/Builder/ElasticPoolBuilder.cs
+@src/Oragon.ElasticPool.Core/Builder/ElasticPoolOptions.cs
+@src/Oragon.ElasticPool.Core/Internals/PoolEntry.cs
+@src/Oragon.ElasticPool.Core/PublicAPI.Unshipped.txt
 
 <interfaces>
 <!-- Phase 1 contracts the new components must integrate with. -->
 
-From src/Oragon.AdaptivePool.Core/Internals/AdaptivePool.cs:
+From src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs:
 ```csharp
-internal sealed class AdaptivePool<T> : IAdaptivePool<T> where T : notnull
+internal sealed class ElasticPool<T> : IElasticPool<T> where T : notnull
 {
-    private readonly AdaptivePoolOptions<T> _options;
+    private readonly ElasticPoolOptions<T> _options;
     private readonly TimeProvider _time;
     private readonly ConcurrentQueue<PoolEntry<T>> _idle;
     private readonly Channel<TaskCompletionSource<PoolEntry<T>>> _waiters;
@@ -112,15 +112,15 @@ internal sealed class AdaptivePool<T> : IAdaptivePool<T> where T : notnull
 }
 ```
 
-From src/Oragon.AdaptivePool.Core/Internals/PoolEntry.cs:
+From src/Oragon.ElasticPool.Core/Internals/PoolEntry.cs:
 ```csharp
 internal sealed record PoolEntry<T>(T Item, DateTimeOffset CreatedAt) where T : notnull;
 // Plan 01 EXTENDS this record — see Task 4.
 ```
 
-From src/Oragon.AdaptivePool.Core/Builder/AdaptivePoolOptions.cs:
+From src/Oragon.ElasticPool.Core/Builder/ElasticPoolOptions.cs:
 ```csharp
-public sealed record AdaptivePoolOptions<T> where T : notnull
+public sealed record ElasticPoolOptions<T> where T : notnull
 {
     public required FactoryDelegate<T> Factory { get; init; }
     public BeforeUseDelegate<T>? BeforeUse { get; init; }
@@ -145,12 +145,12 @@ public sealed record AdaptivePoolOptions<T> where T : notnull
 <task type="auto">
   <name>Task 1: Add Phase 2 options + builder fluent methods + PublicAPI deltas</name>
   <files>
-    src/Oragon.AdaptivePool.Core/Builder/AdaptivePoolOptions.cs,
-    src/Oragon.AdaptivePool.Core/Builder/AdaptivePoolBuilder.cs,
-    src/Oragon.AdaptivePool.Core/PublicAPI.Unshipped.txt
+    src/Oragon.ElasticPool.Core/Builder/ElasticPoolOptions.cs,
+    src/Oragon.ElasticPool.Core/Builder/ElasticPoolBuilder.cs,
+    src/Oragon.ElasticPool.Core/PublicAPI.Unshipped.txt
   </files>
   <action>
-**1. Extend AdaptivePoolOptions<T>** with 8 init-only properties (locked defaults from CONTEXT D-01..D-08):
+**1. Extend ElasticPoolOptions<T>** with 8 init-only properties (locked defaults from CONTEXT D-01..D-08):
 ```csharp
 public int GrowOnWaiterCount { get; init; } = 1;
 public double GrowOnUtilizationPercent { get; init; } = 0.80;
@@ -162,7 +162,7 @@ public TimeSpan SweepInterval { get; init; } = TimeSpan.FromSeconds(30);
 public TimeSpan MaxBackoff { get; init; } = TimeSpan.FromMinutes(5);
 ```
 
-**2. Extend AdaptivePoolBuilder<T>** with 7 fluent methods (UtilizationWindow stays internal/options-only — not in builder per CONTEXT discretion). Each method validates and returns `this`:
+**2. Extend ElasticPoolBuilder<T>** with 7 fluent methods (UtilizationWindow stays internal/options-only — not in builder per CONTEXT discretion). Each method validates and returns `this`:
 - `GrowOnWaiterCount(int n)` — `n >= 1`, throws ArgumentOutOfRangeException otherwise
 - `GrowOnUtilizationPercent(double p)` — `0 < p <= 1.0`
 - `GrowOnWaitTimeP95(TimeSpan t)` — `t > TimeSpan.Zero`
@@ -174,33 +174,33 @@ public TimeSpan MaxBackoff { get; init; } = TimeSpan.FromMinutes(5);
 Add backing fields with the same defaults as the options record. Update `Build()` to:
 - Validate `_growOnWaiterCount <= _maxSize` (else `InvalidOperationException("GrowOnWaiterCount must not exceed MaxSize.")`)
 - Validate `_sweepInterval <= _maxBackoff` (else `InvalidOperationException("SweepInterval must not exceed MaxBackoff.")`)
-- Copy all 8 fields onto the new `AdaptivePoolOptions<T>` initializer.
+- Copy all 8 fields onto the new `ElasticPoolOptions<T>` initializer.
 
 **3. Update PublicAPI.Unshipped.txt** — append (alphabetical, matching existing format):
 ```
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.GrowOnUtilizationPercent(double p) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.GrowOnWaitTimeP95(System.TimeSpan t) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.GrowOnWaiterCount(int n) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.IdleTimeout(System.TimeSpan t) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.MaxBackoff(System.TimeSpan t) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.ShrinkCooldownWindows(int n) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>.SweepInterval(System.TimeSpan t) -> Oragon.AdaptivePool.Core.Builder.AdaptivePoolBuilder<T>!
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.GrowOnUtilizationPercent.get -> double
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.GrowOnUtilizationPercent.init -> void
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.GrowOnWaitTimeP95.get -> System.TimeSpan
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.GrowOnWaitTimeP95.init -> void
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.GrowOnWaiterCount.get -> int
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.GrowOnWaiterCount.init -> void
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.IdleTimeout.get -> System.TimeSpan
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.IdleTimeout.init -> void
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.MaxBackoff.get -> System.TimeSpan
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.MaxBackoff.init -> void
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.ShrinkCooldownWindows.get -> int
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.ShrinkCooldownWindows.init -> void
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.SweepInterval.get -> System.TimeSpan
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.SweepInterval.init -> void
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.UtilizationWindow.get -> System.TimeSpan
-Oragon.AdaptivePool.Core.Builder.AdaptivePoolOptions<T>.UtilizationWindow.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.GrowOnUtilizationPercent(double p) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.GrowOnWaitTimeP95(System.TimeSpan t) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.GrowOnWaiterCount(int n) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.IdleTimeout(System.TimeSpan t) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.MaxBackoff(System.TimeSpan t) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.ShrinkCooldownWindows(int n) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.SweepInterval(System.TimeSpan t) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.GrowOnUtilizationPercent.get -> double
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.GrowOnUtilizationPercent.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.GrowOnWaitTimeP95.get -> System.TimeSpan
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.GrowOnWaitTimeP95.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.GrowOnWaiterCount.get -> int
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.GrowOnWaiterCount.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.IdleTimeout.get -> System.TimeSpan
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.IdleTimeout.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.MaxBackoff.get -> System.TimeSpan
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.MaxBackoff.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.ShrinkCooldownWindows.get -> int
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.ShrinkCooldownWindows.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.SweepInterval.get -> System.TimeSpan
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.SweepInterval.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.UtilizationWindow.get -> System.TimeSpan
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.UtilizationWindow.init -> void
 ```
 
 XML doc comments on the public builder methods explaining: "Configures the {threshold} signal for adaptive grow. Default: {locked default per CONTEXT}." Keep doc comments single-paragraph per Phase 1 conventions.
@@ -208,7 +208,7 @@ XML doc comments on the public builder methods explaining: "Configures the {thre
 Note: `UtilizationWindow` is exposed only on the options record (not the builder) — the builder uses the locked 30s default; tests in Plan 03 set it via the options surface or fall back to the default.
   </action>
   <verify>
-    <automated>cd /mnt/p/dynamic-pool && dotnet build src/Oragon.AdaptivePool.Core/Oragon.AdaptivePool.Core.csproj /clp:ErrorsOnly</automated>
+    <automated>cd /mnt/p/dynamic-pool && dotnet build src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj /clp:ErrorsOnly</automated>
   </verify>
   <done>Core compiles on net8.0/net9.0/net10.0; PublicAPI.Unshipped.txt diff contains exactly the 23 lines above; PublicAPI analyzer (RS0016/RS0017) reports zero unshipped-API errors.</done>
 </task>
@@ -216,18 +216,18 @@ Note: `UtilizationWindow` is exposed only on the options record (not the builder
 <task type="auto">
   <name>Task 2: Add 5 internal sealed components (UtilizationSampler, WaitDurationHistogram, PressureSampler, SweepBackoffState, BackgroundSweeper)</name>
   <files>
-    src/Oragon.AdaptivePool.Core/Internals/UtilizationSampler.cs,
-    src/Oragon.AdaptivePool.Core/Internals/WaitDurationHistogram.cs,
-    src/Oragon.AdaptivePool.Core/Internals/PressureSampler.cs,
-    src/Oragon.AdaptivePool.Core/Internals/SweepBackoffState.cs,
-    src/Oragon.AdaptivePool.Core/Internals/BackgroundSweeper.cs
+    src/Oragon.ElasticPool.Core/Internals/UtilizationSampler.cs,
+    src/Oragon.ElasticPool.Core/Internals/WaitDurationHistogram.cs,
+    src/Oragon.ElasticPool.Core/Internals/PressureSampler.cs,
+    src/Oragon.ElasticPool.Core/Internals/SweepBackoffState.cs,
+    src/Oragon.ElasticPool.Core/Internals/BackgroundSweeper.cs
   </files>
   <action>
 Create 5 new files, each `internal sealed`. NO public surface added. NO grow/shrink behavior triggered yet — `BackgroundSweeper`'s sweep body is a stub that only updates the cooldown counter and the backoff state; it does NOT call grow or shrink. Plan 02 fills in the sweep body.
 
 **1. `UtilizationSampler.cs`** — ring-buffered rolling-window sampler. Allocation-free per `Sample()`. Per RESEARCH §"Pattern 2":
 ```csharp
-namespace Oragon.AdaptivePool.Core.Internals;
+namespace Oragon.ElasticPool.Core.Internals;
 
 internal sealed class UtilizationSampler
 {
@@ -283,7 +283,7 @@ Use bucketSize = 1s (so 30 buckets at default 30s window). Tests in Plan 03 will
 
 **2. `WaitDurationHistogram.cs`** — 100-sample ring buffer of wait durations; `P95` returns the 95th-percentile entry of the populated samples (sort the populated portion on read; cheap at 100 samples). Per RESEARCH §"Pattern 3" (assumption A4 — "in-engine p95 estimate"):
 ```csharp
-namespace Oragon.AdaptivePool.Core.Internals;
+namespace Oragon.ElasticPool.Core.Internals;
 
 internal sealed class WaitDurationHistogram
 {
@@ -326,7 +326,7 @@ internal sealed class WaitDurationHistogram
 
 **3. `PressureSampler.cs`** — composite-signal evaluator, returns `GrowDecision` struct. OR-combined, all 3 signals computed (no short-circuit) so telemetry can attribute. Per RESEARCH §"Pattern 3":
 ```csharp
-namespace Oragon.AdaptivePool.Core.Internals;
+namespace Oragon.ElasticPool.Core.Internals;
 
 internal readonly record struct GrowDecision(
     bool ShouldGrow, int CurrentTotal,
@@ -334,11 +334,11 @@ internal readonly record struct GrowDecision(
 
 internal sealed class PressureSampler<T> where T : notnull
 {
-    private readonly Builder.AdaptivePoolOptions<T> _options;
+    private readonly Builder.ElasticPoolOptions<T> _options;
     private readonly UtilizationSampler _util;
     private readonly WaitDurationHistogram _wait;
 
-    public PressureSampler(Builder.AdaptivePoolOptions<T> options, UtilizationSampler util, WaitDurationHistogram wait)
+    public PressureSampler(Builder.ElasticPoolOptions<T> options, UtilizationSampler util, WaitDurationHistogram wait)
     { _options = options; _util = util; _wait = wait; }
 
     public WaitDurationHistogram WaitHistogram => _wait;
@@ -358,7 +358,7 @@ internal sealed class PressureSampler<T> where T : notnull
 
 **4. `SweepBackoffState.cs`** — exponential backoff state machine. Per RESEARCH §"Pattern 5":
 ```csharp
-namespace Oragon.AdaptivePool.Core.Internals;
+namespace Oragon.ElasticPool.Core.Internals;
 
 internal sealed class SweepBackoffState
 {
@@ -400,12 +400,12 @@ internal sealed class SweepBackoffState
 
 **5. `BackgroundSweeper.cs`** — PeriodicTimer-driven loop, body is a stub that increments cooldown and updates backoff. Plan 02 will replace `RunSweepTickAsync`'s body with the real grow/shrink/health logic.
 ```csharp
-namespace Oragon.AdaptivePool.Core.Internals;
+namespace Oragon.ElasticPool.Core.Internals;
 
 internal sealed class BackgroundSweeper<T> : IAsyncDisposable where T : notnull
 {
-    private readonly AdaptivePool<T> _pool;
-    private readonly Builder.AdaptivePoolOptions<T> _options;
+    private readonly ElasticPool<T> _pool;
+    private readonly Builder.ElasticPoolOptions<T> _options;
     private readonly SweepBackoffState _backoff;
     private readonly CancellationTokenSource _sweepCts;
     private readonly Task _sweepTask;
@@ -415,7 +415,7 @@ internal sealed class BackgroundSweeper<T> : IAsyncDisposable where T : notnull
     internal Task TickCompleted => _tickCompleted.Task;
     internal long TickCount; // diagnostic counter; Volatile.Read in tests
 
-    public BackgroundSweeper(AdaptivePool<T> pool, Builder.AdaptivePoolOptions<T> options, SweepBackoffState backoff, CancellationToken lifetimeToken)
+    public BackgroundSweeper(ElasticPool<T> pool, Builder.ElasticPoolOptions<T> options, SweepBackoffState backoff, CancellationToken lifetimeToken)
     {
         _pool = pool; _options = options; _backoff = backoff;
         _sweepCts = CancellationTokenSource.CreateLinkedTokenSource(lifetimeToken);
@@ -466,7 +466,7 @@ internal sealed class BackgroundSweeper<T> : IAsyncDisposable where T : notnull
     }
 }
 ```
-Note: `BackgroundSweeper<T>` is generic on `T` so it can carry `AdaptivePool<T>` reference and `AdaptivePoolOptions<T>`. The class is `internal sealed`; only the engine constructs it.
+Note: `BackgroundSweeper<T>` is generic on `T` so it can carry `ElasticPool<T>` reference and `ElasticPoolOptions<T>`. The class is `internal sealed`; only the engine constructs it.
 
 **Concurrency / cancellation invariants** every component must hold:
 - All public/internal methods on these components are safe to call concurrently with each other (already proven by `Volatile.Read`/`Interlocked` patterns).
@@ -474,21 +474,21 @@ Note: `BackgroundSweeper<T>` is generic on `T` so it can carry `AdaptivePool<T>`
 - No new locks introduced in the hot Acquire path. `WaitDurationHistogram._readLock` is taken ONLY on `P95` read (sweep tick + slow-path Acquire), never on `Record` (hot path).
   </action>
   <verify>
-    <automated>cd /mnt/p/dynamic-pool && dotnet build src/Oragon.AdaptivePool.Core/Oragon.AdaptivePool.Core.csproj /clp:ErrorsOnly && grep -c "internal sealed" src/Oragon.AdaptivePool.Core/Internals/UtilizationSampler.cs src/Oragon.AdaptivePool.Core/Internals/WaitDurationHistogram.cs src/Oragon.AdaptivePool.Core/Internals/SweepBackoffState.cs src/Oragon.AdaptivePool.Core/Internals/BackgroundSweeper.cs</automated>
+    <automated>cd /mnt/p/dynamic-pool && dotnet build src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj /clp:ErrorsOnly && grep -c "internal sealed" src/Oragon.ElasticPool.Core/Internals/UtilizationSampler.cs src/Oragon.ElasticPool.Core/Internals/WaitDurationHistogram.cs src/Oragon.ElasticPool.Core/Internals/SweepBackoffState.cs src/Oragon.ElasticPool.Core/Internals/BackgroundSweeper.cs</automated>
   </verify>
   <done>Five files exist; `internal sealed` declared on each (4 of them produce 1 match each; PressureSampler is generic so grep target adjusted at exec time); Core compiles on all 3 TFMs; PublicAPI analyzer reports no new public-surface errors (internal types are invisible).</done>
 </task>
 
 <task type="auto">
-  <name>Task 3: Wire components into AdaptivePool<T>; extend PoolEntry; record sample on Acquire/Release; surface internal probes for Plan 03 tests</name>
+  <name>Task 3: Wire components into ElasticPool<T>; extend PoolEntry; record sample on Acquire/Release; surface internal probes for Plan 03 tests</name>
   <files>
-    src/Oragon.AdaptivePool.Core/Internals/PoolEntry.cs,
-    src/Oragon.AdaptivePool.Core/Internals/AdaptivePool.cs
+    src/Oragon.ElasticPool.Core/Internals/PoolEntry.cs,
+    src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs
   </files>
   <action>
 **1. Extend PoolEntry<T>** to record `LastReturnedAt` (mutable to avoid record-with churn — change to `internal sealed class` per RESEARCH §"Pattern 4" rationale):
 ```csharp
-namespace Oragon.AdaptivePool.Core.Internals;
+namespace Oragon.ElasticPool.Core.Internals;
 
 internal sealed class PoolEntry<T> where T : notnull
 {
@@ -509,7 +509,7 @@ internal sealed class PoolEntry<T> where T : notnull
 ```
 Rationale: changing from `record` to `class` breaks no public surface (PoolEntry is `internal`). The `Deconstruct` method preserves any existing `(item, createdAt)` pattern usages in the engine.
 
-**2. Modify AdaptivePool<T>.cs** — additions only, no rewrites of existing logic:
+**2. Modify ElasticPool<T>.cs** — additions only, no rewrites of existing logic:
 
 a. Add fields:
 ```csharp
@@ -539,7 +539,7 @@ internal void ResetSinceLastGrowTicks() => Interlocked.Exchange(ref _sinceLastGr
 internal int CurrentTotal => Volatile.Read(ref _total);
 internal ConcurrentQueue<PoolEntry<T>> Idle => _idle;
 internal Channel<TaskCompletionSource<PoolEntry<T>>> Waiters => _waiters;
-internal AdaptivePoolOptions<T> Options => _options;
+internal ElasticPoolOptions<T> Options => _options;
 internal PressureSampler<T> Pressure => _pressure;
 internal UtilizationSampler UtilSampler => _utilSampler;
 internal WaitDurationHistogram WaitHistogram => _waitHistogram;
@@ -567,14 +567,14 @@ g. Update construction calls of `new PoolEntry<T>(item, _time.GetUtcNow())` (3 s
 - Wait-duration recording (`_waitHistogram.Record(...)`) is NOT yet wired into the slow path. Plan 02 adds it.
 - BackgroundSweeper does NOT yet invoke Check hooks or shrink. Stub body only.
 
-**Phase 1 regression guard:** the `MaxSize=1 PingPongStressTest` (existing in `tests/Oragon.AdaptivePool.Core.Stress`) MUST continue to pass. The verify command runs it.
+**Phase 1 regression guard:** the `MaxSize=1 PingPongStressTest` (existing in `tests/Oragon.ElasticPool.Core.Stress`) MUST continue to pass. The verify command runs it.
 
-**InternalsVisibleTo for tests:** add to the .csproj if not already present (Phase 1 SUMMARY mentions DynamicProxyGenAssembly2). Add `<InternalsVisibleTo Include="Oragon.AdaptivePool.Core.Tests" />` so Plan 03 can reach `_sweeper.TickCompleted` and the `internal` probes added in step (c).
+**InternalsVisibleTo for tests:** add to the .csproj if not already present (Phase 1 SUMMARY mentions DynamicProxyGenAssembly2). Add `<InternalsVisibleTo Include="Oragon.ElasticPool.Core.Tests" />` so Plan 03 can reach `_sweeper.TickCompleted` and the `internal` probes added in step (c).
   </action>
   <verify>
-    <automated>cd /mnt/p/dynamic-pool && dotnet build /clp:ErrorsOnly && dotnet test tests/Oragon.AdaptivePool.Core.Tests/Oragon.AdaptivePool.Core.Tests.csproj --no-build --configuration Debug -- --report-trx false 2>&1 | tail -5 && dotnet test tests/Oragon.AdaptivePool.Core.Stress/Oragon.AdaptivePool.Core.Stress.csproj --configuration Release 2>&1 | tail -5</automated>
+    <automated>cd /mnt/p/dynamic-pool && dotnet build /clp:ErrorsOnly && dotnet test tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj --no-build --configuration Debug -- --report-trx false 2>&1 | tail -5 && dotnet test tests/Oragon.ElasticPool.Core.Stress/Oragon.ElasticPool.Core.Stress.csproj --configuration Release 2>&1 | tail -5</automated>
   </verify>
-  <done>Solution builds on all 3 TFMs; Phase 1's 70 unit tests still pass (no regression); Phase 1's PingPongStressTest still passes (~300ms wall-clock, well under 25s watchdog); `grep -c LastReturnedAt src/Oragon.AdaptivePool.Core/Internals/PoolEntry.cs` >= 1; `grep -c "_sweeper" src/Oragon.AdaptivePool.Core/Internals/AdaptivePool.cs` >= 3 (field + ctor init + DisposeAsync teardown).</done>
+  <done>Solution builds on all 3 TFMs; Phase 1's 70 unit tests still pass (no regression); Phase 1's PingPongStressTest still passes (~300ms wall-clock, well under 25s watchdog); `grep -c LastReturnedAt src/Oragon.ElasticPool.Core/Internals/PoolEntry.cs` >= 1; `grep -c "_sweeper" src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs` >= 3 (field + ctor init + DisposeAsync teardown).</done>
 </task>
 
 </tasks>
@@ -592,7 +592,7 @@ g. Update construction calls of `new PoolEntry<T>(item, _time.GetUtcNow())` (3 s
 
 | Threat ID | Category | Component | Disposition | Mitigation Plan |
 |-----------|----------|-----------|-------------|-----------------|
-| T-02-01-01 | T (Tampering) | `AdaptivePoolOptions<T>` Phase 2 init-only props | mitigate | Properties are `init`-only; only `AdaptivePoolBuilder<T>.Build()` writes them. Builder validates each (nonneg/positive/range) before construction. |
+| T-02-01-01 | T (Tampering) | `ElasticPoolOptions<T>` Phase 2 init-only props | mitigate | Properties are `init`-only; only `ElasticPoolBuilder<T>.Build()` writes them. Builder validates each (nonneg/positive/range) before construction. |
 | T-02-01-02 | D (DoS) | `BackgroundSweeper.SweepLoopAsync` | mitigate | A single tick failure does NOT kill the loop — `try/catch (Exception)` inside the loop swallows + Plan 02 will log via `SweepFailed`. Sweep cancellation on `_lifetimeCts` is the only legitimate exit. |
 | T-02-01-03 | D (DoS) | `WaitDurationHistogram.P95` (lock taken on read) | accept | The lock is held for ~100 long copies + sort — microseconds. Held only on sweep tick + slow-path Acquire (not hot path). Single-writer (slow path) + single-reader (sweep) means contention is rare. |
 | T-02-01-04 | I (Information disclosure) | New `internal sealed` types | accept | `internal sealed` + PublicAPI analyzer (RS0016) prevents accidental public exposure. No PII/secrets handled by these components. |
@@ -600,23 +600,23 @@ g. Update construction calls of `new PoolEntry<T>(item, _time.GetUtcNow())` (3 s
 </threat_model>
 
 <verification>
-- All Phase 1 unit tests still pass (`tests/Oragon.AdaptivePool.Core.Tests`) on net8.0/net9.0/net10.0.
+- All Phase 1 unit tests still pass (`tests/Oragon.ElasticPool.Core.Tests`) on net8.0/net9.0/net10.0.
 - Phase 1 anchor stress test (`PingPongStressTest`) still passes — proves the Phase 2 wiring is non-regressive on the fixed-size hot path.
 - `dotnet build` is green with `TreatWarningsAsErrors=true` (Phase 1 invariant).
 - PublicAPI analyzer (RS0016/RS0017) reports zero unshipped-API errors after Task 1's `PublicAPI.Unshipped.txt` update.
 - No new compile warnings in `Internals/` (sealed classes, nullable enabled).
-- `grep -nE "internal sealed" src/Oragon.AdaptivePool.Core/Internals/{UtilizationSampler,WaitDurationHistogram,SweepBackoffState,BackgroundSweeper}.cs` returns >=4 hits (one per file).
-- `grep -nE "internal sealed class PressureSampler" src/Oragon.AdaptivePool.Core/Internals/PressureSampler.cs` returns 1 hit.
+- `grep -nE "internal sealed" src/Oragon.ElasticPool.Core/Internals/{UtilizationSampler,WaitDurationHistogram,SweepBackoffState,BackgroundSweeper}.cs` returns >=4 hits (one per file).
+- `grep -nE "internal sealed class PressureSampler" src/Oragon.ElasticPool.Core/Internals/PressureSampler.cs` returns 1 hit.
 </verification>
 
 <success_criteria>
 - Builder fluent surface ships 7 new methods, each validating its argument and returning the builder.
 - Options record carries the 8 Phase 2 properties (7 builder-exposed + UtilizationWindow internal-default).
 - 5 new internal sealed types compile and integrate cleanly with the Phase 1 engine.
-- AdaptivePool<T> ctor instantiates all components and starts the sweep loop; DisposeAsync awaits sweeper teardown before draining the idle queue.
+- ElasticPool<T> ctor instantiates all components and starts the sweep loop; DisposeAsync awaits sweeper teardown before draining the idle queue.
 - PoolEntry<T> records LastReturnedAt; engine sets it on every return path including warmup, sync return, async return, finalizer return.
 - Phase 1 tests + stress test remain green (regression guard).
-- `[InternalsVisibleTo("Oragon.AdaptivePool.Core.Tests")]` is in place so Plan 03 can reach the test probes (`Sweeper.TickCompleted`, internal accessors).
+- `[InternalsVisibleTo("Oragon.ElasticPool.Core.Tests")]` is in place so Plan 03 can reach the test probes (`Sweeper.TickCompleted`, internal accessors).
 </success_criteria>
 
 <output>

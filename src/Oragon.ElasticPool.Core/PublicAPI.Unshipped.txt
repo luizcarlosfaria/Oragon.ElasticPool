@@ -1,0 +1,25 @@
+#nullable enable
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.AfterUse(Oragon.ElasticPool.Core.Hooks.AfterUseSyncDelegate<T>! hook) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.BeforeUse(Oragon.ElasticPool.Core.Hooks.BeforeUseSyncDelegate<T>! hook) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.Check(Oragon.ElasticPool.Core.Hooks.CheckSyncDelegate<T>! hook) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.Factory(Oragon.ElasticPool.Core.Hooks.FactorySyncDelegate<T>! factory) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.MaxWaiterCount(int n) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.Release(Oragon.ElasticPool.Core.Hooks.ReleaseSyncDelegate<T>! hook) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.ShrinkBatchSize(int n) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.ShrinkOnUtilizationPercent(double p) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.ShrinkTargetUtilizationPercent(double p) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.ShrinkBatchSize.get -> int
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.ShrinkBatchSize.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.ShrinkOnUtilizationPercent.get -> double
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.ShrinkOnUtilizationPercent.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.ShrinkTargetUtilizationPercent.get -> double
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.ShrinkTargetUtilizationPercent.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.MaxWaiterCount.get -> int?
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.MaxWaiterCount.init -> void
+Oragon.ElasticPool.Core.Hooks.AfterUseSyncDelegate<T>
+Oragon.ElasticPool.Core.Hooks.BeforeUseSyncDelegate<T>
+Oragon.ElasticPool.Core.Hooks.CheckSyncDelegate<T>
+Oragon.ElasticPool.Core.Hooks.FactorySyncDelegate<T>
+Oragon.ElasticPool.Core.Hooks.ReleaseSyncDelegate<T>
+Oragon.ElasticPool.Core.Abstractions.IElasticPool<T>.Total.get -> int
+Oragon.ElasticPool.Core.Abstractions.IElasticPool<T>.Waiting.get -> int

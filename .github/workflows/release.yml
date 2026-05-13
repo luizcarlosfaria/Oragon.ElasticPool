@@ -50,24 +50,32 @@ jobs:
             10.0.x
 
       - name: dotnet restore
-        run: dotnet restore Oragon.AdaptivePool.slnx
+        run: dotnet restore Oragon.ElasticPool.slnx
+
+      - name: dotnet restore (LiveDashboard sample)
+        run: dotnet restore samples/Oragon.ElasticPool.RabbitMQ.Sample.LiveDashboard/Oragon.ElasticPool.RabbitMQ.Sample.LiveDashboard.slnx
 
       - name: dotnet build (Release, ${{ matrix.tfm }})
-        run: dotnet build Oragon.AdaptivePool.slnx -c Release --no-restore -f ${{ matrix.tfm }}
+        run: dotnet build Oragon.ElasticPool.slnx -c Release --no-restore -f ${{ matrix.tfm }}
+
+      - name: dotnet build LiveDashboard sample (Release, ${{ matrix.tfm }})
+        run: >
+          dotnet build samples/Oragon.ElasticPool.RabbitMQ.Sample.LiveDashboard/Oragon.ElasticPool.RabbitMQ.Sample.LiveDashboard.slnx
+          -c Release --no-restore -f ${{ matrix.tfm }}
 
       - name: dotnet test (Core.Tests)
         run: >
-          dotnet test --project tests/Oragon.AdaptivePool.Core.Tests/Oragon.AdaptivePool.Core.Tests.csproj
+          dotnet test --project tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj
           --configuration Release --no-build -f ${{ matrix.tfm }}
 
       - name: dotnet test (RabbitMQ.Tests)
         run: >
-          dotnet test --project tests/Oragon.AdaptivePool.RabbitMQ.Tests/Oragon.AdaptivePool.RabbitMQ.Tests.csproj
+          dotnet test --project tests/Oragon.ElasticPool.RabbitMQ.Tests/Oragon.ElasticPool.RabbitMQ.Tests.csproj
           --configuration Release --no-build -f ${{ matrix.tfm }}
 
       - name: dotnet test (RabbitMQ.IntegrationTests)
         run: >
-          dotnet test --project tests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests/Oragon.AdaptivePool.RabbitMQ.IntegrationTests.csproj
+          dotnet test --project tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/Oragon.ElasticPool.RabbitMQ.IntegrationTests.csproj
           --configuration Release --no-build -f ${{ matrix.tfm }}
         env:
           DOCKER_HOST: unix:///var/run/docker.sock
@@ -93,24 +101,32 @@ jobs:
             10.0.x
 
       - name: dotnet restore
-        run: dotnet restore Oragon.AdaptivePool.slnx
+        run: dotnet restore Oragon.ElasticPool.slnx
+
+      - name: dotnet restore (LiveDashboard sample)
+        run: dotnet restore samples/Oragon.ElasticPool.RabbitMQ.Sample.LiveDashboard/Oragon.ElasticPool.RabbitMQ.Sample.LiveDashboard.slnx
 
       # Build all TFMs (no -f flag) so pack produces a multi-target package.
       - name: dotnet build (Release, all TFMs)
-        run: dotnet build Oragon.AdaptivePool.slnx -c Release --no-restore
+        run: dotnet build Oragon.ElasticPool.slnx -c Release --no-restore
+
+      - name: dotnet build LiveDashboard sample (Release, all TFMs)
+        run: >
+          dotnet build samples/Oragon.ElasticPool.RabbitMQ.Sample.LiveDashboard/Oragon.ElasticPool.RabbitMQ.Sample.LiveDashboard.slnx
+          -c Release --no-restore
 
       # Pack only the two packable projects. IsPackable=true is set per Phase 1
       # convention only on Core and RabbitMQ csproj; pack on the .slnx would also
       # work but explicit per-project is faster and clearer in the log.
       - name: dotnet pack - Core
         run: >
-          dotnet pack src/Oragon.AdaptivePool.Core/Oragon.AdaptivePool.Core.csproj
+          dotnet pack src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj
           --configuration Release --no-build
           --output ./artifacts
 
       - name: dotnet pack - RabbitMQ
         run: >
-          dotnet pack src/Oragon.AdaptivePool.RabbitMQ/Oragon.AdaptivePool.RabbitMQ.csproj
+          dotnet pack src/Oragon.ElasticPool.RabbitMQ/Oragon.ElasticPool.RabbitMQ.csproj
           --configuration Release --no-build
           --output ./artifacts
 
@@ -153,7 +169,7 @@ jobs:
       # NOTE: --skip-duplicate is intentionally NOT used. Re-pushing the same
       # version is a workflow misconfiguration that should be loud (HTTP 409),
       # not silent.
-      - name: dotnet nuget push (Oragon.AdaptivePool.Core + RabbitMQ to NuGet.org)
+      - name: dotnet nuget push (Oragon.ElasticPool.Core + RabbitMQ to NuGet.org)
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
         run: >

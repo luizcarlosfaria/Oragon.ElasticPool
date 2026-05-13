@@ -6,10 +6,10 @@ wave: 1
 depends_on: []
 files_modified:
   - Directory.Build.props
-  - src/Oragon.AdaptivePool.Core/Oragon.AdaptivePool.Core.csproj
-  - src/Oragon.AdaptivePool.RabbitMQ/Oragon.AdaptivePool.RabbitMQ.csproj
-  - src/Oragon.AdaptivePool.Core/README.md
-  - src/Oragon.AdaptivePool.RabbitMQ/README.md
+  - src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj
+  - src/Oragon.ElasticPool.RabbitMQ/Oragon.ElasticPool.RabbitMQ.csproj
+  - src/Oragon.ElasticPool.Core/README.md
+  - src/Oragon.ElasticPool.RabbitMQ/README.md
   - README.md
   - LICENSE
   - CHANGELOG.md
@@ -26,8 +26,8 @@ must_haves:
     - "Repo root contains LICENSE (MIT, full text) — license is referenced by Directory.Build.props or csproj as PackageLicenseFile OR PackageLicenseExpression=MIT (decision D-04: PackageLicenseExpression=MIT preserved, plus LICENSE file at root for GitHub UI recognition)"
     - "Repo root contains CHANGELOG.md in Keep-a-Changelog format with v1.0.0 entry listing the 30 v1 requirements"
     - "Repo root contains README.md (orchestrator overview) linking to per-package READMEs and sample"
-    - "src/Oragon.AdaptivePool.Core/README.md contains 30-second quickstart + OTel exporter integration example wiring Meter+ActivitySource + comparison table vs Microsoft.Extensions.ObjectPool"
-    - "src/Oragon.AdaptivePool.RabbitMQ/README.md contains layered IConnection+IChannel pool example, AutomaticRecoveryEnabled override callout, link to BurstyPublisher sample, and the connection-pool-sizing callout from Phase 3 SUMMARY heads-up #1"
+    - "src/Oragon.ElasticPool.Core/README.md contains 30-second quickstart + OTel exporter integration example wiring Meter+ActivitySource + comparison table vs Microsoft.Extensions.ObjectPool"
+    - "src/Oragon.ElasticPool.RabbitMQ/README.md contains layered IConnection+IChannel pool example, AutomaticRecoveryEnabled override callout, link to BurstyPublisher sample, and the connection-pool-sizing callout from Phase 3 SUMMARY heads-up #1"
     - "Per-package csproj has explicit Authors, Description, PackageTags refined for evaluator search, RepositoryUrl, and PackageProjectUrl"
     - "icon.png exists at repo root as 128×128 PNG"
     - "dotnet pack -c Release for both packable projects produces .nupkg containing README.md and icon.png in the package contents"
@@ -35,16 +35,16 @@ must_haves:
     - path: "Directory.Build.props"
       provides: "Repo-wide package metadata defaults: PackageProjectUrl, PackageReadmeFile=README.md (relative to project), PackageIcon=icon.png, PackageRequireLicenseAcceptance=false, embedded README+icon include items"
       contains: "PackageReadmeFile"
-    - path: "src/Oragon.AdaptivePool.Core/Oragon.AdaptivePool.Core.csproj"
+    - path: "src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj"
       provides: "Refined Core package metadata + per-project README pack item"
       contains: "PackageReadmeFile"
-    - path: "src/Oragon.AdaptivePool.RabbitMQ/Oragon.AdaptivePool.RabbitMQ.csproj"
+    - path: "src/Oragon.ElasticPool.RabbitMQ/Oragon.ElasticPool.RabbitMQ.csproj"
       provides: "Refined RabbitMQ package metadata + per-project README pack item"
       contains: "PackageReadmeFile"
-    - path: "src/Oragon.AdaptivePool.Core/README.md"
+    - path: "src/Oragon.ElasticPool.Core/README.md"
       provides: "Per-package README embedded in Core .nupkg — the converter-in-60-seconds README"
       min_lines: 120
-    - path: "src/Oragon.AdaptivePool.RabbitMQ/README.md"
+    - path: "src/Oragon.ElasticPool.RabbitMQ/README.md"
       provides: "Per-package README embedded in RabbitMQ .nupkg"
       min_lines: 80
     - path: "README.md"
@@ -59,12 +59,12 @@ must_haves:
     - path: "icon.png"
       provides: "Package icon, 128×128 PNG, embedded in both .nupkg files"
   key_links:
-    - from: "src/Oragon.AdaptivePool.Core/Oragon.AdaptivePool.Core.csproj"
-      to: "src/Oragon.AdaptivePool.Core/README.md"
+    - from: "src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj"
+      to: "src/Oragon.ElasticPool.Core/README.md"
       via: "<None Include=\"README.md\" Pack=\"true\" PackagePath=\"\\\" />"
       pattern: "PackageReadmeFile"
-    - from: "src/Oragon.AdaptivePool.RabbitMQ/Oragon.AdaptivePool.RabbitMQ.csproj"
-      to: "src/Oragon.AdaptivePool.RabbitMQ/README.md"
+    - from: "src/Oragon.ElasticPool.RabbitMQ/Oragon.ElasticPool.RabbitMQ.csproj"
+      to: "src/Oragon.ElasticPool.RabbitMQ/README.md"
       via: "<None Include=\"README.md\" Pack=\"true\" PackagePath=\"\\\" />"
       pattern: "PackageReadmeFile"
     - from: "Directory.Build.props"
@@ -72,13 +72,13 @@ must_haves:
       via: "<None Include=\"$(MSBuildThisFileDirectory)icon.png\" Pack=\"true\" PackagePath=\"\\\" Visible=\"false\" Condition=\"'$(IsPackable)' == 'true'\" />"
       pattern: "PackageIcon"
     - from: "README.md (root)"
-      to: "samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/README.md"
+      to: "samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/README.md"
       via: "Markdown relative link"
       pattern: "samples/.*BurstyPublisher"
 ---
 
 <objective>
-Land all OSS-quality documentation, licensing, and NuGet packaging metadata required to ship `Oragon.AdaptivePool.Core` and `Oragon.AdaptivePool.RabbitMQ` to NuGet.org. After this plan, `dotnet pack -c Release` produces well-formed `.nupkg` files containing per-package README, embedded icon, MIT license expression, refined description/tags/authors/project URLs — and the repo presents a polished GitHub-recognizable face (root README, LICENSE, CHANGELOG).
+Land all OSS-quality documentation, licensing, and NuGet packaging metadata required to ship `Oragon.ElasticPool.Core` and `Oragon.ElasticPool.RabbitMQ` to NuGet.org. After this plan, `dotnet pack -c Release` produces well-formed `.nupkg` files containing per-package README, embedded icon, MIT license expression, refined description/tags/authors/project URLs — and the repo presents a polished GitHub-recognizable face (root README, LICENSE, CHANGELOG).
 
 Purpose: Address OSS-02 (README + OTel example + comparison table + sample link), OSS-03 (CHANGELOG and SemVer hygiene infra — actual MinVer wiring already shipped Phase 1), and the consumer-facing half of OSS-04 (.nupkg metadata; the .snupkg + SourceLink halves are Phase 1 carry-forward, this plan only refines metadata so consumers see Authors/Description/Icon/README in NuGet.org and IDE package managers).
 
@@ -104,34 +104,34 @@ Output: Updated build infra + 3 README files + LICENSE + CHANGELOG + icon.png. N
 @.planning/phases/03-rabbitmq-adapter/03-SUMMARY.md
 
 # Sample README (RabbitMQ adapter) — link target from package READMEs.
-@samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/README.md
+@samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/README.md
 
 # Existing build infra (will be modified, not replaced).
 @Directory.Build.props
 @Directory.Packages.props
-@src/Oragon.AdaptivePool.Core/Oragon.AdaptivePool.Core.csproj
-@src/Oragon.AdaptivePool.RabbitMQ/Oragon.AdaptivePool.RabbitMQ.csproj
+@src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj
+@src/Oragon.ElasticPool.RabbitMQ/Oragon.ElasticPool.RabbitMQ.csproj
 
 <interfaces>
 <!-- Public API surface that README quickstarts must match. Extracted from PublicAPI.Unshipped.txt. -->
 <!-- Use these exact symbol names + signatures in code samples — analyzer will reject README drift. -->
 
-From src/Oragon.AdaptivePool.Core/PublicAPI.Unshipped.txt — Core entry points:
+From src/Oragon.ElasticPool.Core/PublicAPI.Unshipped.txt — Core entry points:
 
 ```csharp
 // DI extension (the README quickstart's primary entry point)
-namespace Oragon.AdaptivePool.Core.DependencyInjection;
-public static class AdaptivePoolServiceCollectionExtensions
+namespace Oragon.ElasticPool.Core.DependencyInjection;
+public static class ElasticPoolServiceCollectionExtensions
 {
-    public static IServiceCollection AddAdaptivePool<T>(
+    public static IServiceCollection AddElasticPool<T>(
         this IServiceCollection services,
         string name,
         Action<AdaptiveObjectPoolBuilder<T>> configure) where T : class;
 }
 
 // Pool consumer surface
-namespace Oragon.AdaptivePool.Core.Abstractions;
-public interface IAdaptivePool<T>
+namespace Oragon.ElasticPool.Core.Abstractions;
+public interface IElasticPool<T>
 {
     IPoolItem<T> Acquire();
     ValueTask<IPoolItem<T>> AcquireAsync(CancellationToken cancellationToken = default);
@@ -148,30 +148,30 @@ public interface IPoolItem<T> : IDisposable, IAsyncDisposable
 }
 
 // Telemetry names (use these literal strings in OTel example)
-// Meter:          "Oragon.AdaptivePool"
-// ActivitySource: "Oragon.AdaptivePool"
+// Meter:          "Oragon.ElasticPool"
+// ActivitySource: "Oragon.ElasticPool"
 ```
 
-From src/Oragon.AdaptivePool.RabbitMQ/PublicAPI.Unshipped.txt — RabbitMQ entry points:
+From src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Unshipped.txt — RabbitMQ entry points:
 
 ```csharp
-namespace Oragon.AdaptivePool.RabbitMQ.DependencyInjection;
-public static class AdaptiveConnectionPoolServiceCollectionExtensions
+namespace Oragon.ElasticPool.RabbitMQ.DependencyInjection;
+public static class ElasticConnectionPoolServiceCollectionExtensions
 {
-    public static IServiceCollection AddAdaptiveConnectionPool(
+    public static IServiceCollection AddElasticConnectionPool(
         this IServiceCollection services,
         string name,
         Action<ConnectionFactory>? configureFactory,
-        Action<AdaptiveConnectionPoolBuilder> configurePool);
+        Action<ElasticConnectionPoolBuilder> configurePool);
 }
 
-public static class AdaptiveChannelPoolServiceCollectionExtensions
+public static class ElasticChannelPoolServiceCollectionExtensions
 {
-    public static IServiceCollection AddAdaptiveChannelPool(
+    public static IServiceCollection AddElasticChannelPool(
         this IServiceCollection services,
         string name,
         string connectionPoolName,
-        Action<AdaptiveChannelPoolBuilder> configurePool);
+        Action<ElasticChannelPoolBuilder> configurePool);
 }
 ```
 
@@ -210,31 +210,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2026-05-XX
 
 ### Added
-- **Core (`Oragon.AdaptivePool.Core`)** — generic in-process object pool with:
-  - `IAdaptivePool<T>` with sync `Acquire()` + `AcquireAsync(CancellationToken)` (API-01)
+- **Core (`Oragon.ElasticPool.Core`)** — generic in-process object pool with:
+  - `IElasticPool<T>` with sync `Acquire()` + `AcquireAsync(CancellationToken)` (API-01)
   - `IPoolItem<T>` disposable wrapper with double-dispose detection (API-02)
-  - Fluent builder `AdaptiveObjectPoolFactory.Build<T>(...)` (API-03)
+  - Fluent builder `ElasticObjectPoolFactory.Build<T>(...)` (API-03)
   - 5 lifecycle hooks: `Factory`, `BeforeUse`, `Check`, `AfterUse`, `Release` (HOOK-01..05)
   - Configurable `MinSize`/`MaxSize`/`InitialSize` with eager warm-up (BOUND-01, BOUND-02)
   - Composite-signal grow (waiters + utilization + p95 wait) and hysteretic shrink (ELASTIC-01, ELASTIC-02)
   - Pluggable `IItemFailurePolicy<T>` with `DiscardAndReplace` default (FAIL-01, FAIL-02)
-  - Built-in `Meter` + `ActivitySource` (both named `"Oragon.AdaptivePool"`) (TELEM-01, TELEM-02)
+  - Built-in `Meter` + `ActivitySource` (both named `"Oragon.ElasticPool"`) (TELEM-01, TELEM-02)
   - Source-generated `[LoggerMessage]` logging (TELEM-03)
-  - DI extension `AddAdaptivePool<T>(name, configure)` (DI-01)
+  - DI extension `AddElasticPool<T>(name, configure)` (DI-01)
   - End-to-end `CancellationToken` propagation (QUAL-01)
   - `IAsyncDisposable` with drain semantics (QUAL-02)
   - Stress-validated thread safety (QUAL-03)
 
-- **RabbitMQ adapter (`Oragon.AdaptivePool.RabbitMQ`)** — for RabbitMQ.Client v7+:
-  - `AddAdaptiveConnectionPool(name, configure)` with `IsOpen`-based health (RMQ-01)
-  - `AddAdaptiveChannelPool(name, connectionPoolName, configure)` layered over connection pool (RMQ-02)
+- **RabbitMQ adapter (`Oragon.ElasticPool.RabbitMQ`)** — for RabbitMQ.Client v7+:
+  - `AddElasticConnectionPool(name, configure)` with `IsOpen`-based health (RMQ-01)
+  - `AddElasticChannelPool(name, connectionPoolName, configure)` layered over connection pool (RMQ-02)
   - Bursty publisher sample (RMQ-03)
   - Conventions consistent with `Oragon.RabbitMQ` sister library (RMQ-04)
 
 - **Quality / OSS** — multi-TFM (net8/9/10) CI matrix (OSS-01), README + OTel example + comparison table + sample link (OSS-02), MinVer-driven SemVer with `.snupkg` + SourceLink (OSS-03, OSS-04), `PublicApiAnalyzers` baselined (OSS-05).
 
-[Unreleased]: https://github.com/oragon/Oragon.AdaptivePool/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/oragon/Oragon.AdaptivePool/releases/tag/v1.0.0
+[Unreleased]: https://github.com/oragon/Oragon.ElasticPool/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/oragon/Oragon.ElasticPool/releases/tag/v1.0.0
 ```
 
 Use today's placeholder date `2026-05-XX` — Plan 02 (or release-time) replaces XX with the real day.
@@ -279,14 +279,14 @@ The icon is intentionally placeholder per CONTEXT.md "Claude's Discretion: criar
 **4. README.md** (repo root) — orchestrator overview. Structure (use exactly these section names + order):
 
 ```markdown
-# Oragon.AdaptivePool
+# Oragon.ElasticPool
 
 > Generic, elastic, self-healing object pool for .NET — with built-in OpenTelemetry.
 
-[![build](https://github.com/oragon/Oragon.AdaptivePool/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/oragon/Oragon.AdaptivePool/actions/workflows/build.yml)
-[![NuGet Core](https://img.shields.io/nuget/v/Oragon.AdaptivePool.Core.svg?label=Core)](https://www.nuget.org/packages/Oragon.AdaptivePool.Core)
-[![NuGet RabbitMQ](https://img.shields.io/nuget/v/Oragon.AdaptivePool.RabbitMQ.svg?label=RabbitMQ)](https://www.nuget.org/packages/Oragon.AdaptivePool.RabbitMQ)
-[![Downloads](https://img.shields.io/nuget/dt/Oragon.AdaptivePool.Core.svg)](https://www.nuget.org/packages/Oragon.AdaptivePool.Core)
+[![build](https://github.com/oragon/Oragon.ElasticPool/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/oragon/Oragon.ElasticPool/actions/workflows/build.yml)
+[![NuGet Core](https://img.shields.io/nuget/v/Oragon.ElasticPool.Core.svg?label=Core)](https://www.nuget.org/packages/Oragon.ElasticPool.Core)
+[![NuGet RabbitMQ](https://img.shields.io/nuget/v/Oragon.ElasticPool.RabbitMQ.svg?label=RabbitMQ)](https://www.nuget.org/packages/Oragon.ElasticPool.RabbitMQ)
+[![Downloads](https://img.shields.io/nuget/dt/Oragon.ElasticPool.Core.svg)](https://www.nuget.org/packages/Oragon.ElasticPool.Core)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ## What this is
@@ -300,8 +300,8 @@ replaced), and **fluent DX** (async-first, DI-first, builder pattern). Multi-tar
 
 | Package | NuGet | Purpose |
 |---------|-------|---------|
-| [`Oragon.AdaptivePool.Core`](src/Oragon.AdaptivePool.Core/README.md) | [![nuget](https://img.shields.io/nuget/v/Oragon.AdaptivePool.Core.svg)](https://www.nuget.org/packages/Oragon.AdaptivePool.Core) | Generic pool engine, hooks, telemetry, DI |
-| [`Oragon.AdaptivePool.RabbitMQ`](src/Oragon.AdaptivePool.RabbitMQ/README.md) | [![nuget](https://img.shields.io/nuget/v/Oragon.AdaptivePool.RabbitMQ.svg)](https://www.nuget.org/packages/Oragon.AdaptivePool.RabbitMQ) | `IConnection` + layered `IChannel` pools for RabbitMQ.Client v7+ |
+| [`Oragon.ElasticPool.Core`](src/Oragon.ElasticPool.Core/README.md) | [![nuget](https://img.shields.io/nuget/v/Oragon.ElasticPool.Core.svg)](https://www.nuget.org/packages/Oragon.ElasticPool.Core) | Generic pool engine, hooks, telemetry, DI |
+| [`Oragon.ElasticPool.RabbitMQ`](src/Oragon.ElasticPool.RabbitMQ/README.md) | [![nuget](https://img.shields.io/nuget/v/Oragon.ElasticPool.RabbitMQ.svg)](https://www.nuget.org/packages/Oragon.ElasticPool.RabbitMQ) | `IConnection` + layered `IChannel` pools for RabbitMQ.Client v7+ |
 
 ## 30-second quickstart
 
@@ -317,17 +317,17 @@ replaced), and **fluent DX** (async-first, DI-first, builder pattern). Multi-tar
 
 ## RabbitMQ bursty publisher
 
-See the runnable sample at [`samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher`](samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/README.md):
+See the runnable sample at [`samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher`](samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/README.md):
 
 ```bash
-dotnet run --project samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher
+dotnet run --project samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher
 ```
 
 ## Documentation
 
-- Core API + telemetry: [`src/Oragon.AdaptivePool.Core/README.md`](src/Oragon.AdaptivePool.Core/README.md)
-- RabbitMQ adapter (layered IConnection+IChannel): [`src/Oragon.AdaptivePool.RabbitMQ/README.md`](src/Oragon.AdaptivePool.RabbitMQ/README.md)
-- Sample bursty publisher: [`samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/README.md`](samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/README.md)
+- Core API + telemetry: [`src/Oragon.ElasticPool.Core/README.md`](src/Oragon.ElasticPool.Core/README.md)
+- RabbitMQ adapter (layered IConnection+IChannel): [`src/Oragon.ElasticPool.RabbitMQ/README.md`](src/Oragon.ElasticPool.RabbitMQ/README.md)
+- Sample bursty publisher: [`samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/README.md`](samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/README.md)
 - Changelog: [`CHANGELOG.md`](CHANGELOG.md)
 
 ## Versioning
@@ -342,7 +342,7 @@ prerelease versions like `1.0.1-alpha.0.5+abc1234`.
 
 ## Contributing
 
-Issues and PRs welcome at https://github.com/oragon/Oragon.AdaptivePool. Run
+Issues and PRs welcome at https://github.com/oragon/Oragon.ElasticPool. Run
 `dotnet test` before submitting; CI requires green on the
 `ubuntu-latest × {net8.0, net9.0, net10.0}` matrix.
 
@@ -370,7 +370,7 @@ Sister library [`Oragon.RabbitMQ`](https://github.com/oragon/Oragon.RabbitMQ)
 
     <!-- Phase 4 additions: package metadata defaults applied repo-wide.
          Per-csproj overrides PackageId/Description/PackageTags. -->
-    <PackageProjectUrl>https://github.com/oragon/Oragon.AdaptivePool</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/oragon/Oragon.ElasticPool</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>icon.png</PackageIcon>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -408,8 +408,8 @@ test -f LICENSE \
   && test -f icon.png \
   && file icon.png | grep -q "PNG image" \
   && test -f README.md \
-  && grep -q '^# Oragon.AdaptivePool' README.md \
-  && grep -q 'samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher' README.md \
+  && grep -q '^# Oragon.ElasticPool' README.md \
+  && grep -q 'samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher' README.md \
   && grep -q 'PackageReadmeFile>README.md' Directory.Build.props \
   && grep -q 'PackageIcon>icon.png' Directory.Build.props \
   && grep -q 'PackageLicenseExpression>MIT' Directory.Build.props \
@@ -431,10 +431,10 @@ test -f LICENSE \
 <task type="auto">
   <name>Task 2: Per-package READMEs (Core + RabbitMQ) + per-csproj metadata refinement</name>
   <files>
-    src/Oragon.AdaptivePool.Core/README.md,
-    src/Oragon.AdaptivePool.RabbitMQ/README.md,
-    src/Oragon.AdaptivePool.Core/Oragon.AdaptivePool.Core.csproj,
-    src/Oragon.AdaptivePool.RabbitMQ/Oragon.AdaptivePool.RabbitMQ.csproj
+    src/Oragon.ElasticPool.Core/README.md,
+    src/Oragon.ElasticPool.RabbitMQ/README.md,
+    src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj,
+    src/Oragon.ElasticPool.RabbitMQ/Oragon.ElasticPool.RabbitMQ.csproj
   </files>
   <action>
 Create the two per-package READMEs that ship inside the `.nupkg` files (visible on NuGet.org and in IDE NuGet package managers), and refine each csproj to:
@@ -444,28 +444,28 @@ Create the two per-package READMEs that ship inside the `.nupkg` files (visible 
 
 ---
 
-**1. `src/Oragon.AdaptivePool.Core/README.md`** — the converter-in-60-seconds artifact. Required structure (use these section anchors verbatim; the goal-backward checker greps them):
+**1. `src/Oragon.ElasticPool.Core/README.md`** — the converter-in-60-seconds artifact. Required structure (use these section anchors verbatim; the goal-backward checker greps them):
 
 ```markdown
-# Oragon.AdaptivePool.Core
+# Oragon.ElasticPool.Core
 
-[![NuGet](https://img.shields.io/nuget/v/Oragon.AdaptivePool.Core.svg)](https://www.nuget.org/packages/Oragon.AdaptivePool.Core)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/oragon/Oragon.AdaptivePool/blob/main/LICENSE)
+[![NuGet](https://img.shields.io/nuget/v/Oragon.ElasticPool.Core.svg)](https://www.nuget.org/packages/Oragon.ElasticPool.Core)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/oragon/Oragon.ElasticPool/blob/main/LICENSE)
 
 > Generic, elastic, self-healing object pool for .NET 8 / 9 / 10 — with built-in OpenTelemetry.
 
-`Oragon.AdaptivePool.Core` is a generic in-process object pool for expensive-to-create
+`Oragon.ElasticPool.Core` is a generic in-process object pool for expensive-to-create
 resources (clients, connections, handlers). It **grows** under sustained pressure,
 **shrinks** when idle, and **heals itself** by detecting and replacing broken items
 through pluggable lifecycle hooks. Async-first, DI-first, observable.
 
 For RabbitMQ `IConnection` + `IChannel` pooling, install the companion package
-[`Oragon.AdaptivePool.RabbitMQ`](https://www.nuget.org/packages/Oragon.AdaptivePool.RabbitMQ).
+[`Oragon.ElasticPool.RabbitMQ`](https://www.nuget.org/packages/Oragon.ElasticPool.RabbitMQ).
 
 ## Install
 
 ```bash
-dotnet add package Oragon.AdaptivePool.Core
+dotnet add package Oragon.ElasticPool.Core
 ```
 
 ## 30-second quickstart
@@ -473,12 +473,12 @@ dotnet add package Oragon.AdaptivePool.Core
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Oragon.AdaptivePool.Core.Abstractions;
-using Oragon.AdaptivePool.Core.DependencyInjection;
+using Oragon.ElasticPool.Core.Abstractions;
+using Oragon.ElasticPool.Core.DependencyInjection;
 
 var builder = Host.CreateApplicationBuilder(args);
 
-builder.Services.AddAdaptivePool<MyExpensiveClient>("default", pool =>
+builder.Services.AddElasticPool<MyExpensiveClient>("default", pool =>
 {
     pool.MinSize    = 1;
     pool.InitialSize = 2;
@@ -491,7 +491,7 @@ builder.Services.AddAdaptivePool<MyExpensiveClient>("default", pool =>
 });
 
 using var host = builder.Build();
-var pool = host.Services.GetRequiredService<IAdaptivePool<MyExpensiveClient>>();
+var pool = host.Services.GetRequiredService<IElasticPool<MyExpensiveClient>>();
 
 await using var lease = await pool.AcquireAsync();
 lease.Value.DoWork();
@@ -507,7 +507,7 @@ public sealed class MyExpensiveClient : IDisposable
 
 ## Why not `Microsoft.Extensions.ObjectPool`?
 
-| Feature                            | `Microsoft.Extensions.ObjectPool` | `Oragon.AdaptivePool.Core` |
+| Feature                            | `Microsoft.Extensions.ObjectPool` | `Oragon.ElasticPool.Core` |
 |------------------------------------|-----------------------------------|----------------------------|
 | `Min` / `Max` bounds               | ❌ (only `MaximumRetained`)        | ✅                          |
 | Elastic grow under pressure        | ❌                                 | ✅ (composite signal: waiters + utilization + p95 wait) |
@@ -518,10 +518,10 @@ public sealed class MyExpensiveClient : IDisposable
 | Pluggable failure policy           | ❌                                 | ✅ (`IItemFailurePolicy<T>`) |
 | Async-first API                    | ❌ (`Get()` is sync, blocks)       | ✅ (`AcquireAsync` returns `ValueTask`) |
 | Built-in OpenTelemetry             | Limited                           | ✅ (`Meter` + `ActivitySource` + source-gen `ILogger`) |
-| Layered pools (e.g., channel→conn) | N/A                               | ✅ (see `Oragon.AdaptivePool.RabbitMQ`) |
+| Layered pools (e.g., channel→conn) | N/A                               | ✅ (see `Oragon.ElasticPool.RabbitMQ`) |
 
 `Microsoft.Extensions.ObjectPool` is great for cheap, stateless, allocation-only
-pooling (e.g., `StringBuilder`). `Oragon.AdaptivePool.Core` is for expensive,
+pooling (e.g., `StringBuilder`). `Oragon.ElasticPool.Core` is for expensive,
 stateful, lifecycle-sensitive resources where elasticity and health matter.
 
 ## Three pillars
@@ -533,12 +533,12 @@ stateful, lifecycle-sensitive resources where elasticity and health matter.
    `BeforeUse` (validate on borrow), `Check` (background sweep), `AfterUse` (validate
    on return; opt-in), `Release` (cleanup/dispose). Pluggable `IItemFailurePolicy<T>`
    decides discard vs. quarantine vs. custom.
-3. **Fluent DX** — async-first, DI-first, builder pattern. `services.AddAdaptivePool<T>(name, configure)`.
+3. **Fluent DX** — async-first, DI-first, builder pattern. `services.AddElasticPool<T>(name, configure)`.
 
 ## OpenTelemetry in 5 lines
 
-`Oragon.AdaptivePool` exposes a `Meter` and `ActivitySource` both named
-`"Oragon.AdaptivePool"`. Wire them to any OTel exporter:
+`Oragon.ElasticPool` exposes a `Meter` and `ActivitySource` both named
+`"Oragon.ElasticPool"`. Wire them to any OTel exporter:
 
 ```csharp
 using OpenTelemetry;
@@ -547,8 +547,8 @@ using OpenTelemetry.Trace;
 
 builder.Services
     .AddOpenTelemetry()
-    .WithMetrics(m => m.AddMeter("Oragon.AdaptivePool").AddConsoleExporter())
-    .WithTracing(t => t.AddSource("Oragon.AdaptivePool").AddConsoleExporter());
+    .WithMetrics(m => m.AddMeter("Oragon.ElasticPool").AddConsoleExporter())
+    .WithTracing(t => t.AddSource("Oragon.ElasticPool").AddConsoleExporter());
 // In production, swap AddConsoleExporter() for AddOtlpExporter() (Aspire / OTel collector / etc.).
 ```
 
@@ -567,7 +567,7 @@ The pool emits these metrics out of the box:
 | `pool.shrink.count`           | Counter  | Times the pool shrank                |
 | `pool.health.failures`        | Counter  | `BeforeUse` / `Check` Unhealthy returns |
 
-All instruments carry a single `pool.name` tag (the name passed to `AddAdaptivePool`).
+All instruments carry a single `pool.name` tag (the name passed to `AddElasticPool`).
 Cardinality stays bounded.
 
 ActivitySource spans: `Acquire`, `Release`, `HealthCheck`, `Grow`, `Shrink`. Guarded
@@ -576,7 +576,7 @@ by `HasListeners()` so you pay nothing if nobody is listening.
 ## Lifecycle hooks
 
 ```csharp
-builder.Services.AddAdaptivePool<MyClient>("default", pool =>
+builder.Services.AddElasticPool<MyClient>("default", pool =>
 {
     pool.Factory  ((sp, ct) => /* create new T */);                         // required
     pool.BeforeUse((c, ct) => /* return Healthy / Unhealthy */);            // optional
@@ -592,7 +592,7 @@ the item and replaces it if the pool is below `MinSize`.
 
 ## Bursty workload sample
 
-See [`samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher`](https://github.com/oragon/Oragon.AdaptivePool/tree/main/samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher)
+See [`samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher`](https://github.com/oragon/Oragon.ElasticPool/tree/main/samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher)
 for an end-to-end demo: a publisher that goes from "few/hour" to "100k simultaneous"
 and back to idle, watching the pool grow, shrink, and self-heal — with metrics
 visible in any OTel collector (Aspire Dashboard, Grafana, Console exporter).
@@ -611,38 +611,38 @@ fails.
 
 ## Contributing
 
-https://github.com/oragon/Oragon.AdaptivePool
+https://github.com/oragon/Oragon.ElasticPool
 
 ## License
 
-[MIT](https://github.com/oragon/Oragon.AdaptivePool/blob/main/LICENSE)
+[MIT](https://github.com/oragon/Oragon.ElasticPool/blob/main/LICENSE)
 ```
 
 ---
 
-**2. `src/Oragon.AdaptivePool.RabbitMQ/README.md`** — RabbitMQ-focused. Required structure:
+**2. `src/Oragon.ElasticPool.RabbitMQ/README.md`** — RabbitMQ-focused. Required structure:
 
 ```markdown
-# Oragon.AdaptivePool.RabbitMQ
+# Oragon.ElasticPool.RabbitMQ
 
-[![NuGet](https://img.shields.io/nuget/v/Oragon.AdaptivePool.RabbitMQ.svg)](https://www.nuget.org/packages/Oragon.AdaptivePool.RabbitMQ)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/oragon/Oragon.AdaptivePool/blob/main/LICENSE)
+[![NuGet](https://img.shields.io/nuget/v/Oragon.ElasticPool.RabbitMQ.svg)](https://www.nuget.org/packages/Oragon.ElasticPool.RabbitMQ)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/oragon/Oragon.ElasticPool/blob/main/LICENSE)
 
-> RabbitMQ.Client v7+ adapter for [`Oragon.AdaptivePool.Core`](https://www.nuget.org/packages/Oragon.AdaptivePool.Core).
+> RabbitMQ.Client v7+ adapter for [`Oragon.ElasticPool.Core`](https://www.nuget.org/packages/Oragon.ElasticPool.Core).
 > Layered, lifecycle-managed pools for `IConnection` and `IChannel`. Async-first.
 
 ## Install
 
 ```bash
-dotnet add package Oragon.AdaptivePool.RabbitMQ
+dotnet add package Oragon.ElasticPool.RabbitMQ
 ```
 
-(`Oragon.AdaptivePool.Core` is pulled transitively.)
+(`Oragon.ElasticPool.Core` is pulled transitively.)
 
 ## What it gives you
 
-- `services.AddAdaptiveConnectionPool(name, configureFactory, configurePool)` — pool of `IConnection` with `IsOpen`-based health checks.
-- `services.AddAdaptiveChannelPool(name, connectionPoolName, configurePool)` — pool of `IChannel` **layered** on the connection pool: each channel acquire borrows one connection lease for its lifetime.
+- `services.AddElasticConnectionPool(name, configureFactory, configurePool)` — pool of `IConnection` with `IsOpen`-based health checks.
+- `services.AddElasticChannelPool(name, connectionPoolName, configurePool)` — pool of `IChannel` **layered** on the connection pool: each channel acquire borrows one connection lease for its lifetime.
 - Conventions consistent with [`Oragon.RabbitMQ`](https://github.com/oragon/Oragon.RabbitMQ) (sister consumer-side library).
 
 ## Quickstart — bursty publisher
@@ -650,14 +650,14 @@ dotnet add package Oragon.AdaptivePool.RabbitMQ
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Oragon.AdaptivePool.Core.Abstractions;
-using Oragon.AdaptivePool.RabbitMQ.DependencyInjection;
+using Oragon.ElasticPool.Core.Abstractions;
+using Oragon.ElasticPool.RabbitMQ.DependencyInjection;
 using RabbitMQ.Client;
 
 var builder = Host.CreateApplicationBuilder(args);
 
 // Connection pool
-builder.Services.AddAdaptiveConnectionPool(
+builder.Services.AddElasticConnectionPool(
     name: "default",
     configureFactory: f =>
     {
@@ -673,7 +673,7 @@ builder.Services.AddAdaptiveConnectionPool(
     });
 
 // Channel pool layered on top
-builder.Services.AddAdaptiveChannelPool(
+builder.Services.AddElasticChannelPool(
     name: "default",
     connectionPoolName: "default",
     configurePool: pool =>
@@ -685,7 +685,7 @@ builder.Services.AddAdaptiveChannelPool(
     });
 
 using var host = builder.Build();
-var channels = host.Services.GetRequiredService<IAdaptivePool<IChannel>>();
+var channels = host.Services.GetRequiredService<IElasticPool<IChannel>>();
 
 // Publish under any load shape — pool grows/shrinks/heals automatically.
 await using var lease = await channels.AcquireAsync();
@@ -707,33 +707,33 @@ If you see waiters parked indefinitely on `chPool.AcquireAsync`, raise the
 
 ## ⚠ AutomaticRecoveryEnabled override
 
-`Oragon.AdaptivePool.RabbitMQ` forces `ConnectionFactory.AutomaticRecoveryEnabled = false`
+`Oragon.ElasticPool.RabbitMQ` forces `ConnectionFactory.AutomaticRecoveryEnabled = false`
 to avoid two recovery loops (RabbitMQ.Client's vs. the pool's). The pool owns the
 lifecycle: `BeforeUse` and `Check` hooks consult `IConnection.IsOpen` and
 `Release` calls `CloseAsync()`. If you configured `AutomaticRecoveryEnabled = true`
 on the factory, you'll see a single warning log on first acquire (EventId 2001):
 
-> `AutomaticRecoveryEnabled was true on the configured ConnectionFactory for pool 'X'; Oragon.AdaptivePool overrides this to false (the pool owns lifecycle).`
+> `AutomaticRecoveryEnabled was true on the configured ConnectionFactory for pool 'X'; Oragon.ElasticPool overrides this to false (the pool owns lifecycle).`
 
 This is intentional. To suppress, set `AutomaticRecoveryEnabled = false` yourself.
 
 ## Telemetry
 
-Inherits the Core `Meter` and `ActivitySource` (both named `"Oragon.AdaptivePool"`).
+Inherits the Core `Meter` and `ActivitySource` (both named `"Oragon.ElasticPool"`).
 The connection and channel pools are independently named (`pool.name` tag) so you
-can chart them separately. See [the Core README](https://www.nuget.org/packages/Oragon.AdaptivePool.Core)
+can chart them separately. See [the Core README](https://www.nuget.org/packages/Oragon.ElasticPool.Core)
 for the full instrument inventory.
 
 ## Sample: end-to-end bursty publisher
 
-[`samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher`](https://github.com/oragon/Oragon.AdaptivePool/tree/main/samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher)
+[`samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher`](https://github.com/oragon/Oragon.ElasticPool/tree/main/samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher)
 ships a runnable demo: cycles between idle and 100k-simultaneous publish,
 demonstrates pool grow/shrink/heal under real load against a Testcontainers
 RabbitMQ broker.
 
 ```bash
 RABBITMQ_URI=amqp://guest:guest@localhost:5672/ \
-  dotnet run --project samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher
+  dotnet run --project samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher
 ```
 
 ## Compatibility
@@ -743,12 +743,12 @@ RABBITMQ_URI=amqp://guest:guest@localhost:5672/ \
 
 ## License
 
-[MIT](https://github.com/oragon/Oragon.AdaptivePool/blob/main/LICENSE)
+[MIT](https://github.com/oragon/Oragon.ElasticPool/blob/main/LICENSE)
 ```
 
 ---
 
-**3. `src/Oragon.AdaptivePool.Core/Oragon.AdaptivePool.Core.csproj`** — modifications:
+**3. `src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj`** — modifications:
 
 Strip `<PackageLicenseExpression>MIT</PackageLicenseExpression>` (now in Directory.Build.props).
 Refine `<Description>` (current is one line; expand slightly):
@@ -771,13 +771,13 @@ Keep all existing PackageReferences and InternalsVisibleTo / AdditionalFiles Ite
 
 ---
 
-**4. `src/Oragon.AdaptivePool.RabbitMQ/Oragon.AdaptivePool.RabbitMQ.csproj`** — modifications:
+**4. `src/Oragon.ElasticPool.RabbitMQ/Oragon.ElasticPool.RabbitMQ.csproj`** — modifications:
 
 Strip `<PackageLicenseExpression>MIT</PackageLicenseExpression>`.
 Refine `<Description>`:
 
 ```xml
-<Description>RabbitMQ.Client v7+ adapter for Oragon.AdaptivePool — layered IConnection + IChannel pools with IsOpen-based health checks, AutomaticRecoveryEnabled override, and built-in OpenTelemetry. Async-first.</Description>
+<Description>RabbitMQ.Client v7+ adapter for Oragon.ElasticPool — layered IConnection + IChannel pools with IsOpen-based health checks, AutomaticRecoveryEnabled override, and built-in OpenTelemetry. Async-first.</Description>
 ```
 
 Refine `<PackageTags>`:
@@ -803,45 +803,45 @@ in compilation; it's pure pack metadata. No risk of breaking the build.
 ---
 
 **Required link integrity in READMEs:** Every Markdown link to
-`samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher/...` must point at a
+`samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/...` must point at a
 real file (it exists from Phase 3). Do not invent `docs/...` paths — none exist
 yet, and we are not creating them in this plan.
   </action>
   <verify>
     <automated>
-test -f src/Oragon.AdaptivePool.Core/README.md \
-  && grep -q '^# Oragon.AdaptivePool.Core' src/Oragon.AdaptivePool.Core/README.md \
-  && grep -q 'AddAdaptivePool<' src/Oragon.AdaptivePool.Core/README.md \
-  && grep -q 'Why not `Microsoft.Extensions.ObjectPool' src/Oragon.AdaptivePool.Core/README.md \
-  && grep -q 'AddMeter("Oragon.AdaptivePool")' src/Oragon.AdaptivePool.Core/README.md \
-  && grep -q 'AddSource("Oragon.AdaptivePool")' src/Oragon.AdaptivePool.Core/README.md \
-  && grep -q 'samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher' src/Oragon.AdaptivePool.Core/README.md \
-  && test -f src/Oragon.AdaptivePool.RabbitMQ/README.md \
-  && grep -q '^# Oragon.AdaptivePool.RabbitMQ' src/Oragon.AdaptivePool.RabbitMQ/README.md \
-  && grep -q 'AddAdaptiveConnectionPool' src/Oragon.AdaptivePool.RabbitMQ/README.md \
-  && grep -q 'AddAdaptiveChannelPool' src/Oragon.AdaptivePool.RabbitMQ/README.md \
-  && grep -q 'AutomaticRecoveryEnabled' src/Oragon.AdaptivePool.RabbitMQ/README.md \
-  && grep -q 'connection pool.s `MaxSize`' src/Oragon.AdaptivePool.RabbitMQ/README.md \
-  && grep -q 'samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher' src/Oragon.AdaptivePool.RabbitMQ/README.md \
-  && grep -q '<None Include="README.md" Pack="true"' src/Oragon.AdaptivePool.Core/Oragon.AdaptivePool.Core.csproj \
-  && grep -q '<None Include="README.md" Pack="true"' src/Oragon.AdaptivePool.RabbitMQ/Oragon.AdaptivePool.RabbitMQ.csproj \
-  && ! grep -q 'PackageLicenseExpression' src/Oragon.AdaptivePool.Core/Oragon.AdaptivePool.Core.csproj \
-  && ! grep -q 'PackageLicenseExpression' src/Oragon.AdaptivePool.RabbitMQ/Oragon.AdaptivePool.RabbitMQ.csproj \
-  && grep -q 'self-healing' src/Oragon.AdaptivePool.Core/Oragon.AdaptivePool.Core.csproj \
-  && grep -q 'connection-pool' src/Oragon.AdaptivePool.RabbitMQ/Oragon.AdaptivePool.RabbitMQ.csproj \
-  && dotnet build Oragon.AdaptivePool.sln -c Release --no-restore 2>&1 | tee /tmp/build.log \
+test -f src/Oragon.ElasticPool.Core/README.md \
+  && grep -q '^# Oragon.ElasticPool.Core' src/Oragon.ElasticPool.Core/README.md \
+  && grep -q 'AddElasticPool<' src/Oragon.ElasticPool.Core/README.md \
+  && grep -q 'Why not `Microsoft.Extensions.ObjectPool' src/Oragon.ElasticPool.Core/README.md \
+  && grep -q 'AddMeter("Oragon.ElasticPool")' src/Oragon.ElasticPool.Core/README.md \
+  && grep -q 'AddSource("Oragon.ElasticPool")' src/Oragon.ElasticPool.Core/README.md \
+  && grep -q 'samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher' src/Oragon.ElasticPool.Core/README.md \
+  && test -f src/Oragon.ElasticPool.RabbitMQ/README.md \
+  && grep -q '^# Oragon.ElasticPool.RabbitMQ' src/Oragon.ElasticPool.RabbitMQ/README.md \
+  && grep -q 'AddElasticConnectionPool' src/Oragon.ElasticPool.RabbitMQ/README.md \
+  && grep -q 'AddElasticChannelPool' src/Oragon.ElasticPool.RabbitMQ/README.md \
+  && grep -q 'AutomaticRecoveryEnabled' src/Oragon.ElasticPool.RabbitMQ/README.md \
+  && grep -q 'connection pool.s `MaxSize`' src/Oragon.ElasticPool.RabbitMQ/README.md \
+  && grep -q 'samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher' src/Oragon.ElasticPool.RabbitMQ/README.md \
+  && grep -q '<None Include="README.md" Pack="true"' src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj \
+  && grep -q '<None Include="README.md" Pack="true"' src/Oragon.ElasticPool.RabbitMQ/Oragon.ElasticPool.RabbitMQ.csproj \
+  && ! grep -q 'PackageLicenseExpression' src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj \
+  && ! grep -q 'PackageLicenseExpression' src/Oragon.ElasticPool.RabbitMQ/Oragon.ElasticPool.RabbitMQ.csproj \
+  && grep -q 'self-healing' src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj \
+  && grep -q 'connection-pool' src/Oragon.ElasticPool.RabbitMQ/Oragon.ElasticPool.RabbitMQ.csproj \
+  && dotnet build Oragon.ElasticPool.sln -c Release --no-restore 2>&1 | tee /tmp/build.log \
   && grep -E '(Build succeeded|Compilação com êxito)' /tmp/build.log \
-  && dotnet pack src/Oragon.AdaptivePool.Core/Oragon.AdaptivePool.Core.csproj -c Release --no-build -o /tmp/pack-core 2>&1 | tail -20 \
-  && ls /tmp/pack-core/Oragon.AdaptivePool.Core.*.nupkg | head -1 | xargs -I{} unzip -l {} | grep -E 'README\.md|icon\.png' \
-  && dotnet pack src/Oragon.AdaptivePool.RabbitMQ/Oragon.AdaptivePool.RabbitMQ.csproj -c Release --no-build -o /tmp/pack-rmq 2>&1 | tail -20 \
-  && ls /tmp/pack-rmq/Oragon.AdaptivePool.RabbitMQ.*.nupkg | head -1 | xargs -I{} unzip -l {} | grep -E 'README\.md|icon\.png' \
+  && dotnet pack src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj -c Release --no-build -o /tmp/pack-core 2>&1 | tail -20 \
+  && ls /tmp/pack-core/Oragon.ElasticPool.Core.*.nupkg | head -1 | xargs -I{} unzip -l {} | grep -E 'README\.md|icon\.png' \
+  && dotnet pack src/Oragon.ElasticPool.RabbitMQ/Oragon.ElasticPool.RabbitMQ.csproj -c Release --no-build -o /tmp/pack-rmq 2>&1 | tail -20 \
+  && ls /tmp/pack-rmq/Oragon.ElasticPool.RabbitMQ.*.nupkg | head -1 | xargs -I{} unzip -l {} | grep -E 'README\.md|icon\.png' \
   && echo OK
     </automated>
   </verify>
   <done>
     Both per-package READMEs exist with required sections (quickstart, comparison
     table for Core, layered example + sizing callout for RabbitMQ, OTel example
-    referencing literal Meter/ActivitySource name "Oragon.AdaptivePool", sample
+    referencing literal Meter/ActivitySource name "Oragon.ElasticPool", sample
     link). Both csproj files reference per-project README via Pack=true; license
     expression moved to Directory.Build.props. `dotnet build` is green. `dotnet
     pack` produces .nupkg files containing both README.md and icon.png.
@@ -875,12 +875,12 @@ test -f src/Oragon.AdaptivePool.Core/README.md \
 
 After both tasks complete:
 
-1. `dotnet build Oragon.AdaptivePool.sln -c Release` — green (no new warnings introduced; the 12 carry-forward SourceLink "no remote" warnings from Phase 3 are pre-existing and accepted).
-2. `dotnet pack src/Oragon.AdaptivePool.Core/Oragon.AdaptivePool.Core.csproj -c Release` produces `Oragon.AdaptivePool.Core.0.0.0-alpha.X+xxx.nupkg` (MinVer auto-version pre-tag) containing:
+1. `dotnet build Oragon.ElasticPool.sln -c Release` — green (no new warnings introduced; the 12 carry-forward SourceLink "no remote" warnings from Phase 3 are pre-existing and accepted).
+2. `dotnet pack src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj -c Release` produces `Oragon.ElasticPool.Core.0.0.0-alpha.X+xxx.nupkg` (MinVer auto-version pre-tag) containing:
    - `README.md` (the per-package one, NOT the root)
    - `icon.png`
    - assembly DLLs for net8.0/net9.0/net10.0
-3. `dotnet pack src/Oragon.AdaptivePool.RabbitMQ/Oragon.AdaptivePool.RabbitMQ.csproj -c Release` ditto for RabbitMQ.
+3. `dotnet pack src/Oragon.ElasticPool.RabbitMQ/Oragon.ElasticPool.RabbitMQ.csproj -c Release` ditto for RabbitMQ.
 4. `unzip -p {pkg} '*.nuspec' | grep -E '(authors|description|tags|projectUrl|icon|readme|license)'` shows all metadata fields populated as Directory.Build.props + per-csproj defines them.
 5. Root `README.md`, `LICENSE`, `CHANGELOG.md`, `icon.png` all exist on disk and are git-tracked.
 6. `git status` after the plan runs shows ONLY the files listed in `files_modified` as changed.
@@ -897,21 +897,21 @@ After both tasks complete:
 
 <success_criteria>
 1. `test -f LICENSE && test -f CHANGELOG.md && test -f README.md && test -f icon.png` all pass at repo root.
-2. `test -f src/Oragon.AdaptivePool.Core/README.md && test -f src/Oragon.AdaptivePool.RabbitMQ/README.md` pass.
+2. `test -f src/Oragon.ElasticPool.Core/README.md && test -f src/Oragon.ElasticPool.RabbitMQ/README.md` pass.
 3. `dotnet pack` for both packable projects produces .nupkg containing the per-package README.md + icon.png.
-4. `unzip -p {pkg} '*.nuspec'` shows: `<authors>Luiz Carlos Faria</authors>`, `<license type="expression">MIT</license>`, `<readme>README.md</readme>`, `<icon>icon.png</icon>`, `<projectUrl>https://github.com/oragon/Oragon.AdaptivePool</projectUrl>`, refined `<description>` and `<tags>`.
-5. Both per-package READMEs grep-pass for: `AddAdaptivePool<` (Core only) / `AddAdaptiveChannelPool` (RabbitMQ only); `AddMeter("Oragon.AdaptivePool")` (Core only); `samples/Oragon.AdaptivePool.RabbitMQ.Sample.BurstyPublisher` (both).
+4. `unzip -p {pkg} '*.nuspec'` shows: `<authors>Luiz Carlos Faria</authors>`, `<license type="expression">MIT</license>`, `<readme>README.md</readme>`, `<icon>icon.png</icon>`, `<projectUrl>https://github.com/oragon/Oragon.ElasticPool</projectUrl>`, refined `<description>` and `<tags>`.
+5. Both per-package READMEs grep-pass for: `AddElasticPool<` (Core only) / `AddElasticChannelPool` (RabbitMQ only); `AddMeter("Oragon.ElasticPool")` (Core only); `samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher` (both).
 6. RabbitMQ README contains the connection-pool sizing callout (Phase 3 heads-up #1) and the AutomaticRecoveryEnabled override callout (matches EventId 2001 message format).
-7. `dotnet build Oragon.AdaptivePool.sln -c Release` is green.
+7. `dotnet build Oragon.ElasticPool.sln -c Release` is green.
 </success_criteria>
 
 <output>
 After completion, create `.planning/phases/04-polish-v1-release/04-01-SUMMARY.md` documenting:
 - Files created/modified (all 9 files in `files_modified`)
-- Per-package README sections — confirm OTel snippet matches the literal Meter/ActivitySource name `"Oragon.AdaptivePool"`
+- Per-package README sections — confirm OTel snippet matches the literal Meter/ActivitySource name `"Oragon.ElasticPool"`
 - icon.png generation method used (ImageMagick `convert` or Python PIL fallback)
 - Any deviations (e.g., if icon generation tool unavailable, document fallback)
 - Output of `dotnet pack` showing .nupkg sizes and content listing
 - Confirmation that `<PackageLicenseExpression>` was successfully relocated to Directory.Build.props with no per-csproj duplication
-- Carry-forward notes for Plan 02 (in particular: badges in root README assume `oragon/Oragon.AdaptivePool` is the GitHub remote — Plan 02 must verify that assumption holds when configuring `release.yml`'s `dotnet nuget push` step)
+- Carry-forward notes for Plan 02 (in particular: badges in root README assume `oragon/Oragon.ElasticPool` is the GitHub remote — Plan 02 must verify that assumption holds when configuring `release.yml`'s `dotnet nuget push` step)
 </output>

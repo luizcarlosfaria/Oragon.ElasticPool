@@ -4,19 +4,19 @@ plan: 01
 subsystem: rabbitmq-adapter
 tags: [rabbitmq, adapter, di, connection-pool, builder, options]
 requires:
-  - "Oragon.AdaptivePool.Core ServiceCollectionExtensions.AddAdaptivePool<T>"
-  - "Oragon.AdaptivePool.Core Builder.AdaptivePoolBuilder<T>"
-  - "Oragon.AdaptivePool.Core Hooks (Factory/BeforeUse/Check/Release)"
+  - "Oragon.ElasticPool.Core ServiceCollectionExtensions.AddElasticPool<T>"
+  - "Oragon.ElasticPool.Core Builder.ElasticPoolBuilder<T>"
+  - "Oragon.ElasticPool.Core Hooks (Factory/BeforeUse/Check/Release)"
 provides:
-  - "Oragon.AdaptivePool.RabbitMQ project (net10/9/8 multi-target, packable)"
-  - "AddAdaptiveConnectionPool(name, configureFactory, configurePool) DI extension"
-  - "AdaptiveConnectionPoolBuilder (WithBounds/WithIdleTimeout)"
-  - "AdaptiveConnectionPoolOptions (HostName/Port/UserName/Password/VirtualHost/RequestedHeartbeat)"
+  - "Oragon.ElasticPool.RabbitMQ project (net10/9/8 multi-target, packable)"
+  - "AddElasticConnectionPool(name, configureFactory, configurePool) DI extension"
+  - "ElasticConnectionPoolBuilder (WithBounds/WithIdleTimeout)"
+  - "ElasticConnectionPoolOptions (HostName/Port/UserName/Password/VirtualHost/RequestedHeartbeat)"
   - "ConnectionFactoryResolver (3-mode probe: keyed > closure > IOptions)"
   - "AdapterDiagnosticsLog (EventId 2001 - source-gen [LoggerMessage])"
 affects:
   - "Directory.Packages.props (RabbitMQ.Client 7.2.1 pinned)"
-  - "Oragon.AdaptivePool.sln (new project + configuration block + nesting)"
+  - "Oragon.ElasticPool.sln (new project + configuration block + nesting)"
 tech-stack:
   added:
     - "RabbitMQ.Client 7.2.1"
@@ -27,20 +27,20 @@ tech-stack:
     - "Hook composition: BeforeUse/Check on IsOpen, Release calls CloseAsync then DisposeAsync (swallow close)"
 key-files:
   created:
-    - "src/Oragon.AdaptivePool.RabbitMQ/Oragon.AdaptivePool.RabbitMQ.csproj (31 lines)"
-    - "src/Oragon.AdaptivePool.RabbitMQ/PublicAPI.Shipped.txt (empty - new project)"
-    - "src/Oragon.AdaptivePool.RabbitMQ/PublicAPI.Unshipped.txt (25 lines)"
-    - "src/Oragon.AdaptivePool.RabbitMQ/Options/AdaptiveConnectionPoolOptions.cs (40 lines)"
-    - "src/Oragon.AdaptivePool.RabbitMQ/Builder/AdaptiveConnectionPoolBuilder.cs (59 lines)"
-    - "src/Oragon.AdaptivePool.RabbitMQ/Internals/ConnectionFactoryResolver.cs (89 lines)"
-    - "src/Oragon.AdaptivePool.RabbitMQ/Internals/AdapterDiagnosticsLog.cs (17 lines)"
-    - "src/Oragon.AdaptivePool.RabbitMQ/DependencyInjection/AdaptiveConnectionPoolServiceCollectionExtensions.cs (105 lines)"
+    - "src/Oragon.ElasticPool.RabbitMQ/Oragon.ElasticPool.RabbitMQ.csproj (31 lines)"
+    - "src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Shipped.txt (empty - new project)"
+    - "src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Unshipped.txt (25 lines)"
+    - "src/Oragon.ElasticPool.RabbitMQ/Options/ElasticConnectionPoolOptions.cs (40 lines)"
+    - "src/Oragon.ElasticPool.RabbitMQ/Builder/ElasticConnectionPoolBuilder.cs (59 lines)"
+    - "src/Oragon.ElasticPool.RabbitMQ/Internals/ConnectionFactoryResolver.cs (89 lines)"
+    - "src/Oragon.ElasticPool.RabbitMQ/Internals/AdapterDiagnosticsLog.cs (17 lines)"
+    - "src/Oragon.ElasticPool.RabbitMQ/DependencyInjection/ElasticConnectionPoolServiceCollectionExtensions.cs (105 lines)"
   modified:
     - "Directory.Packages.props (+2 lines: RabbitMQ.Client 7.2.1 pin)"
-    - "Oragon.AdaptivePool.sln (+15 lines: project entry, configuration block, nesting)"
+    - "Oragon.ElasticPool.sln (+15 lines: project entry, configuration block, nesting)"
 decisions:
   - "Adapter builder restates Core defaults (MinSize=0, MaxSize=8, InitialSize=0, IdleTimeout=60s) so public DX is self-contained per RMQ-04 sister-library convention"
-  - "AdaptiveConnectionPoolBuilder exposes only WithBounds and WithIdleTimeout for v1 — Core's Grow/Shrink/Sweep knobs deliberately not re-exported (consumers needing them go through Core directly)"
+  - "ElasticConnectionPoolBuilder exposes only WithBounds and WithIdleTimeout for v1 — Core's Grow/Shrink/Sweep knobs deliberately not re-exported (consumers needing them go through Core directly)"
   - "AutomaticRecoveryEnabled override happens INSIDE the Factory delegate per acquire (not at registration) — protects against keyed-singleton mutation by another component (T-03-01 mitigation)"
   - "ConnectionFactoryResolver throws InvalidOperationException citing pool name when all 3 probe modes fail"
 metrics:
@@ -50,7 +50,7 @@ metrics:
 
 # Phase 3 Plan 01: RabbitMQ Adapter Bootstrap Summary
 
-Established the `Oragon.AdaptivePool.RabbitMQ` adapter project — multi-target net10/9/8, packable as NuGet — with `AddAdaptiveConnectionPool` DI extension that delegates to Core's `AddAdaptivePool<IConnection>` and wires Factory/BeforeUse/Check/Release hooks for RabbitMQ connections, including the canonical 3-mode `IConnectionFactory` resolver and the `AutomaticRecoveryEnabled = false` lifecycle-ownership override.
+Established the `Oragon.ElasticPool.RabbitMQ` adapter project — multi-target net10/9/8, packable as NuGet — with `AddElasticConnectionPool` DI extension that delegates to Core's `AddElasticPool<IConnection>` and wires Factory/BeforeUse/Check/Release hooks for RabbitMQ connections, including the canonical 3-mode `IConnectionFactory` resolver and the `AutomaticRecoveryEnabled = false` lifecycle-ownership override.
 
 ## Tasks Executed
 
@@ -58,14 +58,14 @@ Established the `Oragon.AdaptivePool.RabbitMQ` adapter project — multi-target 
 | ---- | ---- | ------ |
 | 1    | Pin RabbitMQ.Client 7.2.1, scaffold project, register in solution | `c45f961` |
 | 2    | Add Options + Builder + 3-mode ConnectionFactoryResolver + diagnostics log | `b08b102` |
-| 3    | Wire AddAdaptiveConnectionPool DI extension delegating to Core | `2b0738f` |
+| 3    | Wire AddElasticConnectionPool DI extension delegating to Core | `2b0738f` |
 
 ## Verification Results
 
 ### Build (Release)
 
 ```
-dotnet build Oragon.AdaptivePool.sln -c Release --no-restore
+dotnet build Oragon.ElasticPool.sln -c Release --no-restore
 ok dotnet build: 6 projects, 0 errors, 12 warnings
 ```
 
@@ -74,25 +74,25 @@ The 12 warnings are pre-existing carry-forward SourceLink "no remote" advisories
 Per-TFM artifacts confirmed:
 
 ```
-src/Oragon.AdaptivePool.RabbitMQ/bin/Release/net8.0/Oragon.AdaptivePool.RabbitMQ.dll  (16.5K)
-src/Oragon.AdaptivePool.RabbitMQ/bin/Release/net9.0/Oragon.AdaptivePool.RabbitMQ.dll  (16.5K)
-src/Oragon.AdaptivePool.RabbitMQ/bin/Release/net10.0/Oragon.AdaptivePool.RabbitMQ.dll (16.5K)
+src/Oragon.ElasticPool.RabbitMQ/bin/Release/net8.0/Oragon.ElasticPool.RabbitMQ.dll  (16.5K)
+src/Oragon.ElasticPool.RabbitMQ/bin/Release/net9.0/Oragon.ElasticPool.RabbitMQ.dll  (16.5K)
+src/Oragon.ElasticPool.RabbitMQ/bin/Release/net10.0/Oragon.ElasticPool.RabbitMQ.dll (16.5K)
 ```
 
 ### PublicApiAnalyzers
 
-Zero `RS0016`/`RS0017` after declaring all 22 public symbol entries in `PublicAPI.Unshipped.txt` (1 type + builder ctor + 4 properties + 2 methods for `AdaptiveConnectionPoolBuilder`; 1 type + ctor + 12 property accessors for `AdaptiveConnectionPoolOptions`; 1 type + extension method for the DI extensions class).
+Zero `RS0016`/`RS0017` after declaring all 22 public symbol entries in `PublicAPI.Unshipped.txt` (1 type + builder ctor + 4 properties + 2 methods for `ElasticConnectionPoolBuilder`; 1 type + ctor + 12 property accessors for `ElasticConnectionPoolOptions`; 1 type + extension method for the DI extensions class).
 
 ### 3-mode probe verified by code grep
 
 ```
-$ grep -c "GetKeyedService<IConnectionFactory>" src/Oragon.AdaptivePool.RabbitMQ/Internals/ConnectionFactoryResolver.cs
+$ grep -c "GetKeyedService<IConnectionFactory>" src/Oragon.ElasticPool.RabbitMQ/Internals/ConnectionFactoryResolver.cs
 1
-$ grep -n "AutomaticRecoveryEnabled = false" src/Oragon.AdaptivePool.RabbitMQ/Internals/ConnectionFactoryResolver.cs
+$ grep -n "AutomaticRecoveryEnabled = false" src/Oragon.ElasticPool.RabbitMQ/Internals/ConnectionFactoryResolver.cs
 86:            cf.AutomaticRecoveryEnabled = false;
-$ grep -c "AddAdaptivePool<IConnection>" src/Oragon.AdaptivePool.RabbitMQ/DependencyInjection/AdaptiveConnectionPoolServiceCollectionExtensions.cs
+$ grep -c "AddElasticPool<IConnection>" src/Oragon.ElasticPool.RabbitMQ/DependencyInjection/ElasticConnectionPoolServiceCollectionExtensions.cs
 1
-$ grep -c "ForceAutomaticRecoveryDisabled" src/Oragon.AdaptivePool.RabbitMQ/DependencyInjection/AdaptiveConnectionPoolServiceCollectionExtensions.cs
+$ grep -c "ForceAutomaticRecoveryDisabled" src/Oragon.ElasticPool.RabbitMQ/DependencyInjection/ElasticConnectionPoolServiceCollectionExtensions.cs
 1
 ```
 
@@ -101,7 +101,7 @@ All three probe modes are implemented in the documented order; `ForceAutomaticRe
 ### Phase 1+2 regression check
 
 ```
-dotnet test --project tests/Oragon.AdaptivePool.Core.Tests/Oragon.AdaptivePool.Core.Tests.csproj -c Release --no-build
+dotnet test --project tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj -c Release --no-build
 total: 432
 failed: 0
 succeeded: 432
@@ -112,18 +112,18 @@ skipped: 0
 
 ## Core API Gap Surfaced
 
-**None.** Core's `AddAdaptivePool<T>(name, configure)` and the `AdaptivePoolBuilder<T>` fluent surface (`Factory`/`BeforeUse`/`Check`/`Release`/`WithBounds`/`IdleTimeout`) covered everything Plan 01 needed to compose the RabbitMQ adapter. The `IPoolItem<T>.Value` accessor matched the Phase 1 implementation (the `ARCHITECTURE.md` `Object` mention was indeed stale, as flagged in carry-forward — code never references it). No blocker filed; Plan 02 may proceed.
+**None.** Core's `AddElasticPool<T>(name, configure)` and the `ElasticPoolBuilder<T>` fluent surface (`Factory`/`BeforeUse`/`Check`/`Release`/`WithBounds`/`IdleTimeout`) covered everything Plan 01 needed to compose the RabbitMQ adapter. The `IPoolItem<T>.Value` accessor matched the Phase 1 implementation (the `ARCHITECTURE.md` `Object` mention was indeed stale, as flagged in carry-forward — code never references it). No blocker filed; Plan 02 may proceed.
 
 ## Public Surface Established
 
 **Public types (3):**
-- `Oragon.AdaptivePool.RabbitMQ.Builder.AdaptiveConnectionPoolBuilder` — pool-shape fluent builder.
-- `Oragon.AdaptivePool.RabbitMQ.Options.AdaptiveConnectionPoolOptions` — IOptions-bindable connection settings (with `Password` security note).
-- `Oragon.AdaptivePool.RabbitMQ.DependencyInjection.AdaptiveConnectionPoolServiceCollectionExtensions` — hosts `AddAdaptiveConnectionPool` extension.
+- `Oragon.ElasticPool.RabbitMQ.Builder.ElasticConnectionPoolBuilder` — pool-shape fluent builder.
+- `Oragon.ElasticPool.RabbitMQ.Options.ElasticConnectionPoolOptions` — IOptions-bindable connection settings (with `Password` security note).
+- `Oragon.ElasticPool.RabbitMQ.DependencyInjection.ElasticConnectionPoolServiceCollectionExtensions` — hosts `AddElasticConnectionPool` extension.
 
 **Internal types (2):**
-- `Oragon.AdaptivePool.RabbitMQ.Internals.ConnectionFactoryResolver` — 3-mode probe + `ForceAutomaticRecoveryDisabled` helper.
-- `Oragon.AdaptivePool.RabbitMQ.Internals.AdapterDiagnosticsLog` — source-gen `[LoggerMessage]` partial; EventId 2001 reserved for the recovery-override warning. EventId range 2001+ is reserved for adapter diagnostics (Core uses 1xxx).
+- `Oragon.ElasticPool.RabbitMQ.Internals.ConnectionFactoryResolver` — 3-mode probe + `ForceAutomaticRecoveryDisabled` helper.
+- `Oragon.ElasticPool.RabbitMQ.Internals.AdapterDiagnosticsLog` — source-gen `[LoggerMessage]` partial; EventId 2001 reserved for the recovery-override warning. EventId range 2001+ is reserved for adapter diagnostics (Core uses 1xxx).
 
 ## Hook Behaviors Wired
 
@@ -139,7 +139,7 @@ skipped: 0
 | Threat ID | Status | Where |
 |-----------|--------|-------|
 | T-03-01 (Tampering) | mitigated | `ForceAutomaticRecoveryDisabled` runs INSIDE the `Factory` delegate per acquire — survives keyed-singleton mutation. |
-| T-03-03 (Info disclosure / password) | mitigated | XML doc on `AdaptiveConnectionPoolOptions.Password` directs to secret stores; password is never written to any log statement. |
+| T-03-03 (Info disclosure / password) | mitigated | XML doc on `ElasticConnectionPoolOptions.Password` directs to secret stores; password is never written to any log statement. |
 | T-03-04 (DoS / unreachable broker) | mitigated | Hook signature accepts `CancellationToken`; `factory.CreateConnectionAsync(ct)` propagates the consumer's CT. |
 | T-03-06 (Repudiation) | mitigated | Source-gen log entry with stable EventId=2001 enables consumer filtering. |
 
@@ -158,14 +158,14 @@ The 3-mode probe is the canonical pattern — Plan 02's channel-pool DI extensio
 Files exist on disk:
 
 ```
-[ -f src/Oragon.AdaptivePool.RabbitMQ/Oragon.AdaptivePool.RabbitMQ.csproj ] -> FOUND
-[ -f src/Oragon.AdaptivePool.RabbitMQ/Options/AdaptiveConnectionPoolOptions.cs ] -> FOUND
-[ -f src/Oragon.AdaptivePool.RabbitMQ/Builder/AdaptiveConnectionPoolBuilder.cs ] -> FOUND
-[ -f src/Oragon.AdaptivePool.RabbitMQ/Internals/ConnectionFactoryResolver.cs ] -> FOUND
-[ -f src/Oragon.AdaptivePool.RabbitMQ/Internals/AdapterDiagnosticsLog.cs ] -> FOUND
-[ -f src/Oragon.AdaptivePool.RabbitMQ/DependencyInjection/AdaptiveConnectionPoolServiceCollectionExtensions.cs ] -> FOUND
-[ -f src/Oragon.AdaptivePool.RabbitMQ/PublicAPI.Shipped.txt ] -> FOUND
-[ -f src/Oragon.AdaptivePool.RabbitMQ/PublicAPI.Unshipped.txt ] -> FOUND
+[ -f src/Oragon.ElasticPool.RabbitMQ/Oragon.ElasticPool.RabbitMQ.csproj ] -> FOUND
+[ -f src/Oragon.ElasticPool.RabbitMQ/Options/ElasticConnectionPoolOptions.cs ] -> FOUND
+[ -f src/Oragon.ElasticPool.RabbitMQ/Builder/ElasticConnectionPoolBuilder.cs ] -> FOUND
+[ -f src/Oragon.ElasticPool.RabbitMQ/Internals/ConnectionFactoryResolver.cs ] -> FOUND
+[ -f src/Oragon.ElasticPool.RabbitMQ/Internals/AdapterDiagnosticsLog.cs ] -> FOUND
+[ -f src/Oragon.ElasticPool.RabbitMQ/DependencyInjection/ElasticConnectionPoolServiceCollectionExtensions.cs ] -> FOUND
+[ -f src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Shipped.txt ] -> FOUND
+[ -f src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Unshipped.txt ] -> FOUND
 ```
 
 All three task commits present in git log: `c45f961`, `b08b102`, `2b0738f`.

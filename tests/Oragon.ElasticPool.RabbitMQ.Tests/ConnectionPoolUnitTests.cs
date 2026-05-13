@@ -1,0 +1,227 @@
+using AwesomeAssertions;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Moq;
+using Oragon.ElasticPool.Core.Abstractions;
+using Oragon.ElasticPool.RabbitMQ.DependencyInjection;
+using Oragon.ElasticPool.RabbitMQ.Tests.TestSupport;
+using RabbitMQ.Client;
+using Xunit;
+
+namespace Oragon.ElasticPool.RabbitMQ.Tests;
+
+/// <summary>
+/// Unit tests for <c>AddElasticConnectionPool</c> DI extension wiring. Moq
+/// substitutes <see cref="IConnectionFactory"/> and <see cref="IConnection"/>; the Core
+/// pool engine is real (we verify the adapter glues hooks correctly).
+/// </summary>
+public class ConnectionPoolUnitTests
+{
+    private static string Name() => $"test-{Guid.NewGuid():N}";
+
+    private static IConnection MakeOpenConn()
+    {
+        var connMock = new Mock<IConnection>();
+        connMock.Setup(m => m.IsOpen).Returns(true);
+        return connMock.Object;
+    }
+
+    private static IConnectionFactory FactoryReturning(params IConnection[] conns)
+    {
+        var factoryMock = new Mock<IConnectionFactory>();
+        if (conns.Length == 1)
+        {
+            factoryMock.Setup(m => m.CreateConnectionAsync(It.IsAny<CancellationToken>())).ReturnsAsync(conns[0]);
+        }
+        else
+        {
+            int idx = 0;
+            factoryMock.Setup(m => m.CreateConnectionAsync(It.IsAny<CancellationToken>()))
+                .Returns(() => Task.FromResult(conns[Math.Min(idx++, conns.Length - 1)]));
+        }
+        return factoryMock.Object;
+    }
+
+    [Fact]
+    public async Task AddElasticConnectionPool_RegistersResolvableKeyedSingleton()
+    {
+        var name = Name();
+        var services = new ServiceCollection();
+        services.AddKeyedSingleton<IConnectionFactory>(name, (_, _) => FactoryReturning(MakeOpenConn()));
+        services.AddElasticConnectionPool(name, configureFactory: null, p => p.WithBounds(0, 1, 0));
+
+        await using var sp = services.BuildServiceProvider();
+
+        sp.GetRequiredKeyedService<IElasticPool<IConnection>>(name).Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task AddElasticConnectionPool_EmptyName_AlsoResolvableNonKeyed()
+    {
+        var services = new ServiceCollection();
+        services.AddKeyedSingleton<IConnectionFactory>(string.Empty, (_, _) => FactoryReturning(MakeOpenConn()));
+        services.AddElasticConnectionPool(string.Empty, configureFactory: null, p => p.WithBounds(0, 1, 0));
+
+        await using var sp = services.BuildServiceProvider();
+
+        sp.GetRequiredService<IElasticPool<IConnection>>().Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task AddElasticConnectionPool_FactoryCallsCreateConnectionAsync()
+    {
+        var name = Name();
+        var conn = MakeOpenConn();
+        var factory = FactoryReturning(conn);
+
+        var services = new ServiceCollection();
+        services.AddKeyedSingleton<IConnectionFactory>(name, (_, _) => factory);
+        services.AddElasticConnectionPool(name, configureFactory: null, p => p.WithBounds(0, 2, 0));
+
+        await using var sp = services.BuildServiceProvider();
+        var pool = sp.GetRequiredKeyedService<IElasticPool<IConnection>>(name);
+
+        await using var lease = await pool.AcquireAsync();
+
+        lease.Value.Should().BeSameAs(conn);
+        Mock.Get(factory).Verify(m => m.CreateConnectionAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task BeforeUse_ReturnsUnhealthy_WhenIsOpenFalse_TriggersFactoryReplacement()
+    {
+        // First acquire returns a "dead" connection (IsOpen=false). The next acquire
+        // re-uses the pool, but BeforeUse marks it Unhealthy and the failure-policy
+        // discards/replaces — so the Factory is invoked a 2nd time.
+        var name = Name();
+        var deadConnMock = new Mock<IConnection>();
+        deadConnMock.Setup(m => m.IsOpen).Returns(false);
+        var deadConn = deadConnMock.Object;
+        var freshConn = MakeOpenConn();
+
+        var factoryMock = new Mock<IConnectionFactory>();
+        int callCount = 0;
+        factoryMock.Setup(m => m.CreateConnectionAsync(It.IsAny<CancellationToken>()))
+            .Returns(() => Task.FromResult(++callCount == 1 ? deadConn : freshConn));
+        var factory = factoryMock.Object;
+
+        var services = new ServiceCollection();
+        services.AddKeyedSingleton<IConnectionFactory>(name, (_, _) => factory);
+        services.AddElasticConnectionPool(name, configureFactory: null, p => p.WithBounds(0, 2, 0));
+
+        await using var sp = services.BuildServiceProvider();
+        var pool = sp.GetRequiredKeyedService<IElasticPool<IConnection>>(name);
+
+        await using var lease = await pool.AcquireAsync();
+
+        // Default DiscardAndReplaceFailurePolicy retries on Unhealthy → 2nd Factory call.
+        callCount.Should().BeGreaterThan(1, "Unhealthy item must trigger replacement");
+        lease.Value.Should().BeSameAs(freshConn);
+    }
+
+    [Fact]
+    public async Task Release_CallsCloseAsync_ThenDispose_EvenWhenCloseThrows()
+    {
+        var name = Name();
+        var connMock = new Mock<IConnection>();
+        connMock.Setup(m => m.IsOpen).Returns(true);
+        // CloseAsync throws — the adapter must still call DisposeAsync.
+        // RabbitMQ.Client's IConnection.CloseAsync(ct) extension delegates to the multi-arg
+        // overload (replyCode, replyText, timeout, abort, ct) — match Any.
+        connMock.Setup(m => m.CloseAsync(It.IsAny<ushort>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.FromException(new IOException("simulated")));
+        var conn = connMock.Object;
+
+        var services = new ServiceCollection();
+        services.AddKeyedSingleton<IConnectionFactory>(name, (_, _) => FactoryReturning(conn));
+        services.AddElasticConnectionPool(name, configureFactory: null, p => p.WithBounds(0, 1, 0));
+
+        var sp = services.BuildServiceProvider();
+        var pool = sp.GetRequiredKeyedService<IElasticPool<IConnection>>(name);
+
+        var lease = await pool.AcquireAsync();
+        await lease.DisposeAsync();
+
+        // Release the pool: triggers final drain (Release hook on idle items).
+        await sp.DisposeAsync();
+
+        connMock.Verify(m => m.CloseAsync(It.IsAny<ushort>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+        // DisposeAsync() is on IAsyncDisposable as an explicit interface implementation.
+        // Use Invocations + Contains (covers both "DisposeAsync" and the prefixed
+        // "IAsyncDisposable.DisposeAsync"). Poll briefly to tolerate concurrent multi-TFM
+        // load where the dispose chain finishes recording slightly after sp.DisposeAsync returns.
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(2);
+        while (DateTime.UtcNow < deadline
+               && !connMock.Invocations.Any(i => i.Method.Name.Contains("DisposeAsync")))
+        {
+            await Task.Delay(20);
+        }
+        connMock.Invocations.Should().Contain(i => i.Method.Name.Contains("DisposeAsync"),
+            "connection must be disposed during pool drain");
+    }
+
+    [Fact]
+    public async Task AutomaticRecoveryOverride_LogsWarning_OnFirstAcquire()
+    {
+        // WR-02: the override no longer MUTATES the shared singleton — it returns a clone
+        // with AutomaticRecoveryEnabled=false for the connection-creation call only. The
+        // shared registered factory keeps its original AutomaticRecoveryEnabled=true so
+        // any side-channel code holding a reference is unaffected. EventId 2001 fires on
+        // EVERY acquire that overrides (not just the first).
+        //
+        // We register a concrete ConnectionFactory pointing at port 1 (no broker); the
+        // resolver returns it from the keyed singleton mode, the override clones it
+        // before calling CreateConnectionAsync, and the connection attempt fails — but
+        // the EventId 2001 Warning must already be in the captured log.
+        var name = Name();
+        var captured = new CapturedLogEntries();
+
+        var concreteFactory = new ConnectionFactory
+        {
+            HostName = "127.0.0.1",
+            Port = 1, // guaranteed to fail to connect
+            AutomaticRecoveryEnabled = true,
+        };
+
+        var services = new ServiceCollection();
+        services.AddLogging(b => b.AddProvider(captured).SetMinimumLevel(LogLevel.Trace));
+        services.AddKeyedSingleton<IConnectionFactory>(name, (_, _) => concreteFactory);
+        services.AddElasticConnectionPool(name, configureFactory: null, p => p.WithBounds(0, 1, 0));
+
+        await using var sp = services.BuildServiceProvider();
+        var pool = sp.GetRequiredKeyedService<IElasticPool<IConnection>>(name);
+
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            await using var _ = await pool.AcquireAsync(cts.Token);
+        }
+        catch
+        {
+            // expected — the broker connection fails
+        }
+
+        captured.ByEventId(2001).Should().NotBeEmpty(
+            "Warning EventId=2001 must be emitted when AutomaticRecoveryEnabled=true is overridden");
+
+        // WR-02 invariant: shared factory MUST NOT be mutated.
+        concreteFactory.AutomaticRecoveryEnabled.Should().BeTrue(
+            "shared singleton factory must not be mutated; override applies to a per-acquire clone (WR-02)");
+    }
+
+    [Fact]
+    public void AddElasticConnectionPool_DoubleRegistration_Throws()
+    {
+        // IN-02: silent double-registration produces an inconsistent registration
+        // (first-wins pool singleton, last-wins builder). Throw to fail fast.
+        var name = Name();
+        var services = new ServiceCollection();
+        services.AddKeyedSingleton<IConnectionFactory>(name, (_, _) => FactoryReturning(MakeOpenConn()));
+        services.AddElasticConnectionPool(name, configureFactory: null, p => p.WithBounds(0, 1, 0));
+
+        Action act = () => services.AddElasticConnectionPool(name, configureFactory: null, p => p.WithBounds(0, 2, 0));
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*already registered*");
+    }
+}

@@ -4,33 +4,33 @@ reviewed: 2026-05-02T00:00:00Z
 depth: standard
 files_reviewed: 27
 files_reviewed_list:
-  - src/Oragon.AdaptivePool.Core/Builder/AdaptivePoolBuilder.cs
-  - src/Oragon.AdaptivePool.Core/Builder/AdaptivePoolOptions.cs
-  - src/Oragon.AdaptivePool.Core/Internals/AdaptivePool.cs
-  - src/Oragon.AdaptivePool.Core/Internals/BackgroundSweeper.cs
-  - src/Oragon.AdaptivePool.Core/Internals/PoolEntry.cs
-  - src/Oragon.AdaptivePool.Core/Internals/PressureSampler.cs
-  - src/Oragon.AdaptivePool.Core/Internals/SweepBackoffState.cs
-  - src/Oragon.AdaptivePool.Core/Internals/UtilizationSampler.cs
-  - src/Oragon.AdaptivePool.Core/Internals/WaitDurationHistogram.cs
-  - src/Oragon.AdaptivePool.Core/Telemetry/PoolDiagnosticsLog.cs
-  - src/Oragon.AdaptivePool.Core/Telemetry/PoolMeterNames.cs
-  - src/Oragon.AdaptivePool.Core/Telemetry/TelemetryEmitter.cs
-  - tests/Oragon.AdaptivePool.Core.Tests/Pool/BackgroundSweepTests.cs
-  - tests/Oragon.AdaptivePool.Core.Tests/Pool/ElasticGrowTests.cs
-  - tests/Oragon.AdaptivePool.Core.Tests/Pool/HystereticShrinkTests.cs
-  - tests/Oragon.AdaptivePool.Core.Tests/Pool/PressureSamplerTests.cs
-  - tests/Oragon.AdaptivePool.Core.Tests/Pool/SweepBackoffIntegrationTests.cs
-  - tests/Oragon.AdaptivePool.Core.Tests/Pool/SweepBackoffStateTests.cs
-  - tests/Oragon.AdaptivePool.Core.Tests/Pool/UtilizationSamplerTests.cs
-  - tests/Oragon.AdaptivePool.Core.Tests/Pool/WaitDurationHistogramTests.cs
-  - tests/Oragon.AdaptivePool.Core.Tests/Telemetry/ActivitySourceSpanTests.cs
-  - tests/Oragon.AdaptivePool.Core.Tests/Telemetry/LoggerMessageEventTests.cs
-  - tests/Oragon.AdaptivePool.Core.Tests/Telemetry/Phase2CountersAndHistogramsTests.cs
-  - tests/Oragon.AdaptivePool.Core.Tests/TestSupport/CapturedActivities.cs
-  - tests/Oragon.AdaptivePool.Core.Tests/TestSupport/CapturedLogEntries.cs
-  - tests/Oragon.AdaptivePool.Core.Tests/TestSupport/SweepDeterminism.cs
-  - tests/Oragon.AdaptivePool.Core.Stress/BurstIdleBurstStressTest.cs
+  - src/Oragon.ElasticPool.Core/Builder/ElasticPoolBuilder.cs
+  - src/Oragon.ElasticPool.Core/Builder/ElasticPoolOptions.cs
+  - src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs
+  - src/Oragon.ElasticPool.Core/Internals/BackgroundSweeper.cs
+  - src/Oragon.ElasticPool.Core/Internals/PoolEntry.cs
+  - src/Oragon.ElasticPool.Core/Internals/PressureSampler.cs
+  - src/Oragon.ElasticPool.Core/Internals/SweepBackoffState.cs
+  - src/Oragon.ElasticPool.Core/Internals/UtilizationSampler.cs
+  - src/Oragon.ElasticPool.Core/Internals/WaitDurationHistogram.cs
+  - src/Oragon.ElasticPool.Core/Telemetry/PoolDiagnosticsLog.cs
+  - src/Oragon.ElasticPool.Core/Telemetry/PoolMeterNames.cs
+  - src/Oragon.ElasticPool.Core/Telemetry/TelemetryEmitter.cs
+  - tests/Oragon.ElasticPool.Core.Tests/Pool/BackgroundSweepTests.cs
+  - tests/Oragon.ElasticPool.Core.Tests/Pool/ElasticGrowTests.cs
+  - tests/Oragon.ElasticPool.Core.Tests/Pool/HystereticShrinkTests.cs
+  - tests/Oragon.ElasticPool.Core.Tests/Pool/PressureSamplerTests.cs
+  - tests/Oragon.ElasticPool.Core.Tests/Pool/SweepBackoffIntegrationTests.cs
+  - tests/Oragon.ElasticPool.Core.Tests/Pool/SweepBackoffStateTests.cs
+  - tests/Oragon.ElasticPool.Core.Tests/Pool/UtilizationSamplerTests.cs
+  - tests/Oragon.ElasticPool.Core.Tests/Pool/WaitDurationHistogramTests.cs
+  - tests/Oragon.ElasticPool.Core.Tests/Telemetry/ActivitySourceSpanTests.cs
+  - tests/Oragon.ElasticPool.Core.Tests/Telemetry/LoggerMessageEventTests.cs
+  - tests/Oragon.ElasticPool.Core.Tests/Telemetry/Phase2CountersAndHistogramsTests.cs
+  - tests/Oragon.ElasticPool.Core.Tests/TestSupport/CapturedActivities.cs
+  - tests/Oragon.ElasticPool.Core.Tests/TestSupport/CapturedLogEntries.cs
+  - tests/Oragon.ElasticPool.Core.Tests/TestSupport/SweepDeterminism.cs
+  - tests/Oragon.ElasticPool.Core.Stress/BurstIdleBurstStressTest.cs
 findings:
   critical: 3
   warning: 5
@@ -48,7 +48,7 @@ status: findings_present
 
 ## Summary
 
-The elasticity layer introduces a `BackgroundSweeper`, a composite-signal `PressureSampler`, ring-buffer `UtilizationSampler`, `WaitDurationHistogram`, `SweepBackoffState`, and extends `AdaptivePool<T>` with `TryGrowAsync` and a hysteretic shrink path. The overall architecture is sound — the grow CAS, the direct-handoff waiter channel, the DisposeAsync sequencing (sweeper stop before drain), and the test determinism helpers are all correctly constructed.
+The elasticity layer introduces a `BackgroundSweeper`, a composite-signal `PressureSampler`, ring-buffer `UtilizationSampler`, `WaitDurationHistogram`, `SweepBackoffState`, and extends `ElasticPool<T>` with `TryGrowAsync` and a hysteretic shrink path. The overall architecture is sound — the grow CAS, the direct-handoff waiter channel, the DisposeAsync sequencing (sweeper stop before drain), and the test determinism helpers are all correctly constructed.
 
 Three correctness defects require blocking fixes before this code ships:
 
@@ -64,7 +64,7 @@ Five warnings are also surfaced, covering span coverage gaps, test data-race via
 
 ### CR-01: Shrink pass TOCTOU — dequeued item may differ from peeked item
 
-**File:** `src/Oragon.AdaptivePool.Core/Internals/BackgroundSweeper.cs:150-169`
+**File:** `src/Oragon.ElasticPool.Core/Internals/BackgroundSweeper.cs:150-169`
 
 **Issue:** The shrink pass calls `TryPeek` to inspect the idle-queue head and test its `LastReturnedAt + IdleTimeout <= now`. If the check passes, it calls `TryDequeue`. Between these two calls a consumer thread can acquire the peeked (stale) entry and return it, placing it back at the tail; a different entry becomes the new head, and `TryDequeue` removes **that** entry without ever checking its age. In the degenerate single-item case the peeked entry re-queues at head (it is the only entry), so the returned-and-freshly-timestamped item is dequeued and evicted — an in-use item is destroyed.
 
@@ -106,7 +106,7 @@ if (_pool.Idle.TryPeek(out _) &&
 
 ### CR-02: UtilizationSampler writes data fields after the publication timestamp (inverted publication pattern on ARM64)
 
-**File:** `src/Oragon.AdaptivePool.Core/Internals/UtilizationSampler.cs:38-40`
+**File:** `src/Oragon.ElasticPool.Core/Internals/UtilizationSampler.cs:38-40`
 
 **Issue:** The write sequence in `Sample()` is:
 ```csharp
@@ -131,7 +131,7 @@ With this order, the reader's load-acquire on the timestamp is paired with the w
 
 ### CR-03: Unhealthy items from Check hook remain acquirable for up to ShrinkCooldownWindows ticks
 
-**File:** `src/Oragon.AdaptivePool.Core/Internals/BackgroundSweeper.cs:113-128`
+**File:** `src/Oragon.ElasticPool.Core/Internals/BackgroundSweeper.cs:113-128`
 
 **Issue:** When the Check hook returns `Unhealthy`, the sweeper marks the entry `LastReturnedAt = DateTimeOffset.MinValue` and defers eviction to the shrink pass. The shrink pass is gated by `SinceLastGrowTicks >= ShrinkCooldownWindows` (default: 3). During those 3 ticks — which at the default 30s interval spans up to 90 seconds — the poisoned entry remains in `_idle` and can be dequeued by any `Acquire` or `AcquireAsync` call. If `BeforeUse` is not configured (a valid configuration), the consumer receives an item the pool has already judged unhealthy.
 
@@ -159,7 +159,7 @@ entry.LastReturnedAt = DateTimeOffset.MinValue;
 
 ### WR-01: PoolEntry.LastReturnedAt is a non-volatile DateTimeOffset with concurrent writers and readers
 
-**File:** `src/Oragon.AdaptivePool.Core/Internals/PoolEntry.cs:12`
+**File:** `src/Oragon.ElasticPool.Core/Internals/PoolEntry.cs:12`
 
 **Issue:** `LastReturnedAt` is a plain auto-property (no `Volatile`, no `Interlocked`). It is written by `ReturnSync` on the consumer thread and read by the background sweeper (health-check snapshot iteration and shrink `TryPeek`). The sweeper also writes it (`entry.LastReturnedAt = DateTimeOffset.MinValue`) while consumers can concurrently dequeue the same entry and call `ReturnSync`. `DateTimeOffset` is not an 8-byte value (it holds a `long` ticks field plus a `short` offset field, totalling 10 bytes padded to 16); reads and writes are not atomic under the CLR memory model. On ARM64, the JIT may emit a multi-instruction store/load sequence, making torn reads observable.
 
@@ -177,7 +177,7 @@ public DateTimeOffset LastReturnedAt
 
 ### WR-02: AcquireAsyncCoreWithSpan does not tag the outcome for non-cancellation exceptions
 
-**File:** `src/Oragon.AdaptivePool.Core/Internals/AdaptivePool.cs:188-201`
+**File:** `src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs:188-201`
 
 **Issue:** The `Pool.Acquire` span is completed in the `finally` block regardless, but `outcome` is only set on the happy path ("ok") or for `OperationCanceledException` ("canceled"). Any other exception — `PoolExhaustedException`, `ObjectDisposedException`, `InvalidOperationException` from the BeforeUse retry limit, or a factory failure re-throw — causes the span to be disposed with no `outcome` tag. OTel backends that partition on `outcome` will silently drop or misattribute these spans.
 
@@ -209,7 +209,7 @@ private async ValueTask<IPoolItem<T>> AcquireAsyncCoreWithSpan(Activity? span, C
 
 ### WR-03: BackgroundSweeper.TickCompleted property reads _tickCompleted without a Volatile.Read
 
-**File:** `src/Oragon.AdaptivePool.Core/Internals/BackgroundSweeper.cs:23`
+**File:** `src/Oragon.ElasticPool.Core/Internals/BackgroundSweeper.cs:23`
 
 **Issue:**
 ```csharp
@@ -226,8 +226,8 @@ internal Task TickCompleted => Volatile.Read(ref _tickCompleted).Task;
 
 ### WR-04: StartHealthCheckSpan called per-idle-item in a loop without HasListeners() guard
 
-**File:** `src/Oragon.AdaptivePool.Core/Telemetry/TelemetryEmitter.cs:136-141`
-**Also:** `src/Oragon.AdaptivePool.Core/Internals/BackgroundSweeper.cs:102`
+**File:** `src/Oragon.ElasticPool.Core/Telemetry/TelemetryEmitter.cs:136-141`
+**Also:** `src/Oragon.ElasticPool.Core/Internals/BackgroundSweeper.cs:102`
 
 **Issue:** `StartHealthCheckSpan` is invoked once per idle item inside the sweep health-check loop (O(n) calls per tick). It calls `ActivitySource.StartActivity(...)` unconditionally. The companion `StartSweepSpan` correctly guards with `HasListeners()` precisely because "preparatory work for per-item ActivityEvents is non-trivial." `StartActivity` itself is not free: even when no listener is attached it performs a lock-free walk of the listener list. With large pools (e.g. 1000 connections) this adds up to a measurable overhead per tick solely from `StartActivity` calls that return null.
 
@@ -246,7 +246,7 @@ public Activity? StartHealthCheckSpan(string poolName)
 
 ### WR-05: BackgroundSweeper uses FailureKind.AfterUseUnhealthy for a background Check-hook verdict
 
-**File:** `src/Oragon.AdaptivePool.Core/Internals/BackgroundSweeper.cs:120`
+**File:** `src/Oragon.ElasticPool.Core/Internals/BackgroundSweeper.cs:120`
 
 **Issue:**
 ```csharp
@@ -270,7 +270,7 @@ await _pool.Options.FailurePolicy.HandleAsync(entry.Item, FailureKind.CheckUnhea
 
 ### IR-01: ShrinkSpan pool.size_before tag can be inflated by concurrent grows
 
-**File:** `src/Oragon.AdaptivePool.Core/Internals/BackgroundSweeper.cs:156-158`
+**File:** `src/Oragon.ElasticPool.Core/Internals/BackgroundSweeper.cs:156-158`
 
 **Issue:** `oldTotal` is captured from `_pool.CurrentTotal` **after** `TryDequeue` but **before** `DecrementTotal`. Between `TryDequeue` and the `Volatile.Read` for `oldTotal`, a concurrent `TryGrowAsync` CAS can increment `_total`. The resulting `pool.size_before` tag in the Shrink span can be larger than the true pre-shrink value by the number of concurrent grows. This affects dashboard accuracy for the shrink telemetry.
 
@@ -285,7 +285,7 @@ This requires making `DecrementTotal` return the new value (or pre-decrement val
 
 ### IR-02: BurstIdleBurstStressTest does not prime the sweep loop before the 60-second fake advance
 
-**File:** `tests/Oragon.AdaptivePool.Core.Stress/BurstIdleBurstStressTest.cs:91`
+**File:** `tests/Oragon.ElasticPool.Core.Stress/BurstIdleBurstStressTest.cs:91`
 
 **Issue:** After `await Task.WhenAll(burst1)`, the test immediately calls `fake.Advance(TimeSpan.FromSeconds(60))` without first ensuring the sweep loop has returned to `WaitForNextTickAsync`. The initial `PrimeAsync` (Task.Yield + Task.Delay(100)) at lines 63–64 primes the loop before Burst 1, but the burst's 200 concurrent tasks and their `await Task.Yield()` calls leave the sweep loop in an undefined position. If the loop is mid-tick when `fake.Advance(60s)` fires, the `PeriodicTimer` may queue 2 pending ticks; the for-loop's `AdvanceAndAwaitTickAsync` then awaits the wrong TCS, and the outer 2s timeout fallback (`if (winner != tcs) break`) exits early. The assertion `pool.Available.Should().Be(5)` then fails non-deterministically on CI.
 

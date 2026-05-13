@@ -1,6 +1,6 @@
 # Feature Research
 
-**Domain:** .NET adaptive object/connection pool library (Oragon.AdaptivePool + RabbitMQ adapter)
+**Domain:** .NET adaptive object/connection pool library (Oragon.ElasticPool + RabbitMQ adapter)
 **Researched:** 2026-05-02
 **Confidence:** HIGH (synthesis from mature pools across JVM, Node, .NET, plus RabbitMQ-specific guidance)
 
@@ -33,7 +33,7 @@ Missing any of these and a serious .NET dev evaluating an OSS pool library in 20
 | On-borrow validation (`testOnBorrow` / `BeforeUse` hook) | commons-pool2 default, generic-pool, HikariCP connection-test | LOW | Already in PROJECT.md spec. |
 | Object factory + destroy (Factory + Release hooks) | commons-pool2 `makeObject`/`destroyObject`, generic-pool `create`/`destroy` | LOW | PROJECT.md covers both. |
 | `IDisposable` / `IAsyncDisposable` on the pool itself | .NET BCL convention; releases all pooled items | LOW | Must drain on dispose. |
-| DI integration (`services.AddAdaptivePool<T>(...)`) | .NET ecosystem expectation since .NET Core | LOW | Already in PROJECT.md. |
+| DI integration (`services.AddElasticPool<T>(...)`) | .NET ecosystem expectation since .NET Core | LOW | Already in PROJECT.md. |
 | Built-in metrics via `System.Diagnostics.Metrics.Meter` | OpenTelemetry-friendly is table stakes for serious .NET OSS in 2026 | MEDIUM | Already in PROJECT.md. Standard names: `pool.size`, `pool.available`, `pool.in_use`, `pool.waiting`, `pool.acquire.duration`. |
 | Structured logging via `ILogger<T>` | .NET expectation | LOW | State transitions, factory failures, evictions. |
 | Cancellation token plumbing through every async path | .NET expectation | LOW | Already in PROJECT.md. |
@@ -43,7 +43,7 @@ Missing any of these and a serious .NET dev evaluating an OSS pool library in 20
 
 ### Differentiators (Competitive Advantage)
 
-These are where Oragon.AdaptivePool earns its keep vs. `Microsoft.Extensions.ObjectPool` and "roll your own."
+These are where Oragon.ElasticPool earns its keep vs. `Microsoft.Extensions.ObjectPool` and "roll your own."
 
 | Feature | Value Proposition | Complexity | Notes |
 |---|---|---|---|
@@ -57,7 +57,7 @@ These are where Oragon.AdaptivePool earns its keep vs. `Microsoft.Extensions.Obj
 | **Graceful shutdown / drain** (stop accepting, wait for in-flight, then dispose) | Reactor Pool's `GracefulShutdownInstrumentedPool` is the reference. Critical for k8s SIGTERM handling. | MEDIUM | `DrainAsync(TimeSpan)` returning whether all items returned cleanly. |
 | **`PoolItemContext` / state bag on borrowed item** | Hooks need to share state (e.g., BeforeUse measures latency, AfterUse records it). | LOW | Small struct passed to all hooks. |
 | **First-class `IServiceProvider` access in hooks** | DI-resolved factory/health checks (e.g., factory needs `IOptions<RabbitOptions>`) | LOW | Already implied by builder taking `IServiceProvider`. |
-| **Builder fluent API** (per PROJECT.md sketch) | `Microsoft.Extensions.ObjectPool` requires writing a `PooledObjectPolicy<T>` — verbose. Fluent builder is what `Oragon.RabbitMQ` already does for consistency. | MEDIUM | `AdaptiveObjectPoolFactory.Build<T>(sp, ct).Factory(...).BeforeUse(...).Build()` |
+| **Builder fluent API** (per PROJECT.md sketch) | `Microsoft.Extensions.ObjectPool` requires writing a `PooledObjectPolicy<T>` — verbose. Fluent builder is what `Oragon.RabbitMQ` already does for consistency. | MEDIUM | `ElasticObjectPoolFactory.Build<T>(sp, ct).Factory(...).BeforeUse(...).Build()` |
 | **Per-item max-lifetime / max-uses** (rotation) | HikariCP `maxLifetime`, sqlalchemy `pool_recycle` — rotates connections to prevent stale-state bugs (server-side timeouts, memory accumulation). | LOW | Optional config. Discard+replace via failure policy when exceeded. |
 
 ### Anti-Features (Commonly Requested, Often Problematic)
@@ -69,9 +69,9 @@ These will be requested in GitHub issues. Document the "no" with rationale up-fr
 | Distributed pool (Redis/etcd-coordinated cross-process) | "We have 10 pods, why each its own pool?" | Different problem entirely (consensus, network partitions, eviction races). PROJECT.md explicitly out-of-scope. | Use a broker-side limit (RabbitMQ `connection_max`) and per-pod local pools. |
 | Persistent pool state across restarts | "Don't want cold start every deploy" | Pool state is process-bound; serialized state of TCP connections is meaningless. | Eager warm-up via `InitialSize` + readiness probe gated on warmup completion. |
 | Built-in dashboard UI / web endpoint | "Show me what's in the pool" | Maintenance burden; couples to UI framework; PROJECT.md explicitly out-of-scope. | Emit `Meter` data → Aspire Dashboard / Grafana / App Insights / OTel Collector. |
-| Built-in retry/circuit-breaker around `Acquire` | "Add Polly to the pool" | Resilience is orthogonal — wrong layer. Polly + pool compose cleanly. Embedding leaks Polly version into our deps. | Document the recipe: wrap `AcquireAsync` in a Polly pipeline. Consider a tiny `Oragon.AdaptivePool.Polly` glue package later. |
+| Built-in retry/circuit-breaker around `Acquire` | "Add Polly to the pool" | Resilience is orthogonal — wrong layer. Polly + pool compose cleanly. Embedding leaks Polly version into our deps. | Document the recipe: wrap `AcquireAsync` in a Polly pipeline. Consider a tiny `Oragon.ElasticPool.Polly` glue package later. |
 | Generic adapters in v1 (HttpClient / Npgsql / DbConnection / Redis) | "Why only RabbitMQ?" | `HttpClient` already has `IHttpClientFactory` with SocketsHttpHandler pooling. ADO.NET providers pool internally. Duplicating = confusion. | Document explicitly: only pool what isn't already pooled. v2+ may add e.g. `gRPC` channels if community pulls. |
-| Automatic per-tenant / per-key sub-pools | "I want a pool keyed by virtual host" | Adds keyed-pool semantics (cf. `GenericKeyedObjectPool`) — significant API surface, easy to misuse. | Caller composes: a `Dictionary<TKey, IAdaptivePool<T>>` works fine. Revisit if heavy demand. |
+| Automatic per-tenant / per-key sub-pools | "I want a pool keyed by virtual host" | Adds keyed-pool semantics (cf. `GenericKeyedObjectPool`) — significant API surface, easy to misuse. | Caller composes: a `Dictionary<TKey, IElasticPool<T>>` works fine. Revisit if heavy demand. |
 | "Smart" auto-tuning of `MinSize`/`MaxSize` (ML/heuristic) | "Just figure it out" | Hidden behavior, debuggability nightmare, false confidence. HikariCP's deliberate simplicity is its strength. | Surface metrics; let humans tune. Provide doc on tuning playbook. |
 | Synchronous-only API mode | "I'm in a sync codebase" | Forces blocking on async resources (RabbitMQ v7 is async-only); creates deadlock surface. | Provide sync `Acquire()` only for the no-wait path; require async for grow path. PROJECT.md already nailed this. |
 | Sharing a single pooled `IChannel` across threads | "Fewer channels = better" | RabbitMQ.Client v7 is "thread-safe to call" but frame interleaving on shared publish can still cause issues; the docs explicitly warn against publish-channel sharing. | Pool channels per-publish-operation; let pool size scale with concurrency. |
@@ -80,7 +80,7 @@ These will be requested in GitHub issues. Document the "no" with rationale up-fr
 
 ## RabbitMQ Adapter — Specific Features
 
-These belong to `Oragon.AdaptivePool.RabbitMQ`, not Core.
+These belong to `Oragon.ElasticPool.RabbitMQ`, not Core.
 
 | Feature | Layer | Notes |
 |---|---|---|
@@ -89,8 +89,8 @@ These belong to `Oragon.AdaptivePool.RabbitMQ`, not Core.
 | Channel-per-publisher discipline guidance | Docs | Per RabbitMQ docs: do not share publishing channels across threads even though v7 client is "thread-safe to call." |
 | Recommended channel-per-connection ceiling | Docs / sample | "single-digit channels per connection" per RabbitMQ official guidance — encode as default `MaxSize` hint in sample, not as hard limit. |
 | Publisher-confirms compatibility (no interference with confirm tracking) | Implementation | AfterUse hook should NOT swallow exceptions that publisher-confirm logic raises. |
-| `services.AddAdaptiveConnectionPool(...)` extension | DI | Per PROJECT.md. |
-| `services.AddAdaptiveChannelPool(...)` extension | DI | Per PROJECT.md. Wires both layers. |
+| `services.AddElasticConnectionPool(...)` extension | DI | Per PROJECT.md. |
+| `services.AddElasticChannelPool(...)` extension | DI | Per PROJECT.md. Wires both layers. |
 | Sample: bursty publisher (handful/hour → 100k/sec) | Sample project | Per PROJECT.md. The motivating scenario from the Context section. |
 
 ## Feature Dependencies
@@ -166,7 +166,7 @@ These belong to `Oragon.AdaptivePool.RabbitMQ`, not Core.
 Minimum viable product — proves the three-pillar Core Value (elasticity + auto-cure + DX) on the motivating RabbitMQ scenario.
 
 **Core:**
-- [ ] `IAdaptivePool<T>` with `Acquire()` (no-wait fast path) and `AcquireAsync(CancellationToken)` (waiting/growing path)
+- [ ] `IElasticPool<T>` with `Acquire()` (no-wait fast path) and `AcquireAsync(CancellationToken)` (waiting/growing path)
 - [ ] `IPoolItem<T>` disposable wrapper
 - [ ] Builder fluent API with all five hooks (Factory, BeforeUse, Check, AfterUse, Release)
 - [ ] `MinSize`, `MaxSize`, `InitialSize` bounds + eager warm-up
@@ -176,12 +176,12 @@ Minimum viable product — proves the three-pillar Core Value (elasticity + auto
 - [ ] `IItemFailurePolicy<T>` interface + default discard+replace policy
 - [ ] Release hook for cleanup
 - [ ] Built-in metrics (`Meter`), tracing (`ActivitySource`), logging (`ILogger<T>`)
-- [ ] DI extension `AddAdaptivePool<T>(...)`
+- [ ] DI extension `AddElasticPool<T>(...)`
 - [ ] CancellationToken plumbed end-to-end
 - [ ] `IAsyncDisposable` on pool with drain semantics
 
 **RabbitMQ adapter:**
-- [ ] `AddAdaptiveConnectionPool` + `AddAdaptiveChannelPool` extensions
+- [ ] `AddElasticConnectionPool` + `AddElasticChannelPool` extensions
 - [ ] Layered channel-over-connection composition
 - [ ] Bursty-publisher sample
 
@@ -245,7 +245,7 @@ Minimum viable product — proves the three-pillar Core Value (elasticity + auto
 
 ## Competitor Feature Analysis
 
-| Feature | Microsoft.Extensions.ObjectPool | HikariCP (JVM) | commons-pool2 (JVM) | node generic-pool | Polly v8 (.NET) | **Oragon.AdaptivePool (target)** |
+| Feature | Microsoft.Extensions.ObjectPool | HikariCP (JVM) | commons-pool2 (JVM) | node generic-pool | Polly v8 (.NET) | **Oragon.ElasticPool (target)** |
 |---|---|---|---|---|---|---|
 | Min/Max bounds | Only "MaximumRetained" | Yes (min/max idle, max total) | Yes | Yes | N/A (not a pool) | Yes (Min/Max/Initial) |
 | Elasticity (grow under pressure) | No | On-demand only | On-demand only | On-demand only | N/A | **Composite-signal (differentiator)** |

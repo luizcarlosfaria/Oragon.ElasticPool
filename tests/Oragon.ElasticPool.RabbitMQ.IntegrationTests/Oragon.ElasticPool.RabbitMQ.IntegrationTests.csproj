@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net10.0;net9.0;net8.0</TargetFrameworks>
+    <IsPackable>false</IsPackable>
+    <OutputType>Exe</OutputType>
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+    <IsTestProject>true</IsTestProject>
+    <IsTestingPlatformApplication>true</IsTestingPlatformApplication>
+    <NoWarn>$(NoWarn);xUnit1051</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="Microsoft.Testing.Extensions.TrxReport" />
+    <PackageReference Include="AwesomeAssertions" />
+    <PackageReference Include="Moq" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.Testing" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+    <PackageReference Include="RabbitMQ.Client" />
+    <PackageReference Include="Testcontainers.RabbitMq" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Oragon.ElasticPool.RabbitMQ\Oragon.ElasticPool.RabbitMQ.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Serialize test classes (parallelizeTestCollections=false) to avoid Docker daemon
+         contention from multiple concurrent Testcontainers fixtures. See xunit.runner.json
+         in this project for rationale. -->
+    <None Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

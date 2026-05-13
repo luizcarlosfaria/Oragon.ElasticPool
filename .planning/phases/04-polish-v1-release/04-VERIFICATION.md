@@ -8,7 +8,7 @@ human_verification:
   - test: "Push v1.0.0-rc.1 tag, observe release.yml workflow run succeeds end-to-end"
     expected: "CI test matrix (3 TFMs x 3 test projects) green; dotnet pack produces 4 artifacts; dotnet nuget push succeeds; packages visible on NuGet.org"
     why_human: "Requires live GitHub repo, NUGET_API_KEY secret, and actual tag push — cannot verify locally without the remote infrastructure"
-  - test: "Install Oragon.AdaptivePool.Core from NuGet.org, run 20-line quickstart from README.md"
+  - test: "Install Oragon.ElasticPool.Core from NuGet.org, run 20-line quickstart from README.md"
     expected: "dotnet add package resolves, dotnet build succeeds, dotnet run prints acquired/released pool output without errors"
     why_human: "Requires packages to actually be published to NuGet.org, which is the release-gate action"
   - test: "Step-into debugging via SourceLink after installing from NuGet.org"
@@ -39,11 +39,11 @@ human_verification:
 
 ### README Drift — Resolved
 
-The SUMMARY.md correctly identified this as a real gap: READMEs were authored with property-setter syntax (`pool.MinSize = 1`) that does not exist on the frozen `AdaptivePoolBuilder<T>`. The actual API requires `pool.WithBounds(minSize, maxSize, initialSize)` and `pool.IdleTimeout(TimeSpan)` (method calls). Additionally, `AddAdaptivePool` registers a keyed singleton requiring `GetRequiredKeyedService<IAdaptivePool<T>>(name)` not `GetRequiredService`.
+The SUMMARY.md correctly identified this as a real gap: READMEs were authored with property-setter syntax (`pool.MinSize = 1`) that does not exist on the frozen `ElasticPoolBuilder<T>`. The actual API requires `pool.WithBounds(minSize, maxSize, initialSize)` and `pool.IdleTimeout(TimeSpan)` (method calls). Additionally, `AddElasticPool` registers a keyed singleton requiring `GetRequiredKeyedService<IElasticPool<T>>(name)` not `GetRequiredService`.
 
 **Fix verified in commit b09d516** (3 files changed, root README + Core README + RabbitMQ README). All three README files now use correct API. Grep gates:
 - `pool.MinSize =` pattern: 0 matches across all READMEs — CLEAN
-- `GetRequiredService<IAdaptivePool`: 0 matches — CLEAN
+- `GetRequiredService<IElasticPool`: 0 matches — CLEAN
 - `WithBounds(`: 3 files hit (Core README line 34, root README line 37, RabbitMQ README lines 44+54)
 - `GetRequiredKeyedService`: present in Core README line 44, root README line 47, RabbitMQ README line 60
 
@@ -55,15 +55,15 @@ The SUMMARY.md correctly identified this as a real gap: READMEs were authored wi
 | `CHANGELOG.md` | Keep-a-Changelog with `## [1.0.0]` | ✓ EXISTS | `## [1.0.0] - 2026-05-03`; no placeholder remaining |
 | `icon.png` | 128x128 PNG | ✓ EXISTS | `PNG image data, 128 x 128, 8-bit/color RGB, non-interlaced`, 258 bytes |
 | `README.md` | Root orchestrator, ≥150 lines, quickstart + table + OTel + sample link | ✓ VERIFIED | 133 lines; contains all required sections; quickstart uses correct API |
-| `src/Oragon.AdaptivePool.Core/README.md` | Per-package, ≥120 lines | ✓ VERIFIED | 169 lines; quickstart, comparison table, OTel snippet, instrument inventory, sample link — all correct API |
-| `src/Oragon.AdaptivePool.RabbitMQ/README.md` | Per-package, ≥80 lines | ✓ VERIFIED | 127 lines; layered example, sizing callout, AutomaticRecoveryEnabled callout, sample link — all correct API |
+| `src/Oragon.ElasticPool.Core/README.md` | Per-package, ≥120 lines | ✓ VERIFIED | 169 lines; quickstart, comparison table, OTel snippet, instrument inventory, sample link — all correct API |
+| `src/Oragon.ElasticPool.RabbitMQ/README.md` | Per-package, ≥80 lines | ✓ VERIFIED | 127 lines; layered example, sizing callout, AutomaticRecoveryEnabled callout, sample link — all correct API |
 | `Directory.Build.props` | PackageReadmeFile, PackageIcon, PackageLicenseExpression | ✓ VERIFIED | All three present; Authors=`Luiz Carlos Faria`; icon pack ItemGroup scoped to `IsPackable=true` |
 | `src/.../Core.csproj` | PackageReadmeFile via `<None Include="README.md" Pack="true">` | ✓ VERIFIED | Per plan task 2 (self-check in SUMMARY confirmed) |
 | `src/.../RabbitMQ.csproj` | PackageReadmeFile via `<None Include="README.md" Pack="true">` | ✓ VERIFIED | Per plan task 2 (self-check in SUMMARY confirmed) |
-| `src/Oragon.AdaptivePool.Core/PublicAPI.Shipped.txt` | ≥100 lines, frozen v1.0 surface | ✓ VERIFIED | 102 lines; `#nullable enable` header + 101 API entries; `IAdaptivePool<T>` present; `WithBounds` present |
-| `src/Oragon.AdaptivePool.Core/PublicAPI.Unshipped.txt` | Empty baseline (`#nullable enable` only) | ✓ VERIFIED | 1 line: `#nullable enable` |
-| `src/Oragon.AdaptivePool.RabbitMQ/PublicAPI.Shipped.txt` | ≥35 lines, frozen v1.0 surface | ✓ VERIFIED | 39 lines; `AddAdaptiveConnectionPool` and `AddAdaptiveChannelPool` present |
-| `src/Oragon.AdaptivePool.RabbitMQ/PublicAPI.Unshipped.txt` | Empty baseline | ✓ VERIFIED | 1 line: `#nullable enable` |
+| `src/Oragon.ElasticPool.Core/PublicAPI.Shipped.txt` | ≥100 lines, frozen v1.0 surface | ✓ VERIFIED | 102 lines; `#nullable enable` header + 101 API entries; `IElasticPool<T>` present; `WithBounds` present |
+| `src/Oragon.ElasticPool.Core/PublicAPI.Unshipped.txt` | Empty baseline (`#nullable enable` only) | ✓ VERIFIED | 1 line: `#nullable enable` |
+| `src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Shipped.txt` | ≥35 lines, frozen v1.0 surface | ✓ VERIFIED | 39 lines; `AddElasticConnectionPool` and `AddElasticChannelPool` present |
+| `src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Unshipped.txt` | Empty baseline | ✓ VERIFIED | 1 line: `#nullable enable` |
 | `.github/workflows/build.yml` | Matrix + RabbitMQ.Tests + RabbitMQ.IntegrationTests | ✓ VERIFIED | 11 steps; steps 9-10 are RabbitMQ.Tests and RabbitMQ.IntegrationTests; coverage gate at step 8 preserved |
 | `.github/workflows/release.yml` | Tag-triggered, test gate, pack, push | ✓ VERIFIED | Trigger: `tags: ['v*']`; no `branches` block; jobs: `test` + `publish`; `publish` needs `test`; `NUGET_API_KEY` referenced; `.snupkg` companion verification step present |
 
@@ -135,7 +135,7 @@ Not applicable — this phase produces no dynamic-data-rendering components; art
 
 **Test:** Ensure `NUGET_API_KEY` secret is configured in GitHub repo Settings → Secrets and variables → Actions. Push RC tag: `git tag v1.0.0-rc.1 && git push origin v1.0.0-rc.1`. Observe the `release` workflow run.
 
-**Expected:** `test` job matrix (3 legs) all green → `publish` job runs → `.snupkg` companion check passes → `dotnet nuget push` uploads 4 artifacts → packages `Oragon.AdaptivePool.Core.1.0.0-rc.1` and `Oragon.AdaptivePool.RabbitMQ.1.0.0-rc.1` visible on NuGet.org within ~5 minutes.
+**Expected:** `test` job matrix (3 legs) all green → `publish` job runs → `.snupkg` companion check passes → `dotnet nuget push` uploads 4 artifacts → packages `Oragon.ElasticPool.Core.1.0.0-rc.1` and `Oragon.ElasticPool.RabbitMQ.1.0.0-rc.1` visible on NuGet.org within ~5 minutes.
 
 **Why human:** Requires live GitHub repo, configured NUGET_API_KEY secret, and actual tag push. The release.yml structure is fully verified locally; this is a gate on external infrastructure readiness.
 
@@ -143,7 +143,7 @@ Not applicable — this phase produces no dynamic-data-rendering components; art
 
 #### 3. Consumer Install from NuGet.org (Post RC Publish)
 
-**Test:** In a fresh `dotnet new console` project, run `dotnet add package Oragon.AdaptivePool.Core --version 1.0.0-rc.1` and `dotnet add package Oragon.AdaptivePool.RabbitMQ --version 1.0.0-rc.1`. Paste the quickstart from `src/Oragon.AdaptivePool.Core/README.md`. Run `dotnet run`.
+**Test:** In a fresh `dotnet new console` project, run `dotnet add package Oragon.ElasticPool.Core --version 1.0.0-rc.1` and `dotnet add package Oragon.ElasticPool.RabbitMQ --version 1.0.0-rc.1`. Paste the quickstart from `src/Oragon.ElasticPool.Core/README.md`. Run `dotnet run`.
 
 **Expected:** Compiles cleanly (no CS1061, no missing namespace errors). Output shows: pool created 2 clients on InitialSize warm-up, acquired/released correctly, disposed on host shutdown. Confirms SC-5 ("consumer can install and write a 20-line publisher").
 
@@ -155,7 +155,7 @@ Not applicable — this phase produces no dynamic-data-rendering components; art
 
 No code deficiencies found. All gaps resolve to external infrastructure readiness:
 
-1. **GitHub repo must be created** at `https://github.com/oragon/Oragon.AdaptivePool` (or `Directory.Build.props` `RepositoryUrl` updated to match actual slug). The nuspec currently hard-codes `oragon/Oragon.AdaptivePool`.
+1. **GitHub repo must be created** at `https://github.com/oragon/Oragon.ElasticPool` (or `Directory.Build.props` `RepositoryUrl` updated to match actual slug). The nuspec currently hard-codes `oragon/Oragon.ElasticPool`.
 2. **NUGET_API_KEY** must be configured in GitHub repo Actions secrets before `release.yml` can push.
 3. **RC soak** (per CONTEXT.md): push `v1.0.0-rc.1` first, soak ~1 week, then push `v1.0.0`.
 
@@ -185,7 +185,7 @@ The codebase is mechanically ready to ship. All code artifacts, workflow files, 
 1. Create the public GitHub repo (or update `RepositoryUrl` in `Directory.Build.props`)
 2. Configure `NUGET_API_KEY` secret in repo Settings
 3. Push to `main` and verify `build.yml` runs green on GitHub (validates Docker/Testcontainers leg)
-4. Consider reserving `Oragon.AdaptivePool.*` prefix on NuGet.org
+4. Consider reserving `Oragon.ElasticPool.*` prefix on NuGet.org
 5. Push `v1.0.0-rc.1` tag; observe `release.yml`; verify packages on NuGet.org
 6. Soak ~1 week per CONTEXT.md pre-release strategy
 7. Push `v1.0.0` tag for final release

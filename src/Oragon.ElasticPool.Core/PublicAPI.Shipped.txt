@@ -1,0 +1,102 @@
+#nullable enable
+Oragon.ElasticPool.Core.Abstractions.FailureDecision
+Oragon.ElasticPool.Core.Abstractions.FailureDecision.Discard = 0 -> Oragon.ElasticPool.Core.Abstractions.FailureDecision
+Oragon.ElasticPool.Core.Abstractions.FailureKind
+Oragon.ElasticPool.Core.Abstractions.FailureKind.AfterUseUnhealthy = 2 -> Oragon.ElasticPool.Core.Abstractions.FailureKind
+Oragon.ElasticPool.Core.Abstractions.FailureKind.BeforeUseUnhealthy = 1 -> Oragon.ElasticPool.Core.Abstractions.FailureKind
+Oragon.ElasticPool.Core.Abstractions.FailureKind.CheckUnhealthy = 3 -> Oragon.ElasticPool.Core.Abstractions.FailureKind
+Oragon.ElasticPool.Core.Abstractions.FailureKind.FactoryThrew = 0 -> Oragon.ElasticPool.Core.Abstractions.FailureKind
+Oragon.ElasticPool.Core.Abstractions.IElasticPool<T>
+Oragon.ElasticPool.Core.Abstractions.IElasticPool<T>.Acquire() -> Oragon.ElasticPool.Core.Abstractions.IPoolItem<T>!
+Oragon.ElasticPool.Core.Abstractions.IElasticPool<T>.AcquireAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<Oragon.ElasticPool.Core.Abstractions.IPoolItem<T>!>
+Oragon.ElasticPool.Core.Abstractions.IElasticPool<T>.Available.get -> int
+Oragon.ElasticPool.Core.Abstractions.IElasticPool<T>.InUse.get -> int
+Oragon.ElasticPool.Core.Abstractions.IElasticPool<T>.MaxSize.get -> int
+Oragon.ElasticPool.Core.Abstractions.IElasticPool<T>.MinSize.get -> int
+Oragon.ElasticPool.Core.Abstractions.IElasticPool<T>.ReadyAsync() -> System.Threading.Tasks.Task!
+Oragon.ElasticPool.Core.Abstractions.IItemFailurePolicy<T>
+Oragon.ElasticPool.Core.Abstractions.IItemFailurePolicy<T>.HandleAsync(T? failedItem, Oragon.ElasticPool.Core.Abstractions.FailureKind failureKind, System.Exception? exception, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Oragon.ElasticPool.Core.Abstractions.FailureDecision>
+Oragon.ElasticPool.Core.Abstractions.IPoolItem<T>
+Oragon.ElasticPool.Core.Abstractions.IPoolItem<T>.Value.get -> T
+Oragon.ElasticPool.Core.Abstractions.PoolState
+Oragon.ElasticPool.Core.Abstractions.PoolState.Healthy = 0 -> Oragon.ElasticPool.Core.Abstractions.PoolState
+Oragon.ElasticPool.Core.Abstractions.PoolState.Unhealthy = 1 -> Oragon.ElasticPool.Core.Abstractions.PoolState
+Oragon.ElasticPool.Core.Builder.ElasticObjectPoolFactory
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.AfterUse(Oragon.ElasticPool.Core.Hooks.AfterUseDelegate<T>! hook) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.BeforeUse(Oragon.ElasticPool.Core.Hooks.BeforeUseDelegate<T>! hook) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.Build() -> Oragon.ElasticPool.Core.Abstractions.IElasticPool<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.Check(Oragon.ElasticPool.Core.Hooks.CheckDelegate<T>! hook) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.Factory(Oragon.ElasticPool.Core.Hooks.FactoryDelegate<T>! factory) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.GrowOnUtilizationPercent(double p) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.GrowOnWaitTimeP95(System.TimeSpan t) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.GrowOnWaiterCount(int n) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.IdleTimeout(System.TimeSpan t) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.MaxBackoff(System.TimeSpan t) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.Release(Oragon.ElasticPool.Core.Hooks.ReleaseDelegate<T>! hook) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.ShrinkCooldownWindows(int n) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.SweepInterval(System.TimeSpan t) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.WhenExhausted(Oragon.ElasticPool.Core.Builder.WaitBehavior behavior) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.WithBounds(int minSize, int maxSize, int initialSize) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.WithFailurePolicy(Oragon.ElasticPool.Core.Abstractions.IItemFailurePolicy<T>! policy) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>.WithTimeProvider(System.TimeProvider! timeProvider) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.AfterUse.get -> Oragon.ElasticPool.Core.Hooks.AfterUseDelegate<T>?
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.AfterUse.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.BeforeUse.get -> Oragon.ElasticPool.Core.Hooks.BeforeUseDelegate<T>?
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.BeforeUse.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.Check.get -> Oragon.ElasticPool.Core.Hooks.CheckDelegate<T>?
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.Check.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.Factory.get -> Oragon.ElasticPool.Core.Hooks.FactoryDelegate<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.Factory.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.FailurePolicy.get -> Oragon.ElasticPool.Core.Abstractions.IItemFailurePolicy<T>!
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.FailurePolicy.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.GrowOnUtilizationPercent.get -> double
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.GrowOnUtilizationPercent.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.GrowOnWaitTimeP95.get -> System.TimeSpan
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.GrowOnWaitTimeP95.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.GrowOnWaiterCount.get -> int
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.GrowOnWaiterCount.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.IdleTimeout.get -> System.TimeSpan
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.IdleTimeout.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.InitialSize.get -> int
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.InitialSize.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.MaxBackoff.get -> System.TimeSpan
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.MaxBackoff.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.MaxSize.get -> int
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.MaxSize.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.MinSize.get -> int
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.MinSize.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.PoolName.get -> string!
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.PoolName.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.Release.get -> Oragon.ElasticPool.Core.Hooks.ReleaseDelegate<T>?
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.Release.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.ShrinkCooldownWindows.get -> int
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.ShrinkCooldownWindows.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.SweepInterval.get -> System.TimeSpan
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.SweepInterval.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.TimeProvider.get -> System.TimeProvider!
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.TimeProvider.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.UtilizationWindow.get -> System.TimeSpan
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.UtilizationWindow.init -> void
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.WhenExhausted.get -> Oragon.ElasticPool.Core.Builder.WaitBehavior
+Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.WhenExhausted.init -> void
+Oragon.ElasticPool.Core.Builder.WaitBehavior
+Oragon.ElasticPool.Core.Builder.WaitBehavior.Throw = 1 -> Oragon.ElasticPool.Core.Builder.WaitBehavior
+Oragon.ElasticPool.Core.Builder.WaitBehavior.Wait = 0 -> Oragon.ElasticPool.Core.Builder.WaitBehavior
+Oragon.ElasticPool.Core.DependencyInjection.ServiceCollectionExtensions
+Oragon.ElasticPool.Core.Exceptions.PoolExhaustedException
+Oragon.ElasticPool.Core.Exceptions.PoolExhaustedException.IsTransient.get -> bool
+Oragon.ElasticPool.Core.Exceptions.PoolExhaustedException.MaxSize.get -> int
+Oragon.ElasticPool.Core.Exceptions.PoolExhaustedException.PoolExhaustedException(int maxSize, System.TimeSpan? waitTime = null) -> void
+Oragon.ElasticPool.Core.Exceptions.PoolExhaustedException.WaitTime.get -> System.TimeSpan?
+Oragon.ElasticPool.Core.Hooks.AfterUseDelegate<T>
+Oragon.ElasticPool.Core.Hooks.BeforeUseDelegate<T>
+Oragon.ElasticPool.Core.Hooks.CheckDelegate<T>
+Oragon.ElasticPool.Core.Hooks.FactoryDelegate<T>
+Oragon.ElasticPool.Core.Hooks.ReleaseDelegate<T>
+Oragon.ElasticPool.Core.Policies.DiscardAndReplaceFailurePolicy<T>
+Oragon.ElasticPool.Core.Policies.DiscardAndReplaceFailurePolicy<T>.DiscardAndReplaceFailurePolicy() -> void
+Oragon.ElasticPool.Core.Policies.DiscardAndReplaceFailurePolicy<T>.HandleAsync(T? failedItem, Oragon.ElasticPool.Core.Abstractions.FailureKind failureKind, System.Exception? exception, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Oragon.ElasticPool.Core.Abstractions.FailureDecision>
+static Oragon.ElasticPool.Core.Builder.ElasticObjectPoolFactory.Build<T>(System.IServiceProvider! services, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!
+static Oragon.ElasticPool.Core.DependencyInjection.ServiceCollectionExtensions.AddElasticPool<T>(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, string! name, System.Action<Oragon.ElasticPool.Core.Builder.ElasticPoolBuilder<T>!>! configure) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!

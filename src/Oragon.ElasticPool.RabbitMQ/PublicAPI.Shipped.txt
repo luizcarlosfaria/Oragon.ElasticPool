@@ -1,0 +1,39 @@
+#nullable enable
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticChannelPoolBuilder
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticChannelPoolBuilder.ElasticChannelPoolBuilder() -> void
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticChannelPoolBuilder.ChannelOptions.get -> RabbitMQ.Client.CreateChannelOptions!
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticChannelPoolBuilder.IdleTimeout.get -> System.TimeSpan
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticChannelPoolBuilder.InitialSize.get -> int
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticChannelPoolBuilder.MaxChannelsPerConnection.get -> int
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticChannelPoolBuilder.MaxSize.get -> int
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticChannelPoolBuilder.MinSize.get -> int
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticChannelPoolBuilder.WithBounds(int min, int max, int initial) -> Oragon.ElasticPool.RabbitMQ.Builder.ElasticChannelPoolBuilder!
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticChannelPoolBuilder.WithChannelOptions(RabbitMQ.Client.CreateChannelOptions! options) -> Oragon.ElasticPool.RabbitMQ.Builder.ElasticChannelPoolBuilder!
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticChannelPoolBuilder.WithIdleTimeout(System.TimeSpan t) -> Oragon.ElasticPool.RabbitMQ.Builder.ElasticChannelPoolBuilder!
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticChannelPoolBuilder.WithMaxChannelsPerConnection(int n) -> Oragon.ElasticPool.RabbitMQ.Builder.ElasticChannelPoolBuilder!
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticConnectionPoolBuilder
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticConnectionPoolBuilder.ElasticConnectionPoolBuilder() -> void
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticConnectionPoolBuilder.IdleTimeout.get -> System.TimeSpan
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticConnectionPoolBuilder.InitialSize.get -> int
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticConnectionPoolBuilder.MaxSize.get -> int
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticConnectionPoolBuilder.MinSize.get -> int
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticConnectionPoolBuilder.WithBounds(int min, int max, int initial) -> Oragon.ElasticPool.RabbitMQ.Builder.ElasticConnectionPoolBuilder!
+Oragon.ElasticPool.RabbitMQ.Builder.ElasticConnectionPoolBuilder.WithIdleTimeout(System.TimeSpan t) -> Oragon.ElasticPool.RabbitMQ.Builder.ElasticConnectionPoolBuilder!
+Oragon.ElasticPool.RabbitMQ.DependencyInjection.ElasticChannelPoolServiceCollectionExtensions
+Oragon.ElasticPool.RabbitMQ.DependencyInjection.ElasticConnectionPoolServiceCollectionExtensions
+Oragon.ElasticPool.RabbitMQ.Options.ElasticConnectionPoolOptions
+Oragon.ElasticPool.RabbitMQ.Options.ElasticConnectionPoolOptions.ElasticConnectionPoolOptions() -> void
+Oragon.ElasticPool.RabbitMQ.Options.ElasticConnectionPoolOptions.HostName.get -> string?
+Oragon.ElasticPool.RabbitMQ.Options.ElasticConnectionPoolOptions.HostName.set -> void
+Oragon.ElasticPool.RabbitMQ.Options.ElasticConnectionPoolOptions.Password.get -> string?
+Oragon.ElasticPool.RabbitMQ.Options.ElasticConnectionPoolOptions.Password.set -> void
+Oragon.ElasticPool.RabbitMQ.Options.ElasticConnectionPoolOptions.Port.get -> int
+Oragon.ElasticPool.RabbitMQ.Options.ElasticConnectionPoolOptions.Port.set -> void
+Oragon.ElasticPool.RabbitMQ.Options.ElasticConnectionPoolOptions.RequestedHeartbeat.get -> System.TimeSpan?
+Oragon.ElasticPool.RabbitMQ.Options.ElasticConnectionPoolOptions.RequestedHeartbeat.set -> void
+Oragon.ElasticPool.RabbitMQ.Options.ElasticConnectionPoolOptions.UserName.get -> string?
+Oragon.ElasticPool.RabbitMQ.Options.ElasticConnectionPoolOptions.UserName.set -> void
+Oragon.ElasticPool.RabbitMQ.Options.ElasticConnectionPoolOptions.VirtualHost.get -> string?
+Oragon.ElasticPool.RabbitMQ.Options.ElasticConnectionPoolOptions.VirtualHost.set -> void
+static Oragon.ElasticPool.RabbitMQ.DependencyInjection.ElasticChannelPoolServiceCollectionExtensions.AddElasticChannelPool(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, string! name, string! connectionPoolName, System.Action<Oragon.ElasticPool.RabbitMQ.Builder.ElasticChannelPoolBuilder!>! configurePool) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Oragon.ElasticPool.RabbitMQ.DependencyInjection.ElasticConnectionPoolServiceCollectionExtensions.AddElasticConnectionPool(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, string! name, System.Action<RabbitMQ.Client.ConnectionFactory!>? configureFactory, System.Action<Oragon.ElasticPool.RabbitMQ.Builder.ElasticConnectionPoolBuilder!>! configurePool) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!

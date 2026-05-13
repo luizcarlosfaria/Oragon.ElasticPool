@@ -14,7 +14,7 @@ provides:
   - 5 new Meter instruments (3 counters + 2 histograms) on TelemetryEmitter
   - 1 ActivitySource (assembly-static) emitting 6 span types (Acquire, Release, Grow, Shrink, Sweep, HealthCheck)
   - 7 new [LoggerMessage] entries (1005 Grew, 1006 Shrunk, 1007 SweepStarted, 1008 SweepCompleted, 1009 SweepFailureBackoff, 1010 CheckUnhealthy, 1099 SweepFailed)
-  - 3 new internal accessors on AdaptivePool<T>: Telemetry, Log, DecrementTotal()
+  - 3 new internal accessors on ElasticPool<T>: Telemetry, Log, DecrementTotal()
 affects:
   - Phase 1 hot path: AcquireAsync now wraps in a Pool.Acquire span (null-no-op when no listener); slow path now consults PressureSampler before parking, with `waiters + 1` semantics so default GrowOnWaiterCount=1 preserves Phase 1 grow-on-demand behavior.
   - PingPongStressTest still 300 ms — hot path unchanged when items are available.
@@ -32,11 +32,11 @@ tech-stack:
 key-files:
   created: []
   modified:
-    - src/Oragon.AdaptivePool.Core/Telemetry/PoolMeterNames.cs
-    - src/Oragon.AdaptivePool.Core/Telemetry/TelemetryEmitter.cs
-    - src/Oragon.AdaptivePool.Core/Telemetry/PoolDiagnosticsLog.cs
-    - src/Oragon.AdaptivePool.Core/Internals/AdaptivePool.cs
-    - src/Oragon.AdaptivePool.Core/Internals/BackgroundSweeper.cs
+    - src/Oragon.ElasticPool.Core/Telemetry/PoolMeterNames.cs
+    - src/Oragon.ElasticPool.Core/Telemetry/TelemetryEmitter.cs
+    - src/Oragon.ElasticPool.Core/Telemetry/PoolDiagnosticsLog.cs
+    - src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs
+    - src/Oragon.ElasticPool.Core/Internals/BackgroundSweeper.cs
 decisions:
   - "Pass `waiters + 1` (caller counted as if parked) to PressureSampler.Evaluate. With default GrowOnWaiterCount=1, this preserves Phase 1's grow-on-demand semantics: any caller hitting the slow path triggers grow. Higher GrowOnWaiterCount values delay grow until a real queue forms (CONTEXT D-01: tolerance to spikes). Without this adjustment, single-thread acquire on an empty pool with MinSize=0 would deadlock — Phase 1 tests covering WithBounds(0,N,0) would all break."
   - "MinSize-respecting warmup grow clause (`total < MinSize`) is OR'd into the grow gate. Cold-start with InitialSize=0 + MinSize>0 still climbs to MinSize on first acquire even when pressure says no-grow. Critical for Phase 1 BeforeUseUnhealthy-replacement tests."
@@ -72,7 +72,7 @@ metrics:
 
 | Constant | Value | Use |
 | --- | --- | --- |
-| `ActivitySourceName` | `"Oragon.AdaptivePool"` | Same string as `MeterName` but separate constant — different types. |
+| `ActivitySourceName` | `"Oragon.ElasticPool"` | Same string as `MeterName` but separate constant — different types. |
 | `OutcomeTag` | `"outcome"` | Bounded-cardinality tag; values: grew, shrunk, healthy, unhealthy, skipped, ok, canceled, factory_failed. |
 | `GrowCount` | `"pool.grow.count"` | Counter. |
 | `ShrinkCount` | `"pool.shrink.count"` | Counter. |
@@ -82,7 +82,7 @@ metrics:
 
 **`TelemetryEmitter.cs`** additions:
 
-- `internal static readonly ActivitySource ActivitySource = new("Oragon.AdaptivePool")` — process-lifetime singleton, never disposed.
+- `internal static readonly ActivitySource ActivitySource = new("Oragon.ElasticPool")` — process-lifetime singleton, never disposed.
 - 3 new `Counter<long>` fields: `_growCount`, `_shrinkCount`, `_healthFailures`.
 - 2 new `Histogram<double>` fields: `_acquireWaitDuration`, `_sweepDuration` (both unit `"s"`).
 - 5 emission methods: `OnGrow()`, `OnShrink()`, `OnHealthFailure()`, `OnAcquireWait(TimeSpan)`, `OnSweepDuration(TimeSpan)`.
@@ -190,7 +190,7 @@ The `WriteAsync` exception path also records the wait duration (covers pool-disp
 
 **`GrowAndHandoffAsync` (Phase 1 replacement-grow path).** Now also calls `_telemetry.OnGrow()` and `_log.Grew(..., false, false, false)` (all trip-flags false — replacement grow, not pressure-driven) so counter accuracy is preserved.
 
-**New internal accessors** added on `AdaptivePool<T>`:
+**New internal accessors** added on `ElasticPool<T>`:
 
 | Member | Use |
 | --- | --- |
@@ -252,7 +252,7 @@ net8.0   Stress dll (PingPong)     ->  total: 1,  failed: 0, succeeded: 1,  dura
 - **Found during:** Task 2 design (writing AcquireAsyncCore composite-signal gate).
 - **Issue:** The plan's snippet read `decision.ShouldGrow || Volatile.Read(ref _total) < _options.MinSize` to gate grow. With Phase 1 tests that use `WithBounds(0, N, 0)` (MinSize=0), single-thread acquire on an empty pool would: (a) fail fast-path (no idle), (b) `_pressure.Evaluate(0, waitersCount=0)` → `byWaiters = (0 >= 1) = false` → `ShouldGrow=false`, (c) `0 < 0` → false → fall through to wait branch, (d) park forever (nobody to grow on its behalf). All Phase 1 BeforeUseUnhealthy + DI + AfterUse tests would deadlock.
 - **Fix:** Pass `waiters + 1` (caller counted as if parked) to PressureSampler.Evaluate. Default GrowOnWaiterCount=1 then makes ANY slow-path caller trip byWaiters=true → grow. Higher values delay grow until queue depth ≥ threshold (CONTEXT D-01: tolerance to spikes). Net effect: Phase 1 tests pass identically; Phase 2 callers can opt into latency-tolerant behavior by raising the threshold.
-- **Files modified:** `src/Oragon.AdaptivePool.Core/Internals/AdaptivePool.cs` only.
+- **Files modified:** `src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs` only.
 - **Commit:** `d638ea1` (the same Task 2 commit; this was a design refinement during the task, not a separate fix).
 
 **2. [Rule 2 — Missing critical functionality] WaitBehavior.Throw must throw immediately when pressure says no-grow**
@@ -267,7 +267,7 @@ net8.0   Stress dll (PingPong)     ->  total: 1,  failed: 0, succeeded: 1,  dura
 
 - **Found during:** Task 2/3 verify steps.
 - **Issue:** MTP `--report-trx` injection bug (Phase 1 deviation #5).
-- **Fix:** Direct DLL execution: `dotnet tests/Oragon.AdaptivePool.Core.Tests/bin/Debug/<tfm>/Oragon.AdaptivePool.Core.Tests.dll`. Same workaround as prior plans.
+- **Fix:** Direct DLL execution: `dotnet tests/Oragon.ElasticPool.Core.Tests/bin/Debug/<tfm>/Oragon.ElasticPool.Core.Tests.dll`. Same workaround as prior plans.
 - **Files modified:** none.
 - **Commit:** N/A.
 
@@ -286,7 +286,7 @@ Plan 03 inherits a fully-wired engine. Specific probes available:
 
 1. **Pressure-grow telemetry assertions.** Plan 03 tests can assert against:
    - `pool.grow.count` counter increments with `pool.name` tag (via `MetricCollector<long>`).
-   - `Pool.Grow` ActivitySource span with `pool.size_after`, `grow.tripped_by_waiters`, `grow.tripped_by_utilization`, `grow.tripped_by_p95` tags + `outcome=grew` (via `ActivityListener` on source `"Oragon.AdaptivePool"`).
+   - `Pool.Grow` ActivitySource span with `pool.size_after`, `grow.tripped_by_waiters`, `grow.tripped_by_utilization`, `grow.tripped_by_p95` tags + `outcome=grew` (via `ActivityListener` on source `"Oragon.ElasticPool"`).
    - `Grew` log entry (EventId=1005) at Information level with primitive args.
    - `pool.acquire.wait.duration` histogram receiving the parked wait duration on every slow-path entry.
 
@@ -319,19 +319,19 @@ Plan 03 inherits a fully-wired engine. Specific probes available:
 ## Self-Check: PASSED
 
 - All 5 modified files reflect documented changes (verified via `git diff`):
-  - `src/Oragon.AdaptivePool.Core/Telemetry/PoolMeterNames.cs` ✓
-  - `src/Oragon.AdaptivePool.Core/Telemetry/TelemetryEmitter.cs` ✓
-  - `src/Oragon.AdaptivePool.Core/Telemetry/PoolDiagnosticsLog.cs` ✓
-  - `src/Oragon.AdaptivePool.Core/Internals/AdaptivePool.cs` ✓
-  - `src/Oragon.AdaptivePool.Core/Internals/BackgroundSweeper.cs` ✓
+  - `src/Oragon.ElasticPool.Core/Telemetry/PoolMeterNames.cs` ✓
+  - `src/Oragon.ElasticPool.Core/Telemetry/TelemetryEmitter.cs` ✓
+  - `src/Oragon.ElasticPool.Core/Telemetry/PoolDiagnosticsLog.cs` ✓
+  - `src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs` ✓
+  - `src/Oragon.ElasticPool.Core/Internals/BackgroundSweeper.cs` ✓
 - All 3 task commits exist in `git log` (`d9deac5`, `d638ea1`, `26aebab`) — verified.
 - `dotnet build` exits 0 (4 projects, 0 errors, 6 carry-forward Phase 1 SourceLink warnings).
 - 76 tests × 3 TFMs (228 invocations, 0 failures).
 - PingPongStressTest × 3 TFMs (3 invocations, 0 failures, ≤ 317 ms each).
 - `grep -c "EventId = " PoolDiagnosticsLog.cs` = 11 (4 Phase 1 + 7 new) — exact match.
-- `grep -c TryGrowAsync AdaptivePool.cs` = 2 (decl + call) ✓
-- `grep -c "_waitHistogram.Record" AdaptivePool.cs` = 2 (success + error path) ✓
-- `grep -c "_telemetry.OnGrow" AdaptivePool.cs` = 2 (TryGrowAsync + GrowAndHandoffAsync) ✓
+- `grep -c TryGrowAsync ElasticPool.cs` = 2 (decl + call) ✓
+- `grep -c "_waitHistogram.Record" ElasticPool.cs` = 2 (success + error path) ✓
+- `grep -c "_telemetry.OnGrow" ElasticPool.cs` = 2 (TryGrowAsync + GrowAndHandoffAsync) ✓
 - `grep -c RunSweepTickAsync BackgroundSweeper.cs` = 2 (decl + call) ✓
 - `grep -c OnSweepResult BackgroundSweeper.cs` = 2 ✓
 - `grep -c SweepCompleted BackgroundSweeper.cs` = 2 ✓

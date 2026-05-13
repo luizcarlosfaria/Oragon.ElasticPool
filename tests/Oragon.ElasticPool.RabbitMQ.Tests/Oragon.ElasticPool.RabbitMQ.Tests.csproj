@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net10.0;net9.0;net8.0</TargetFrameworks>
+    <IsPackable>false</IsPackable>
+    <!-- xUnit v3 + MTP self-execution requires OutputType=Exe (Phase 1+2 carry-forward). -->
+    <OutputType>Exe</OutputType>
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+    <IsTestProject>true</IsTestProject>
+    <IsTestingPlatformApplication>true</IsTestingPlatformApplication>
+    <NoWarn>$(NoWarn);xUnit1051</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="Microsoft.Testing.Extensions.TrxReport" />
+    <PackageReference Include="AwesomeAssertions" />
+    <PackageReference Include="Moq" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+    <PackageReference Include="RabbitMQ.Client" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Oragon.ElasticPool.RabbitMQ\Oragon.ElasticPool.RabbitMQ.csproj" />
+  </ItemGroup>
+</Project>

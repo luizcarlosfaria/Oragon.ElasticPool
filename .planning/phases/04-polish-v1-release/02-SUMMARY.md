@@ -11,17 +11,17 @@ requires:
 provides:
   - ".github/workflows/build.yml: matrix CI now covers Core.Tests + RabbitMQ.Tests + RabbitMQ.IntegrationTests across {net8.0,net9.0,net10.0}"
   - ".github/workflows/release.yml: tag-driven (v*) NuGet.org publish pipeline with .snupkg companion verification"
-  - "src/Oragon.AdaptivePool.Core/PublicAPI.Shipped.txt: frozen v1.0 surface (102 lines)"
-  - "src/Oragon.AdaptivePool.RabbitMQ/PublicAPI.Shipped.txt: frozen v1.0 surface (39 lines)"
+  - "src/Oragon.ElasticPool.Core/PublicAPI.Shipped.txt: frozen v1.0 surface (102 lines)"
+  - "src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Shipped.txt: frozen v1.0 surface (39 lines)"
   - "Both PublicAPI.Unshipped.txt: canonical empty baseline (#nullable enable only)"
   - "CHANGELOG.md: v1.0.0 date finalized to 2026-05-03"
 affects:
   - ".github/workflows/build.yml (+17 lines)"
   - ".github/workflows/release.yml (NEW, 162 lines)"
-  - "src/Oragon.AdaptivePool.Core/PublicAPI.Shipped.txt (+101 lines)"
-  - "src/Oragon.AdaptivePool.Core/PublicAPI.Unshipped.txt (-101 lines)"
-  - "src/Oragon.AdaptivePool.RabbitMQ/PublicAPI.Shipped.txt (+39 lines)"
-  - "src/Oragon.AdaptivePool.RabbitMQ/PublicAPI.Unshipped.txt (-38 lines)"
+  - "src/Oragon.ElasticPool.Core/PublicAPI.Shipped.txt (+101 lines)"
+  - "src/Oragon.ElasticPool.Core/PublicAPI.Unshipped.txt (-101 lines)"
+  - "src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Shipped.txt (+39 lines)"
+  - "src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Unshipped.txt (-38 lines)"
   - "CHANGELOG.md (1 line — date)"
 tech-stack:
   added: []
@@ -36,10 +36,10 @@ key-files:
     - ".planning/phases/04-polish-v1-release/deferred-items.md (README quickstart drift carry-forward)"
   modified:
     - ".github/workflows/build.yml (+17)"
-    - "src/Oragon.AdaptivePool.Core/PublicAPI.Shipped.txt (1 -> 102 lines)"
-    - "src/Oragon.AdaptivePool.Core/PublicAPI.Unshipped.txt (102 -> 1 line)"
-    - "src/Oragon.AdaptivePool.RabbitMQ/PublicAPI.Shipped.txt (0 -> 39 lines)"
-    - "src/Oragon.AdaptivePool.RabbitMQ/PublicAPI.Unshipped.txt (39 -> 1 line)"
+    - "src/Oragon.ElasticPool.Core/PublicAPI.Shipped.txt (1 -> 102 lines)"
+    - "src/Oragon.ElasticPool.Core/PublicAPI.Unshipped.txt (102 -> 1 line)"
+    - "src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Shipped.txt (0 -> 39 lines)"
+    - "src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Unshipped.txt (39 -> 1 line)"
     - "CHANGELOG.md (date finalize)"
 decisions:
   - "release.yml is a SEPARATE file from build.yml (not a unified workflow with conditional triggers): distinct trigger surfaces, distinct concurrency groups, distinct secret blast radius. Folding would require if: startsWith(github.ref, 'refs/tags/v') everywhere, brittle and over-broad."
@@ -103,8 +103,8 @@ contents: read                            # narrow permissions
 fetch-depth: 0                            # MinVer needs full history
 NUGET_API_KEY referenced 2x               # in env: of push step
 .snupkg referenced 7x                     # companion verification + push glob
-dotnet pack src/Oragon.AdaptivePool.Core   # explicit per-project pack
-dotnet pack src/Oragon.AdaptivePool.RabbitMQ
+dotnet pack src/Oragon.ElasticPool.Core   # explicit per-project pack
+dotnet pack src/Oragon.ElasticPool.RabbitMQ
 ```
 
 All assertions pass; no `branches:` block (verified by grep).
@@ -127,13 +127,13 @@ Conservation check: pre-Unshipped non-header (101 + 38 = 139) ≡ post-Shipped n
 (101 + 38 = 139). No leakage.
 
 Key symbols verified present in Shipped:
-- `IAdaptivePool` (Core): 9 occurrences
-- `AddAdaptiveConnectionPool` (RabbitMQ): 1 occurrence
-- `AddAdaptiveChannelPool` (RabbitMQ): 1 occurrence
+- `IElasticPool` (Core): 9 occurrences
+- `AddElasticConnectionPool` (RabbitMQ): 1 occurrence
+- `AddElasticChannelPool` (RabbitMQ): 1 occurrence
 
 Build after promotion:
 ```
-dotnet build Oragon.AdaptivePool.sln -c Release --no-restore
+dotnet build Oragon.ElasticPool.sln -c Release --no-restore
 ok dotnet build: 9 projects, 0 errors, 0 warnings (00:00:08.69)
 ```
 
@@ -149,10 +149,10 @@ remaining anywhere in the file.
 
 | Artifact | Bytes |
 |----------|-------|
-| `Oragon.AdaptivePool.Core.0.0.0-alpha.0.84.nupkg` | 100,838 |
-| `Oragon.AdaptivePool.Core.0.0.0-alpha.0.84.snupkg` | 53,932 |
-| `Oragon.AdaptivePool.RabbitMQ.0.0.0-alpha.0.84.nupkg` | 44,000 |
-| `Oragon.AdaptivePool.RabbitMQ.0.0.0-alpha.0.84.snupkg` | 37,050 |
+| `Oragon.ElasticPool.Core.0.0.0-alpha.0.84.nupkg` | 100,838 |
+| `Oragon.ElasticPool.Core.0.0.0-alpha.0.84.snupkg` | 53,932 |
+| `Oragon.ElasticPool.RabbitMQ.0.0.0-alpha.0.84.nupkg` | 44,000 |
+| `Oragon.ElasticPool.RabbitMQ.0.0.0-alpha.0.84.snupkg` | 37,050 |
 
 (Version `0.0.0-alpha.0.84` is MinVer's pre-release inference because no `v*` tag exists
 locally; the `release.yml` workflow will produce `1.0.0` from a real `v1.0.0` tag.)
@@ -169,8 +169,8 @@ locally; the `release.yml` workflow will produce `1.0.0` from a real `v1.0.0` ta
 <licenseUrl>https://licenses.nuget.org/MIT</licenseUrl>
 <icon>icon.png</icon>
 <readme>README.md</readme>
-<projectUrl>https://github.com/oragon/Oragon.AdaptivePool</projectUrl>
-<repository type="git" url="https://github.com/oragon/Oragon.AdaptivePool"
+<projectUrl>https://github.com/oragon/Oragon.ElasticPool</projectUrl>
+<repository type="git" url="https://github.com/oragon/Oragon.ElasticPool"
             branch="refs/heads/main"
             commit="99a4b68b822bef22c0c2c6d117215eef753eaed9" />
 ```
@@ -221,7 +221,7 @@ disposal. **End-to-end consumer flow works.**
 **README quickstart API drift (logged to `.planning/phases/04-polish-v1-release/deferred-items.md`):**
 
 The Core README (and root README) quickstart uses property-setter syntax that doesn't
-exist on the (now-frozen) `AdaptivePoolBuilder<T>`:
+exist on the (now-frozen) `ElasticPoolBuilder<T>`:
 
 ```csharp
 // README quickstart says:
@@ -237,9 +237,9 @@ pool.WithBounds(minSize: 1, maxSize: 16, initialSize: 2);
 pool.IdleTimeout(TimeSpan.FromMinutes(2));
 ```
 
-Additionally, the README uses `services.GetRequiredService<IAdaptivePool<T>>()` but
-`AddAdaptivePool` registers a **keyed** singleton — the correct lookup is
-`services.GetRequiredKeyedService<IAdaptivePool<T>>(name)`.
+Additionally, the README uses `services.GetRequiredService<IElasticPool<T>>()` but
+`AddElasticPool` registers a **keyed** singleton — the correct lookup is
+`services.GetRequiredKeyedService<IElasticPool<T>>(name)`.
 
 **Why deferred:** Out of scope for Plan 04-02 (CI/release/freeze); it's a docs bug, not
 a code bug. The frozen public API is correct. The maintainer must fix the README before
@@ -263,17 +263,17 @@ register (T-04-06..T-04-13 in PLAN.md) is fully addressed by the implementation:
 
 **The maintainer must complete these manual steps before NuGet.org publish:**
 
-1. **Create the public GitHub repo** at `https://github.com/oragon/Oragon.AdaptivePool`
+1. **Create the public GitHub repo** at `https://github.com/oragon/Oragon.ElasticPool`
    (or update `Directory.Build.props` `RepositoryUrl` + the README links if a different
-   org/slug). The current nuspec hard-codes `oragon/Oragon.AdaptivePool`.
+   org/slug). The current nuspec hard-codes `oragon/Oragon.ElasticPool`.
 
 2. **Configure `NUGET_API_KEY` repo secret**:
    - Generate at https://www.nuget.org/account/apikeys (scope: Push new packages and
-     package versions; Glob: `Oragon.AdaptivePool.*`).
+     package versions; Glob: `Oragon.ElasticPool.*`).
    - Add at GitHub repo Settings → Secrets and variables → Actions → New repository
      secret, name `NUGET_API_KEY`.
 
-3. **(Recommended) Reserve `Oragon.AdaptivePool.*` PackageId prefix** at
+3. **(Recommended) Reserve `Oragon.ElasticPool.*` PackageId prefix** at
    https://www.nuget.org/account/Manage → Reserved namespaces (squatting protection;
    requires NuGet.org account verification).
 
@@ -287,8 +287,8 @@ register (T-04-06..T-04-13 in PLAN.md) is fully addressed by the implementation:
    CONTEXT.md pre-release strategy. If no blocker surfaces:
 
 7. **Push final tag**: `git tag v1.0.0 && git push origin v1.0.0`. The same
-   `release.yml` workflow produces and publishes `Oragon.AdaptivePool.Core.1.0.0.nupkg`
-   + `.snupkg` and `Oragon.AdaptivePool.RabbitMQ.1.0.0.nupkg` + `.snupkg`.
+   `release.yml` workflow produces and publishes `Oragon.ElasticPool.Core.1.0.0.nupkg`
+   + `.snupkg` and `Oragon.ElasticPool.RabbitMQ.1.0.0.nupkg` + `.snupkg`.
 
 These steps are OUTSIDE the GSD execution surface — only the maintainer can perform them.
 
@@ -312,10 +312,10 @@ fixed pre-tag.
 Files claimed:
 - `.github/workflows/release.yml` — FOUND (162 lines) ✓
 - `.github/workflows/build.yml` — MODIFIED (+17 lines, 11 steps total) ✓
-- `src/Oragon.AdaptivePool.Core/PublicAPI.Shipped.txt` — 102 lines ✓
-- `src/Oragon.AdaptivePool.Core/PublicAPI.Unshipped.txt` — 1 line baseline ✓
-- `src/Oragon.AdaptivePool.RabbitMQ/PublicAPI.Shipped.txt` — 39 lines ✓
-- `src/Oragon.AdaptivePool.RabbitMQ/PublicAPI.Unshipped.txt` — 1 line baseline ✓
+- `src/Oragon.ElasticPool.Core/PublicAPI.Shipped.txt` — 102 lines ✓
+- `src/Oragon.ElasticPool.Core/PublicAPI.Unshipped.txt` — 1 line baseline ✓
+- `src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Shipped.txt` — 39 lines ✓
+- `src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Unshipped.txt` — 1 line baseline ✓
 - `CHANGELOG.md` — `## [1.0.0] - 2026-05-03` ✓ (no `2026-05-XX` placeholder remains)
 - `.planning/phases/04-polish-v1-release/deferred-items.md` — FOUND ✓
 
@@ -326,6 +326,6 @@ Commits claimed:
 
 Build/pack outputs (ephemeral):
 - `/tmp/freeze-build.log`: `0 errors, 0 warnings, 0 RS0016, 0 RS0017` ✓
-- `/tmp/local-nuget-feed/Oragon.AdaptivePool.Core.0.0.0-alpha.0.84.{nupkg,snupkg}` ✓
-- `/tmp/local-nuget-feed/Oragon.AdaptivePool.RabbitMQ.0.0.0-alpha.0.84.{nupkg,snupkg}` ✓
+- `/tmp/local-nuget-feed/Oragon.ElasticPool.Core.0.0.0-alpha.0.84.{nupkg,snupkg}` ✓
+- `/tmp/local-nuget-feed/Oragon.ElasticPool.RabbitMQ.0.0.0-alpha.0.84.{nupkg,snupkg}` ✓
 - `/tmp/consumer-smoke/PoolDemo`: builds + runs end-to-end against local feed ✓
