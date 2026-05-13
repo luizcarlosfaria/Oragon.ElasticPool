@@ -16,7 +16,7 @@ Extract structured learnings from completed phase artifacts (PLAN.md, SUMMARY.md
 </objective>
 
 <execution_context>
-@/mnt/p/dynamic-pool/.claude/get-shit-done/workflows/extract_learnings.md
+@/mnt/p/dynamic-pool/.claude/get-shit-done/workflows/extract-learnings.md
 </execution_context>
 
-Execute the extract-learnings workflow from @/mnt/p/dynamic-pool/.claude/get-shit-done/workflows/extract_learnings.md end-to-end.
+Execute the extract-learnings workflow from @/mnt/p/dynamic-pool/.claude/get-shit-done/workflows/extract-learnings.md end-to-end.
