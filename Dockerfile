@@ -2,6 +2,9 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0
 
 USER root
 
+sudo apt-get update && \
+  sudo apt-get install -y dotnet-sdk-10.0
+
 ENV DOTNET_NOLOGO=true \
     DOTNET_CLI_TELEMETRY_OPTOUT=true \
     DOTNET_SKIP_FIRST_TIME_EXPERIENCE=true \
@@ -14,6 +17,9 @@ RUN apt-get update \
         curl \
         git \
         openjdk-21-jdk \
+        dotnet-sdk-8.0 \
+        dotnet-sdk-9.0 \
+        dotnet-sdk-10.0 \
     && rm -rf /var/lib/apt/lists/*
 
 RUN dotnet tool install --global dotnet-sonarscanner \
