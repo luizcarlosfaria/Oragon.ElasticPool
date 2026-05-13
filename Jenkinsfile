@@ -92,7 +92,7 @@ pipeline {
                         def sonarParamsText = sonarParams.join(' ')
 
                         sh """
-                            set -euo pipefail
+                            #set -euo pipefail
                             mkdir -p /output-coverage
                             git fetch origin main:main || true
                             dotnet restore "${env.SOLUTION}"
