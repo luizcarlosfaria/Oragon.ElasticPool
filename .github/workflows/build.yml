@@ -32,10 +32,10 @@ jobs:
             10.0.x
 
       - name: dotnet restore
-        run: dotnet restore Oragon.AdaptivePool.sln
+        run: dotnet restore Oragon.AdaptivePool.slnx
 
       - name: dotnet build (Release, ${{ matrix.tfm }})
-        run: dotnet build Oragon.AdaptivePool.sln -c Release --no-restore -f ${{ matrix.tfm }}
+        run: dotnet build Oragon.AdaptivePool.slnx -c Release --no-restore -f ${{ matrix.tfm }}
         # Directory.Build.props sets TreatWarningsAsErrors=true. CI sets CI=true,
         # which activates ContinuousIntegrationBuild and DeterministicSourcePaths.
 
@@ -45,7 +45,7 @@ jobs:
       # IntegrationTests use Testcontainers (Docker is preinstalled on ubuntu-latest runners).
       - name: dotnet test (solution-wide; Stress excluded by IsTestProject=false)
         run: >
-          dotnet test --solution Oragon.AdaptivePool.sln
+          dotnet test --solution Oragon.AdaptivePool.slnx
           --configuration Release --no-build -f ${{ matrix.tfm }}
           -- --report-trx --results-directory $GITHUB_WORKSPACE/TestResults/${{ matrix.tfm }}
         env:
