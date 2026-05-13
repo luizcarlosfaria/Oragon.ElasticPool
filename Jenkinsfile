@@ -49,7 +49,8 @@ pipeline {
                 }
                 agent {
                     dockerfile {
-                        args '-u root:root -v /var/run/docker.sock:/var/run/docker.sock -v /gago/nuget-cache:/root/.nuget/packages'
+                        args '-u root:root -v /var/run/docker.sock:/var/run/docker.sock '
+                        // args '-u root:root -v /var/run/docker.sock:/var/run/docker.sock -v /gago/nuget-cache:/root/.nuget/packages'
                     }
                 }
                 stages {
@@ -67,7 +68,8 @@ pipeline {
         stage('SonarCloud') {
             agent {
                 dockerfile {
-                    args '-u root:root -v /var/run/docker.sock:/var/run/docker.sock -v /gago/nuget-cache:/root/.nuget/packages'
+                    args '-u root:root -v /var/run/docker.sock:/var/run/docker.sock '
+                    //args '-u root:root -v /var/run/docker.sock:/var/run/docker.sock -v /gago/nuget-cache:/root/.nuget/packages'
                 }
             }
             steps {
@@ -106,7 +108,8 @@ pipeline {
         stage('Pack') {
             agent {
                 dockerfile {
-                    args '-u root:root -v /gago/nuget-cache:/root/.nuget/packages'
+                     args '-u root:root'
+                    // args '-u root:root -v /gago/nuget-cache:/root/.nuget/packages'
                 }
             }
             when { buildingTag() }
