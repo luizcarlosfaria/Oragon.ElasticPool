@@ -2,17 +2,25 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0
 
 USER root
 
-RUN export PATH="$PATH:/root/.dotnet/tools" && \
-dotnet tool install --global dotnet-sonarscanner && \
-dotnet tool install --global dotnet-coverage
+ENV DOTNET_NOLOGO=true \
+    DOTNET_CLI_TELEMETRY_OPTOUT=true \
+    DOTNET_SKIP_FIRST_TIME_EXPERIENCE=true \
+    LANG=C.UTF-8 \
+    PATH="${PATH}:/root/.dotnet/tools"
 
-# Default to UTF-8 file.encoding
-ENV LANG=C.UTF-8
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        git \
+        openjdk-21-jdk \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install docker (cli and engine)
-RUN curl -fsSL https://get.docker.com -o get-docker.sh && sh get-docker.sh && rm get-docker.sh
+RUN dotnet tool install --global dotnet-sonarscanner \
+    && dotnet tool install --global dotnet-coverage
 
-RUN apt-get update && \
-apt-get install -y --no-install-recommends openjdk-21-jdk && \
-apt clean
-
+# Jenkins runs RabbitMQ integration tests through Testcontainers, so the build
+# container needs Docker CLI access to the host Docker socket.
+RUN curl -fsSL https://get.docker.com -o get-docker.sh \
+    && sh get-docker.sh \
+    && rm get-docker.sh
