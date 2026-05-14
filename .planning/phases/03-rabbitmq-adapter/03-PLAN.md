@@ -99,7 +99,7 @@ Output:
 @.planning/phases/03-rabbitmq-adapter/03-01-PLAN.md
 @.planning/phases/03-rabbitmq-adapter/03-02-PLAN.md
 @.planning/phases/02-elasticity-health/03-SUMMARY.md
-@tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj
+@tests/Oragon.ElasticPool.Tests/Oragon.ElasticPool.Tests.csproj
 @src/Oragon.ElasticPool.RabbitMQ/DependencyInjection/ElasticConnectionPoolServiceCollectionExtensions.cs
 @src/Oragon.ElasticPool.RabbitMQ/DependencyInjection/ElasticChannelPoolServiceCollectionExtensions.cs
 @Directory.Packages.props
@@ -131,7 +131,7 @@ Test harness conventions inherited from Phase 1+2 (per Phase 2 SUMMARY "Heads-up
 - `OutputType=Exe` + `UseMicrosoftTestingPlatformRunner=true` + `TestingPlatformDotnetTestSupport=true`.
 - `xunit.v3` 3.2.2, `xunit.runner.visualstudio` 3.1.5, `AwesomeAssertions` 9.4.0, `NSubstitute` 5.3.0.
 - `<NoWarn>$(NoWarn);xUnit1051</NoWarn>` for test projects.
-- `CapturedLogEntries` is the canonical in-memory `ILoggerProvider` used in Phase 2; copy/paste forward from `tests/Oragon.ElasticPool.Core.Tests/TestSupport/CapturedLogEntries.cs` (it's a 30-LOC helper) — duplication is acceptable per Phase 2's documented decision to avoid pulling FakeLogger.
+- `CapturedLogEntries` is the canonical in-memory `ILoggerProvider` used in Phase 2; copy/paste forward from `tests/Oragon.ElasticPool.Tests/TestSupport/CapturedLogEntries.cs` (it's a 30-LOC helper) — duplication is acceptable per Phase 2's documented decision to avoid pulling FakeLogger.
 - Run tests via direct dll execution per CONTEXT carry-forward: `dotnet bin/Release/net{TFM}/Oragon.ElasticPool.RabbitMQ.Tests.dll`.
 
 Testcontainers.RabbitMq 4.11.0 surface (verified per RESEARCH Pattern 4):
@@ -241,7 +241,7 @@ public sealed class BasicProperties
 
     3. Add the test project to `Oragon.ElasticPool.sln` under the existing `tests` solution folder. Generate a fresh GUID. Replicate the Debug/Release × Any CPU/x64/x86 config block.
 
-    4. Create `tests/Oragon.ElasticPool.RabbitMQ.Tests/TestSupport/CapturedLogEntries.cs` — copy verbatim from `tests/Oragon.ElasticPool.Core.Tests/TestSupport/CapturedLogEntries.cs` (it's a 30-LOC ILoggerProvider; per Phase 2 SUMMARY decision, duplication beats pulling FakeLogger). Add a brief comment at top noting "Forward-copied from Core.Tests; Phase 2 documented this is intentional."
+    4. Create `tests/Oragon.ElasticPool.RabbitMQ.Tests/TestSupport/CapturedLogEntries.cs` — copy verbatim from `tests/Oragon.ElasticPool.Tests/TestSupport/CapturedLogEntries.cs` (it's a 30-LOC ILoggerProvider; per Phase 2 SUMMARY decision, duplication beats pulling FakeLogger). Add a brief comment at top noting "Forward-copied from Core.Tests; Phase 2 documented this is intentional."
 
     5. Implement the 4 test classes (`ConnectionFactoryResolverTests`, `ConnectionChannelTrackerTests`, `ConnectionPoolUnitTests`, `ChannelPoolUnitTests`) covering ALL behaviors listed under <behavior>. Conventions:
        - Use `[Fact]` (or `[Theory]` where multiple inputs apply).
@@ -266,7 +266,7 @@ public sealed class BasicProperties
         dotnet bin/Release/$tfm/Oragon.ElasticPool.RabbitMQ.Tests.dll || exit 1; \
       done && \
       cd /mnt/p/dynamic-pool && \
-      dotnet test tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj -c Release --no-build
+      dotnet test tests/Oragon.ElasticPool.Tests/Oragon.ElasticPool.Tests.csproj -c Release --no-build
     </automated>
   </verify>
   <done>

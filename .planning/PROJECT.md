@@ -28,7 +28,7 @@ juntos são o produto e nenhum pode ser sacrificado.
 
 <!-- Current scope. Building toward these. -->
 
-**Core (`Oragon.ElasticPool.Core`):**
+**Core (`Oragon.ElasticPool`):**
 
 - [ ] Pool genérico `IElasticPool<T>` com `Acquire()` síncrono (retorno imediato se há item livre) e `AcquireAsync(CancellationToken)` (espera/cresce sob pressão)
 - [ ] Wrapper disposable `IPoolItem<T>` expondo `.Object` e devolvendo ao pool no `Dispose()`/`DisposeAsync()`

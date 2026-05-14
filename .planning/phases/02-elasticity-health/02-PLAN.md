@@ -5,11 +5,11 @@ type: execute
 wave: 2
 depends_on: [01]
 files_modified:
-  - src/Oragon.ElasticPool.Core/Telemetry/PoolMeterNames.cs
-  - src/Oragon.ElasticPool.Core/Telemetry/TelemetryEmitter.cs
-  - src/Oragon.ElasticPool.Core/Telemetry/PoolDiagnosticsLog.cs
-  - src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs
-  - src/Oragon.ElasticPool.Core/Internals/BackgroundSweeper.cs
+  - src/Oragon.ElasticPool/Telemetry/PoolMeterNames.cs
+  - src/Oragon.ElasticPool/Telemetry/TelemetryEmitter.cs
+  - src/Oragon.ElasticPool/Telemetry/PoolDiagnosticsLog.cs
+  - src/Oragon.ElasticPool/Internals/ElasticPool.cs
+  - src/Oragon.ElasticPool/Internals/BackgroundSweeper.cs
 autonomous: true
 requirements: [ELASTIC-01, ELASTIC-02, TELEM-02, TELEM-03]
 must_haves:
@@ -22,32 +22,32 @@ must_haves:
     - "BackgroundSweeper.RunSweepTickAsync runs Check hook on idle items, applies failure policy on Unhealthy decisions, runs shrink pass when SinceLastGrowTicks >= ShrinkCooldownWindows, evicts at most 1 idle item per tick respecting MinSize and IdleTimeout, increments cooldown counter at end, calls SweepBackoffState.OnSweepResult."
     - "Sweep failure backoff: after 3 consecutive sweep windows where >=50% of Check invocations are Unhealthy/throw, the timer Period doubles (30s -> 60s -> 120s -> capped at MaxBackoff = 5min); resets to base on first clean window."
   artifacts:
-    - path: "src/Oragon.ElasticPool.Core/Telemetry/TelemetryEmitter.cs"
+    - path: "src/Oragon.ElasticPool/Telemetry/TelemetryEmitter.cs"
       provides: "Extended emitter with internal static ActivitySource; new counter/histogram fields; OnGrow/OnShrink/OnHealthFailure/OnAcquireWait(TimeSpan)/OnSweepDuration(TimeSpan) methods; StartGrowSpan/StartShrinkSpan/StartSweepSpan/StartHealthCheckSpan helpers"
       contains: "ActivitySource"
-    - path: "src/Oragon.ElasticPool.Core/Telemetry/PoolDiagnosticsLog.cs"
+    - path: "src/Oragon.ElasticPool/Telemetry/PoolDiagnosticsLog.cs"
       provides: "7 new [LoggerMessage] partial methods (EventIds 1005-1010, 1099)"
       contains: "EventId = 1005"
-    - path: "src/Oragon.ElasticPool.Core/Telemetry/PoolMeterNames.cs"
+    - path: "src/Oragon.ElasticPool/Telemetry/PoolMeterNames.cs"
       provides: "New instrument-name constants: GrowCount, ShrinkCount, HealthFailures, AcquireWaitDuration, SweepDuration; ActivitySource name + Outcome tag constants"
       contains: "GrowCount"
-    - path: "src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs"
+    - path: "src/Oragon.ElasticPool/Internals/ElasticPool.cs"
       provides: "Composite-signal grow path in AcquireAsyncCore; wait-duration recording on slow path; Acquire/Release ActivitySource spans; cooldown reset on grow"
       contains: "_pressure.Evaluate"
-    - path: "src/Oragon.ElasticPool.Core/Internals/BackgroundSweeper.cs"
+    - path: "src/Oragon.ElasticPool/Internals/BackgroundSweeper.cs"
       provides: "Sweep tick: health-check pass + shrink pass + backoff/cooldown bookkeeping; Pool.Sweep ActivitySource span with per-item ActivityEvents; SweepStarted/SweepCompleted/SweepFailureBackoff log emissions"
       contains: "RunSweepTickAsync"
   key_links:
-    - from: "src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs"
-      to: "src/Oragon.ElasticPool.Core/Internals/PressureSampler.cs"
+    - from: "src/Oragon.ElasticPool/Internals/ElasticPool.cs"
+      to: "src/Oragon.ElasticPool/Internals/PressureSampler.cs"
       via: "AcquireAsyncCore calls _pressure.Evaluate(currentTotal, currentWaiters) on the slow path; on ShouldGrow=true triggers TryGrowAsync"
       pattern: "_pressure\\.Evaluate"
-    - from: "src/Oragon.ElasticPool.Core/Internals/BackgroundSweeper.cs"
-      to: "src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs"
+    - from: "src/Oragon.ElasticPool/Internals/BackgroundSweeper.cs"
+      to: "src/Oragon.ElasticPool/Internals/ElasticPool.cs"
       via: "RunSweepTickAsync calls _pool.Idle (TryDequeue + Check + ReturnSync), _pool.Options.Check, _pool.Options.FailurePolicy, _pool.SinceLastGrowTicks, _pool.IncrementSinceLastGrowTicks"
       pattern: "_pool\\.(Idle|Options|SinceLastGrowTicks|IncrementSinceLastGrowTicks)"
-    - from: "src/Oragon.ElasticPool.Core/Telemetry/TelemetryEmitter.cs"
-      to: "src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs"
+    - from: "src/Oragon.ElasticPool/Telemetry/TelemetryEmitter.cs"
+      to: "src/Oragon.ElasticPool/Internals/ElasticPool.cs"
       via: "OnGrow/OnShrink/OnHealthFailure/OnAcquireWait/StartGrowSpan called from grow + sweep paths"
       pattern: "_telemetry\\.(OnGrow|OnShrink|OnHealthFailure|OnAcquireWait|StartGrowSpan|StartShrinkSpan|StartSweepSpan)"
 ---
@@ -74,15 +74,15 @@ Output: Telemetry expansion (1 ActivitySource + 3 counters + 2 histograms + 7 Lo
 @.planning/phases/02-elasticity-health/02-01-SUMMARY.md
 
 # Phase 1 + Plan 01 source — already in scope.
-@src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs
-@src/Oragon.ElasticPool.Core/Internals/BackgroundSweeper.cs
-@src/Oragon.ElasticPool.Core/Internals/PressureSampler.cs
-@src/Oragon.ElasticPool.Core/Internals/SweepBackoffState.cs
-@src/Oragon.ElasticPool.Core/Internals/UtilizationSampler.cs
-@src/Oragon.ElasticPool.Core/Internals/WaitDurationHistogram.cs
-@src/Oragon.ElasticPool.Core/Telemetry/TelemetryEmitter.cs
-@src/Oragon.ElasticPool.Core/Telemetry/PoolDiagnosticsLog.cs
-@src/Oragon.ElasticPool.Core/Telemetry/PoolMeterNames.cs
+@src/Oragon.ElasticPool/Internals/ElasticPool.cs
+@src/Oragon.ElasticPool/Internals/BackgroundSweeper.cs
+@src/Oragon.ElasticPool/Internals/PressureSampler.cs
+@src/Oragon.ElasticPool/Internals/SweepBackoffState.cs
+@src/Oragon.ElasticPool/Internals/UtilizationSampler.cs
+@src/Oragon.ElasticPool/Internals/WaitDurationHistogram.cs
+@src/Oragon.ElasticPool/Telemetry/TelemetryEmitter.cs
+@src/Oragon.ElasticPool/Telemetry/PoolDiagnosticsLog.cs
+@src/Oragon.ElasticPool/Telemetry/PoolMeterNames.cs
 
 <interfaces>
 <!-- Plan 01 internal probes Plan 02 must consume. -->
@@ -121,9 +121,9 @@ internal SweepBackoffState BackoffState { get; }
 <task type="auto">
   <name>Task 1: Extend telemetry surface — ActivitySource, counters, histograms, LoggerMessage entries</name>
   <files>
-    src/Oragon.ElasticPool.Core/Telemetry/PoolMeterNames.cs,
-    src/Oragon.ElasticPool.Core/Telemetry/TelemetryEmitter.cs,
-    src/Oragon.ElasticPool.Core/Telemetry/PoolDiagnosticsLog.cs
+    src/Oragon.ElasticPool/Telemetry/PoolMeterNames.cs,
+    src/Oragon.ElasticPool/Telemetry/TelemetryEmitter.cs,
+    src/Oragon.ElasticPool/Telemetry/PoolDiagnosticsLog.cs
   </files>
   <action>
 **1. Extend PoolMeterNames.cs** with the new instrument names (locked per CONTEXT D-09..D-13 and RESEARCH §"Telemetry"):
@@ -159,7 +159,7 @@ Reference layout (RESEARCH Example "Code Examples" §1 + §6) — follow the str
 **Outcome tag values** (CONTEXT decision — bounded cardinality): "grew", "shrunk", "healthy", "unhealthy", "skipped". `Pool.Acquire` and `Pool.Release` use "ok" or "canceled"; `Pool.HealthCheck` uses "healthy" or "unhealthy". No reason codes.
   </action>
   <verify>
-    <automated>cd /mnt/p/dynamic-pool && dotnet build src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj /clp:ErrorsOnly && grep -v '^[[:space:]]*//' src/Oragon.ElasticPool.Core/Telemetry/PoolDiagnosticsLog.cs | grep -c 'EventId = '</automated>
+    <automated>cd /mnt/p/dynamic-pool && dotnet build src/Oragon.ElasticPool/Oragon.ElasticPool.csproj /clp:ErrorsOnly && grep -v '^[[:space:]]*//' src/Oragon.ElasticPool/Telemetry/PoolDiagnosticsLog.cs | grep -c 'EventId = '</automated>
   </verify>
   <done>Core compiles on net8.0/net9.0/net10.0; PoolDiagnosticsLog.cs grep gate (above) returns 11 (4 Phase 1 + 7 new); ActivitySource singleton present; PublicAPI analyzer reports zero errors (all telemetry types remain internal).</done>
 </task>
@@ -167,7 +167,7 @@ Reference layout (RESEARCH Example "Code Examples" §1 + §6) — follow the str
 <task type="auto">
   <name>Task 2: Composite-signal grow path in AcquireAsyncCore + wait-duration recording + Acquire/Release spans</name>
   <files>
-    src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs
+    src/Oragon.ElasticPool/Internals/ElasticPool.cs
   </files>
   <action>
 Implement the composite-signal grow path inside `AcquireAsyncCore` (the existing Phase 1 method). Preserve every existing Phase 1 invariant (CAS-on-_total, counter rollback, BeforeUse retry limit, OperationCanceledException semantics, ObjectDisposedException semantics). Reference: RESEARCH Example 1 + Pattern 3 + Pattern 4.
@@ -284,15 +284,15 @@ This satisfies the must-have "AcquireAsyncCore records wait duration into WaitDu
 - WaitBehavior.Throw still throws PoolExhaustedException synchronously when MaxSize reached.
   </action>
   <verify>
-    <automated>cd /mnt/p/dynamic-pool && dotnet build /clp:ErrorsOnly && dotnet test tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj --no-build 2>&1 | tail -5 && dotnet test tests/Oragon.ElasticPool.Core.Stress/Oragon.ElasticPool.Core.Stress.csproj --configuration Release 2>&1 | tail -5</automated>
+    <automated>cd /mnt/p/dynamic-pool && dotnet build /clp:ErrorsOnly && dotnet test tests/Oragon.ElasticPool.Tests/Oragon.ElasticPool.Tests.csproj --no-build 2>&1 | tail -5 && dotnet test tests/Oragon.ElasticPool.Stress/Oragon.ElasticPool.Stress.csproj --configuration Release 2>&1 | tail -5</automated>
   </verify>
-  <done>Core builds; all 70 Phase 1 unit tests still pass (regression guard); PingPongStressTest still passes; `grep -c TryGrowAsync src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs` >= 2 (declaration + invocation); `grep -c "_waitHistogram.Record" src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs` == 1; `grep -c "_telemetry.OnGrow" src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs` >= 2 (TryGrowAsync + GrowAndHandoffAsync).</done>
+  <done>Core builds; all 70 Phase 1 unit tests still pass (regression guard); PingPongStressTest still passes; `grep -c TryGrowAsync src/Oragon.ElasticPool/Internals/ElasticPool.cs` >= 2 (declaration + invocation); `grep -c "_waitHistogram.Record" src/Oragon.ElasticPool/Internals/ElasticPool.cs` == 1; `grep -c "_telemetry.OnGrow" src/Oragon.ElasticPool/Internals/ElasticPool.cs` >= 2 (TryGrowAsync + GrowAndHandoffAsync).</done>
 </task>
 
 <task type="auto">
   <name>Task 3: Replace BackgroundSweeper sweep tick with health-check + shrink + backoff body; emit Pool.Sweep span and SweepStarted/Completed/Backoff logs</name>
   <files>
-    src/Oragon.ElasticPool.Core/Internals/BackgroundSweeper.cs
+    src/Oragon.ElasticPool/Internals/BackgroundSweeper.cs
   </files>
   <action>
 Replace the Plan 01 stub `RunSweepTickAsync` body with the real implementation. Per RESEARCH §"Pattern 1" + §"Pattern 4" + §"Pattern 5".
@@ -335,9 +335,9 @@ internal ILogger Log => _log;
 **Telemetry-first failure handling:** on `Check` throw, log `CheckUnhealthy` with `ex.GetType().Name` as the reason; do NOT log the full exception (sweep failures of many items would explode log volume). The aggregate `SweepFailed` 1099 entry covers catastrophic per-tick failures.
   </action>
   <verify>
-    <automated>cd /mnt/p/dynamic-pool && dotnet build /clp:ErrorsOnly && dotnet test tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj --no-build 2>&1 | tail -5 && dotnet test tests/Oragon.ElasticPool.Core.Stress/Oragon.ElasticPool.Core.Stress.csproj --configuration Release 2>&1 | tail -5</automated>
+    <automated>cd /mnt/p/dynamic-pool && dotnet build /clp:ErrorsOnly && dotnet test tests/Oragon.ElasticPool.Tests/Oragon.ElasticPool.Tests.csproj --no-build 2>&1 | tail -5 && dotnet test tests/Oragon.ElasticPool.Stress/Oragon.ElasticPool.Stress.csproj --configuration Release 2>&1 | tail -5</automated>
   </verify>
-  <done>Core builds; all Phase 1 tests still pass; PingPongStressTest still passes; `grep -c "RunSweepTickAsync" src/Oragon.ElasticPool.Core/Internals/BackgroundSweeper.cs` >= 2 (decl + call); `grep -c "OnSweepResult" src/Oragon.ElasticPool.Core/Internals/BackgroundSweeper.cs` >= 1; `grep -c "SweepCompleted" src/Oragon.ElasticPool.Core/Internals/BackgroundSweeper.cs` >= 1.</done>
+  <done>Core builds; all Phase 1 tests still pass; PingPongStressTest still passes; `grep -c "RunSweepTickAsync" src/Oragon.ElasticPool/Internals/BackgroundSweeper.cs` >= 2 (decl + call); `grep -c "OnSweepResult" src/Oragon.ElasticPool/Internals/BackgroundSweeper.cs` >= 1; `grep -c "SweepCompleted" src/Oragon.ElasticPool/Internals/BackgroundSweeper.cs` >= 1.</done>
 </task>
 
 </tasks>

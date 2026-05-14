@@ -175,7 +175,7 @@ smoke run, clean shutdown via `IHostApplicationLifetime.StopApplication()`.
 ### Phase 1+2 regression check
 
 ```
-dotnet test --project tests/Oragon.ElasticPool.Core.Tests -c Release --no-build
+dotnet test --project tests/Oragon.ElasticPool.Tests -c Release --no-build
 total: 432
 failed: 0
 succeeded: 432

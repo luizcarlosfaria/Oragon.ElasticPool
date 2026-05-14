@@ -11,13 +11,13 @@ files_modified:
   - Directory.Build.props
   - Directory.Packages.props
   - Oragon.ElasticPool.sln
-  - src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj
-  - src/Oragon.ElasticPool.Core/PublicAPI.Shipped.txt
-  - src/Oragon.ElasticPool.Core/PublicAPI.Unshipped.txt
-  - tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj
-  - tests/Oragon.ElasticPool.Core.Tests/PlaceholderSmokeTest.cs
-  - tests/Oragon.ElasticPool.Core.Stress/Oragon.ElasticPool.Core.Stress.csproj
-  - tests/Oragon.ElasticPool.Core.Stress/PlaceholderStressFact.cs
+  - src/Oragon.ElasticPool/Oragon.ElasticPool.csproj
+  - src/Oragon.ElasticPool/PublicAPI.Shipped.txt
+  - src/Oragon.ElasticPool/PublicAPI.Unshipped.txt
+  - tests/Oragon.ElasticPool.Tests/Oragon.ElasticPool.Tests.csproj
+  - tests/Oragon.ElasticPool.Tests/PlaceholderSmokeTest.cs
+  - tests/Oragon.ElasticPool.Stress/Oragon.ElasticPool.Stress.csproj
+  - tests/Oragon.ElasticPool.Stress/PlaceholderStressFact.cs
   - .github/workflows/build.yml
 autonomous: true
 requirements:
@@ -30,8 +30,8 @@ must_haves:
     - "`dotnet --info` resolves the SDK pinned by global.json on a fresh clone"
     - "`dotnet restore Oragon.ElasticPool.sln` succeeds with zero NU* warnings (Central Package Management active)"
     - "`dotnet build Oragon.ElasticPool.sln -c Release` succeeds for net10.0, net9.0, and net8.0 targets with TreatWarningsAsErrors enabled"
-    - "`dotnet test tests/Oragon.ElasticPool.Core.Tests` runs the placeholder test under Microsoft.Testing.Platform and reports 1 passed, 0 failed"
-    - "`dotnet test tests/Oragon.ElasticPool.Core.Stress` runs the stress placeholder; the stress project is NOT included in the default `dotnet test` solution sweep (it must be invoked explicitly per CONTEXT.md decision)"
+    - "`dotnet test tests/Oragon.ElasticPool.Tests` runs the placeholder test under Microsoft.Testing.Platform and reports 1 passed, 0 failed"
+    - "`dotnet test tests/Oragon.ElasticPool.Stress` runs the stress placeholder; the stress project is NOT included in the default `dotnet test` solution sweep (it must be invoked explicitly per CONTEXT.md decision)"
     - "PublicApiAnalyzers is wired with empty Shipped + Unshipped baselines on the Core project; analyzer assembly is referenced (build does not error on missing files)"
     - "GitHub Actions `build.yml` builds + tests Core.Tests across the multi-TFM matrix without invoking the Stress project"
   artifacts:
@@ -44,40 +44,40 @@ must_haves:
     - path: Directory.Packages.props
       provides: "Central Package Management with all Phase 1 package versions pinned (Logging.Abstractions, DI.Abstractions, Options, PublicApiAnalyzers, MinVer, SourceLink, xunit.v3, AwesomeAssertions, NSubstitute, FakeTimeProvider, Diagnostics.Testing, coverlet)"
       contains: "ManagePackageVersionsCentrally"
-    - path: src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj
+    - path: src/Oragon.ElasticPool/Oragon.ElasticPool.csproj
       provides: "Multi-target Core library project (net10.0;net9.0;net8.0) with PackageReferences (no inline versions), PublicApiAnalyzers active, MinVer + SourceLink as PrivateAssets=all"
       contains: "TargetFrameworks"
-    - path: src/Oragon.ElasticPool.Core/PublicAPI.Shipped.txt
+    - path: src/Oragon.ElasticPool/PublicAPI.Shipped.txt
       provides: "Empty PublicApiAnalyzers baseline (Phase 1 starts shipping nothing)"
       min_lines: 1
-    - path: src/Oragon.ElasticPool.Core/PublicAPI.Unshipped.txt
+    - path: src/Oragon.ElasticPool/PublicAPI.Unshipped.txt
       provides: "Empty PublicApiAnalyzers next-release tracking file"
       min_lines: 1
-    - path: tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj
+    - path: tests/Oragon.ElasticPool.Tests/Oragon.ElasticPool.Tests.csproj
       provides: "xUnit v3 + MTP test project with AwesomeAssertions, NSubstitute, FakeTimeProvider, Diagnostics.Testing, coverlet.collector, ProjectReference to Core"
       contains: "UseMicrosoftTestingPlatformRunner"
-    - path: tests/Oragon.ElasticPool.Core.Stress/Oragon.ElasticPool.Core.Stress.csproj
+    - path: tests/Oragon.ElasticPool.Stress/Oragon.ElasticPool.Stress.csproj
       provides: "Separate stress project (excluded from default CI sweep) with same xUnit v3 + MTP setup, ProjectReference to Core"
       contains: "UseMicrosoftTestingPlatformRunner"
     - path: Oragon.ElasticPool.sln
       provides: "Solution containing Core, Core.Tests, Core.Stress (Stress placed in a dedicated solution folder for visibility but excluded from CI script via path filter)"
-      contains: "Oragon.ElasticPool.Core"
+      contains: "Oragon.ElasticPool"
     - path: .github/workflows/build.yml
       provides: "Minimal CI: install .NET 8/9/10 SDKs, restore, build, test only Core.Tests across TFM matrix"
       contains: "actions/setup-dotnet"
   key_links:
-    - from: "src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj"
+    - from: "src/Oragon.ElasticPool/Oragon.ElasticPool.csproj"
       to: "Directory.Packages.props"
       via: "Central Package Management — PackageReference without Version"
       pattern: "<PackageReference Include=\"Microsoft.Extensions.Logging.Abstractions\""
-    - from: "tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj"
-      to: "src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj"
+    - from: "tests/Oragon.ElasticPool.Tests/Oragon.ElasticPool.Tests.csproj"
+      to: "src/Oragon.ElasticPool/Oragon.ElasticPool.csproj"
       via: "ProjectReference"
-      pattern: "ProjectReference Include=.*Oragon.ElasticPool.Core.csproj"
+      pattern: "ProjectReference Include=.*Oragon.ElasticPool.csproj"
     - from: ".github/workflows/build.yml"
-      to: "tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj"
-      via: "explicit `dotnet test tests/Oragon.ElasticPool.Core.Tests` (NOT solution-wide), keeping Stress project out of CI default per CONTEXT.md"
-      pattern: "Oragon.ElasticPool.Core.Tests"
+      to: "tests/Oragon.ElasticPool.Tests/Oragon.ElasticPool.Tests.csproj"
+      via: "explicit `dotnet test tests/Oragon.ElasticPool.Tests` (NOT solution-wide), keeping Stress project out of CI default per CONTEXT.md"
+      pattern: "Oragon.ElasticPool.Tests"
 ---
 
 <objective>
@@ -124,9 +124,9 @@ Directory.Packages.props will pin (verified versions):
 
 Repository structure (locked by CONTEXT.md):
   /
-  ├─ src/Oragon.ElasticPool.Core/
-  ├─ tests/Oragon.ElasticPool.Core.Tests/    (CI-included)
-  ├─ tests/Oragon.ElasticPool.Core.Stress/   (CI-EXCLUDED per CONTEXT.md decision)
+  ├─ src/Oragon.ElasticPool/
+  ├─ tests/Oragon.ElasticPool.Tests/    (CI-included)
+  ├─ tests/Oragon.ElasticPool.Stress/   (CI-EXCLUDED per CONTEXT.md decision)
   ├─ .github/workflows/build.yml
   ├─ Directory.Build.props
   ├─ Directory.Packages.props
@@ -228,25 +228,25 @@ NOTE: do NOT add `Microsoft.NET.Test.Sdk` — RESEARCH.md confirms test projects
 <task type="auto">
   <name>Task 2: Project skeletons — Core .csproj + PublicAPI baselines + both test .csproj files + placeholder tests + solution file</name>
   <files>
-    src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj,
-    src/Oragon.ElasticPool.Core/PublicAPI.Shipped.txt,
-    src/Oragon.ElasticPool.Core/PublicAPI.Unshipped.txt,
-    tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj,
-    tests/Oragon.ElasticPool.Core.Tests/PlaceholderSmokeTest.cs,
-    tests/Oragon.ElasticPool.Core.Stress/Oragon.ElasticPool.Core.Stress.csproj,
-    tests/Oragon.ElasticPool.Core.Stress/PlaceholderStressFact.cs,
+    src/Oragon.ElasticPool/Oragon.ElasticPool.csproj,
+    src/Oragon.ElasticPool/PublicAPI.Shipped.txt,
+    src/Oragon.ElasticPool/PublicAPI.Unshipped.txt,
+    tests/Oragon.ElasticPool.Tests/Oragon.ElasticPool.Tests.csproj,
+    tests/Oragon.ElasticPool.Tests/PlaceholderSmokeTest.cs,
+    tests/Oragon.ElasticPool.Stress/Oragon.ElasticPool.Stress.csproj,
+    tests/Oragon.ElasticPool.Stress/PlaceholderStressFact.cs,
     Oragon.ElasticPool.sln
   </files>
   <action>
 Create the three .csproj projects and a solution file. No product code — just empty Core (compiles to empty assembly) and one trivial test in each test project.
 
-1. `src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj` — verbatim from RESEARCH.md "Example 1: Minimal Phase 1 .csproj for Core" with PublicApiAnalyzers added (RESEARCH.md Pattern: Standard Stack table requires it from day one):
+1. `src/Oragon.ElasticPool/Oragon.ElasticPool.csproj` — verbatim from RESEARCH.md "Example 1: Minimal Phase 1 .csproj for Core" with PublicApiAnalyzers added (RESEARCH.md Pattern: Standard Stack table requires it from day one):
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>net10.0;net9.0;net8.0</TargetFrameworks>
     <IsPackable>true</IsPackable>
-    <PackageId>Oragon.ElasticPool.Core</PackageId>
+    <PackageId>Oragon.ElasticPool</PackageId>
     <Description>Generic, elastic in-process object pool for .NET with health auto-healing and built-in observability.</Description>
     <PackageTags>pool;objectpool;adaptive;elastic;async;observability;opentelemetry</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -267,11 +267,11 @@ Create the three .csproj projects and a solution file. No product code — just 
 ```
 NOTE: Drop `<PackageReadmeFile>README.md</PackageReadmeFile>` and the README `<None Include>` for now — README is a Phase 4 artifact (per ROADMAP). Leaving the reference dangling would fail `dotnet pack`. Plan 02 brings code, Plan 03 ensures pack still works without README; Phase 4 adds README and re-enables PackageReadmeFile.
 
-2. `src/Oragon.ElasticPool.Core/PublicAPI.Shipped.txt` — Empty baseline file. Content: a single line containing only `#nullable enable` (this is the canonical empty baseline that PublicApiAnalyzers expects).
+2. `src/Oragon.ElasticPool/PublicAPI.Shipped.txt` — Empty baseline file. Content: a single line containing only `#nullable enable` (this is the canonical empty baseline that PublicApiAnalyzers expects).
 
-3. `src/Oragon.ElasticPool.Core/PublicAPI.Unshipped.txt` — Identical to Shipped.txt: single line `#nullable enable`. Plans 02 + 03 will populate Unshipped.txt as new public API surface lands.
+3. `src/Oragon.ElasticPool/PublicAPI.Unshipped.txt` — Identical to Shipped.txt: single line `#nullable enable`. Plans 02 + 03 will populate Unshipped.txt as new public API surface lands.
 
-4. `tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj` — verbatim from RESEARCH.md "Example 2: Phase 1 Test .csproj":
+4. `tests/Oragon.ElasticPool.Tests/Oragon.ElasticPool.Tests.csproj` — verbatim from RESEARCH.md "Example 2: Phase 1 Test .csproj":
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
@@ -292,17 +292,17 @@ NOTE: Drop `<PackageReadmeFile>README.md</PackageReadmeFile>` and the README `<N
     <PackageReference Include="coverlet.collector" PrivateAssets="all" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Oragon.ElasticPool.Core\Oragon.ElasticPool.Core.csproj" />
+    <ProjectReference Include="..\..\src\Oragon.ElasticPool\Oragon.ElasticPool.csproj" />
   </ItemGroup>
 </Project>
 ```
 
-5. `tests/Oragon.ElasticPool.Core.Tests/PlaceholderSmokeTest.cs`:
+5. `tests/Oragon.ElasticPool.Tests/PlaceholderSmokeTest.cs`:
 ```csharp
 using AwesomeAssertions;
 using Xunit;
 
-namespace Oragon.ElasticPool.Core.Tests;
+namespace Oragon.ElasticPool.Tests;
 
 public class PlaceholderSmokeTest
 {
@@ -316,7 +316,7 @@ public class PlaceholderSmokeTest
 }
 ```
 
-6. `tests/Oragon.ElasticPool.Core.Stress/Oragon.ElasticPool.Core.Stress.csproj` — same structure as Tests project, but stress-only deps (no Diagnostics.Testing needed yet):
+6. `tests/Oragon.ElasticPool.Stress/Oragon.ElasticPool.Stress.csproj` — same structure as Tests project, but stress-only deps (no Diagnostics.Testing needed yet):
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
@@ -333,17 +333,17 @@ public class PlaceholderSmokeTest
     <PackageReference Include="Microsoft.Extensions.Logging.Console" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Oragon.ElasticPool.Core\Oragon.ElasticPool.Core.csproj" />
+    <ProjectReference Include="..\..\src\Oragon.ElasticPool\Oragon.ElasticPool.csproj" />
   </ItemGroup>
 </Project>
 ```
 
-7. `tests/Oragon.ElasticPool.Core.Stress/PlaceholderStressFact.cs`:
+7. `tests/Oragon.ElasticPool.Stress/PlaceholderStressFact.cs`:
 ```csharp
 using AwesomeAssertions;
 using Xunit;
 
-namespace Oragon.ElasticPool.Core.Stress;
+namespace Oragon.ElasticPool.Stress;
 
 public class PlaceholderStressFact
 {
@@ -360,7 +360,7 @@ public class PlaceholderStressFact
 8. `Oragon.ElasticPool.sln` — solution containing all three projects. Generate via `dotnet new sln -n Oragon.ElasticPool` then `dotnet sln add` for each .csproj. Keep all three in the solution (Stress is in the sln so VS shows it; CI script in Task 3 invokes Tests project explicitly to keep Stress out of CI default per CONTEXT.md).
   </action>
   <verify>
-    <automated>cd /mnt/p/dynamic-pool && dotnet restore Oragon.ElasticPool.sln 2>&1 | tee /tmp/restore.log && grep -qE '^(error|Error)' /tmp/restore.log && exit 1 || echo restore-ok && dotnet build Oragon.ElasticPool.sln -c Release --no-restore 2>&1 | tee /tmp/build.log && grep -qE 'Build succeeded' /tmp/build.log && dotnet test tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj --no-build -c Release 2>&1 | tee /tmp/test.log && grep -qE '(Passed:.*1|Passed!.*1)' /tmp/test.log && dotnet test tests/Oragon.ElasticPool.Core.Stress/Oragon.ElasticPool.Core.Stress.csproj --no-build -c Release 2>&1 | tee /tmp/stress.log && grep -qE '(Passed:.*1|Passed!.*1)' /tmp/stress.log && echo ALL-OK</automated>
+    <automated>cd /mnt/p/dynamic-pool && dotnet restore Oragon.ElasticPool.sln 2>&1 | tee /tmp/restore.log && grep -qE '^(error|Error)' /tmp/restore.log && exit 1 || echo restore-ok && dotnet build Oragon.ElasticPool.sln -c Release --no-restore 2>&1 | tee /tmp/build.log && grep -qE 'Build succeeded' /tmp/build.log && dotnet test tests/Oragon.ElasticPool.Tests/Oragon.ElasticPool.Tests.csproj --no-build -c Release 2>&1 | tee /tmp/test.log && grep -qE '(Passed:.*1|Passed!.*1)' /tmp/test.log && dotnet test tests/Oragon.ElasticPool.Stress/Oragon.ElasticPool.Stress.csproj --no-build -c Release 2>&1 | tee /tmp/stress.log && grep -qE '(Passed:.*1|Passed!.*1)' /tmp/stress.log && echo ALL-OK</automated>
   </verify>
   <done>All three projects exist and compile. Solution restores cleanly under CPM (no NU1605/NU1008/NU1010 warnings). `dotnet build` produces three target binaries (net8/net9/net10) for Core. `dotnet test` on Tests project passes the placeholder smoke test under MTP. `dotnet test` on Stress project passes the placeholder stress fact under MTP. PublicApiAnalyzers is loaded (no PublicAPI* errors fire because the empty baselines match an empty surface).</done>
 </task>
@@ -416,7 +416,7 @@ jobs:
 
       - name: dotnet test (Core.Tests only — Stress is intentionally excluded per CONTEXT.md)
         run: >
-          dotnet test tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj
+          dotnet test tests/Oragon.ElasticPool.Tests/Oragon.ElasticPool.Tests.csproj
           -c Release --no-build -f ${{ matrix.tfm }}
           --logger "console;verbosity=normal"
 ```
@@ -430,7 +430,7 @@ Hard rules baked in:
 Optionally add a `.github/dependabot.yml` later — defer to Phase 4 (OSS-01 covers it).
   </action>
   <verify>
-    <automated>cd /mnt/p/dynamic-pool && test -f .github/workflows/build.yml && grep -q 'Oragon.ElasticPool.Core.Tests' .github/workflows/build.yml && ! grep -q 'Oragon.ElasticPool.Core.Stress' .github/workflows/build.yml && grep -q 'matrix:' .github/workflows/build.yml && grep -q 'net8.0' .github/workflows/build.yml && grep -q 'net9.0' .github/workflows/build.yml && grep -q 'net10.0' .github/workflows/build.yml && echo CI-OK</automated>
+    <automated>cd /mnt/p/dynamic-pool && test -f .github/workflows/build.yml && grep -q 'Oragon.ElasticPool.Tests' .github/workflows/build.yml && ! grep -q 'Oragon.ElasticPool.Stress' .github/workflows/build.yml && grep -q 'matrix:' .github/workflows/build.yml && grep -q 'net8.0' .github/workflows/build.yml && grep -q 'net9.0' .github/workflows/build.yml && grep -q 'net10.0' .github/workflows/build.yml && echo CI-OK</automated>
   </verify>
   <done>`.github/workflows/build.yml` exists. Stress project is referenced nowhere in the workflow. The Core.Tests project IS referenced. The TFM matrix covers net8.0, net9.0, net10.0. setup-dotnet is pinned to v4 with all three SDK lines.</done>
 </task>
@@ -465,15 +465,15 @@ After all 3 tasks complete, the following must hold from a clean checkout:
 cd /mnt/p/dynamic-pool
 dotnet restore Oragon.ElasticPool.sln                          # green
 dotnet build Oragon.ElasticPool.sln -c Release --no-restore     # green, all 3 TFMs
-dotnet test tests/Oragon.ElasticPool.Core.Tests --no-build -c Release  # 1 passed
-dotnet test tests/Oragon.ElasticPool.Core.Stress --no-build -c Release # 1 passed (manual invocation only)
+dotnet test tests/Oragon.ElasticPool.Tests --no-build -c Release  # 1 passed
+dotnet test tests/Oragon.ElasticPool.Stress --no-build -c Release # 1 passed (manual invocation only)
 test ! -e bin && test ! -e obj                                   # no stray top-level build artifacts
 ```
 
 Visual sanity:
 - `Oragon.ElasticPool.sln` opens in VS / Rider listing all three projects
-- `cat src/Oragon.ElasticPool.Core/PublicAPI.Shipped.txt` shows only `#nullable enable`
-- `cat src/Oragon.ElasticPool.Core/PublicAPI.Unshipped.txt` shows only `#nullable enable`
+- `cat src/Oragon.ElasticPool/PublicAPI.Shipped.txt` shows only `#nullable enable`
+- `cat src/Oragon.ElasticPool/PublicAPI.Unshipped.txt` shows only `#nullable enable`
 - `.github/workflows/build.yml` does not mention Stress
 </verification>
 
@@ -481,8 +481,8 @@ Visual sanity:
 This plan is complete when:
 - [ ] `dotnet restore Oragon.ElasticPool.sln` succeeds with no NU* errors and no inline-version warnings
 - [ ] `dotnet build Oragon.ElasticPool.sln -c Release` succeeds for net10/net9/net8 with TreatWarningsAsErrors=true
-- [ ] `dotnet test tests/Oragon.ElasticPool.Core.Tests` reports 1 passed, 0 failed under MTP
-- [ ] `dotnet test tests/Oragon.ElasticPool.Core.Stress` reports 1 passed, 0 failed (when invoked explicitly)
+- [ ] `dotnet test tests/Oragon.ElasticPool.Tests` reports 1 passed, 0 failed under MTP
+- [ ] `dotnet test tests/Oragon.ElasticPool.Stress` reports 1 passed, 0 failed (when invoked explicitly)
 - [ ] CI build.yml exists, references the multi-TFM matrix, and does NOT invoke the Stress project
 - [ ] PublicApiAnalyzers is wired (build does not emit PublicAPI* warnings against the empty baselines)
 - [ ] Source Link / deterministic / snupkg properties active in Directory.Build.props
@@ -507,7 +507,7 @@ This plan addresses **scaffolding** only. Pool requirements (API/HOOK/BOUND/FAIL
 
 **CONTEXT.md decisions implemented (D-XX equivalents from CONTEXT.md "Decisions" section):**
 - Repository layout (src/ + tests/ + .github/workflows/) — implemented as project tree
-- Project naming (`Oragon.ElasticPool.Core`, `.Core.Tests`, `.Core.Stress`) — implemented as csproj names
+- Project naming (`Oragon.ElasticPool`, `.Core.Tests`, `.Core.Stress`) — implemented as csproj names
 - Stress project separate from CI default — implemented in build.yml (Stress not invoked)
 - PublicApiAnalyzers wired with empty baselines — implemented in Core.csproj + PublicAPI.*.txt
 - AwesomeAssertions instead of FluentAssertions/Shouldly — pinned in Directory.Packages.props

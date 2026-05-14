@@ -34,7 +34,7 @@ deterministic builds for source debugging.
 | `System.Threading.Channels` | BCL (in-box) | Bounded waiter queue for `AcquireAsync` under pressure | Lock-free, async-aware producer/consumer; ideal for waiter queue with cancellation |
 | `IAsyncDisposable` / `ValueTask` | BCL (in-box) | Async disposal of `IPoolItem<T>`, allocation-free hot paths | Both are in-box on net8+; no `System.Threading.Tasks.Extensions` needed |
 
-### Core Package Dependencies (Oragon.ElasticPool.Core)
+### Core Package Dependencies (Oragon.ElasticPool)
 
 **Keep this list short. Every package added here becomes a transitive burden on every consumer.**
 
@@ -53,7 +53,7 @@ deterministic builds for source debugging.
 
 | Package | Version | Purpose | Why |
 |---------|---------|---------|-----|
-| `Oragon.ElasticPool.Core` | (matching) | Project reference / NuGet | The pool primitive |
+| `Oragon.ElasticPool` | (matching) | Project reference / NuGet | The pool primitive |
 | `RabbitMQ.Client` | **7.2.1** (or `[7.0.0,8.0.0)`) | `IConnection`/`IChannel` to be pooled | v7.x is async-first; `IModel` was renamed `IChannel`; `BasicProperties` is now a value type you `new` — old samples will mislead |
 | `Microsoft.Extensions.DependencyInjection.Abstractions` | 10.0.x | `services.AddElasticConnectionPool(...)` extensions | Same minimalist DI surface as Core |
 | `Microsoft.Extensions.Logging.Abstractions` | 10.0.x | Adapter-level logging | Same as Core |
@@ -166,7 +166,7 @@ Rationale: `ContinuousIntegrationBuild=true` normalizes file paths in CI (differ
 ```
 
 ```xml
-<!-- src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj -->
+<!-- src/Oragon.ElasticPool/Oragon.ElasticPool.csproj -->
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>net10.0;net9.0;net8.0</TargetFrameworks>
@@ -174,7 +174,7 @@ Rationale: `ContinuousIntegrationBuild=true` normalizes file paths in CI (differ
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <IsPackable>true</IsPackable>
-    <PackageId>Oragon.ElasticPool.Core</PackageId>
+    <PackageId>Oragon.ElasticPool</PackageId>
     <Description>Generic, elastic in-process object pool for .NET with health auto-healing and built-in observability.</Description>
     <PackageTags>pool;objectpool;adaptive;elastic;async;observability;opentelemetry</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -289,11 +289,11 @@ Rationale: `ContinuousIntegrationBuild=true` normalizes file paths in CI (differ
     workflows/release.yml         # Triggered on tag push; calls dotnet pack + push
     dependabot.yml
   src/
-    Oragon.ElasticPool.Core/
+    Oragon.ElasticPool/
     Oragon.ElasticPool.RabbitMQ/
   tests/
-    Oragon.ElasticPool.Core.Tests/
-    Oragon.ElasticPool.Core.IntegrationTests/   # stress, concurrency
+    Oragon.ElasticPool.Tests/
+    Oragon.ElasticPool.IntegrationTests/   # stress, concurrency
     Oragon.ElasticPool.RabbitMQ.Tests/
     Oragon.ElasticPool.RabbitMQ.IntegrationTests/  # uses Testcontainers
   bench/

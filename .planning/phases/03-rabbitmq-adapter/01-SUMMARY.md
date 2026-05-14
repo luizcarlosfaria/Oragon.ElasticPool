@@ -4,9 +4,9 @@ plan: 01
 subsystem: rabbitmq-adapter
 tags: [rabbitmq, adapter, di, connection-pool, builder, options]
 requires:
-  - "Oragon.ElasticPool.Core ServiceCollectionExtensions.AddElasticPool<T>"
-  - "Oragon.ElasticPool.Core Builder.ElasticPoolBuilder<T>"
-  - "Oragon.ElasticPool.Core Hooks (Factory/BeforeUse/Check/Release)"
+  - "Oragon.ElasticPool ServiceCollectionExtensions.AddElasticPool<T>"
+  - "Oragon.ElasticPool Builder.ElasticPoolBuilder<T>"
+  - "Oragon.ElasticPool Hooks (Factory/BeforeUse/Check/Release)"
 provides:
   - "Oragon.ElasticPool.RabbitMQ project (net10/9/8 multi-target, packable)"
   - "AddElasticConnectionPool(name, configureFactory, configurePool) DI extension"
@@ -101,7 +101,7 @@ All three probe modes are implemented in the documented order; `ForceAutomaticRe
 ### Phase 1+2 regression check
 
 ```
-dotnet test --project tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj -c Release --no-build
+dotnet test --project tests/Oragon.ElasticPool.Tests/Oragon.ElasticPool.Tests.csproj -c Release --no-build
 total: 432
 failed: 0
 succeeded: 432

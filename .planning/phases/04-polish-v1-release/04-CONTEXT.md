@@ -18,7 +18,7 @@ Cruzar a barra de qualidade OSS e shipar v1.0 para NuGet.org. Objetivo: README q
 - **NuGet publish trigger**: GitHub Actions workflow específico (`.github/workflows/release.yml`) acionado em push de tag `v*`; usa secret `NUGET_API_KEY` (configurado no repo settings) para `dotnet nuget push`
 - **Pre-release strategy**: tagear `v1.0.0-rc.1` primeiro (RC = release candidate) → soak ~1 semana coletando feedback → tagear `v1.0.0` final se nenhum issue blocker surgir
 - **NuGet package metadata** (em `Directory.Build.props` ou per-csproj):
-  - PackageId: `Oragon.ElasticPool.Core`, `Oragon.ElasticPool.RabbitMQ`
+  - PackageId: `Oragon.ElasticPool`, `Oragon.ElasticPool.RabbitMQ`
   - Description: clara, ~200 chars, mencionando "adaptive", "elastic", "lifecycle hooks"
   - Authors: `luizcarlosfaria`
   - RepositoryUrl: GitHub URL do projeto (placeholder até ter repo)

@@ -5,7 +5,7 @@ subsystem: rabbitmq-adapter
 tags: [rabbitmq, adapter, channel-pool, layered-pool, eager-spread, conditional-weak-table, di]
 requires:
   - "Plan 01: AddElasticConnectionPool registration → IElasticPool<IConnection>"
-  - "Oragon.ElasticPool.Core ServiceCollectionExtensions.AddElasticPool<IChannel>"
+  - "Oragon.ElasticPool ServiceCollectionExtensions.AddElasticPool<IChannel>"
   - "RabbitMQ.Client 7.2.1 IConnection.CreateChannelAsync + CreateChannelOptions ctor"
 provides:
   - "AddElasticChannelPool(name, connectionPoolName, configurePool) DI extension"
@@ -71,7 +71,7 @@ The 12 warnings are the pre-existing carry-forward SourceLink "no remote" adviso
 ### Phase 1+2 Regression Check
 
 ```
-dotnet test --project tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj -c Release --no-build
+dotnet test --project tests/Oragon.ElasticPool.Tests/Oragon.ElasticPool.Tests.csproj -c Release --no-build
 total: 432
 failed: 0
 succeeded: 432

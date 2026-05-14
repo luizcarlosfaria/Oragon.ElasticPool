@@ -45,7 +45,7 @@ Build order: ship the **fixed-size pool with hooks + telemetry first** (Phase 1 
                 │                               │
                 ▼                               ▼ (depends on inner pool at runtime)
 ┌─────────────────────────────────────────────────────────────────────┐
-│                  Oragon.ElasticPool.Core (public API)              │
+│                  Oragon.ElasticPool (public API)              │
 │  ┌─────────────────────┐  ┌─────────────────────┐                   │
 │  │ IElasticPool<T>    │  │ IPoolItem<T>        │                   │
 │  │  Acquire / Async    │  │  .Object  IDisposable│                  │
@@ -59,7 +59,7 @@ Build order: ship the **fixed-size pool with hooks + telemetry first** (Phase 1 
 │  │  + Discard default  │  │ AddElasticPool<T>  │                   │
 │  └─────────────────────┘  └─────────────────────┘                   │
 ├─────────────────────────────────────────────────────────────────────┤
-│              Oragon.ElasticPool.Core (internal engine)             │
+│              Oragon.ElasticPool (internal engine)             │
 │  ┌─────────────────────────────────────────────────────────────┐    │
 │  │              sealed ElasticPool<T> : IElasticPool<T>      │    │
 │  │  ┌─────────────────────┐  ┌──────────────────────────────┐  │    │
@@ -116,7 +116,7 @@ Build order: ship the **fixed-size pool with hooks + telemetry first** (Phase 1 
 
 ```
 src/
-├── Oragon.ElasticPool.Core/
+├── Oragon.ElasticPool/
 │   ├── Abstractions/
 │   │   ├── IElasticPool.cs              # public contract
 │   │   ├── IPoolItem.cs                  # public disposable wrapper
@@ -146,7 +146,7 @@ src/
 │   │   └── ServiceCollectionExtensions.cs  # AddElasticPool<T>(...)
 │   ├── PublicAPI.Shipped.txt
 │   ├── PublicAPI.Unshipped.txt
-│   └── Oragon.ElasticPool.Core.csproj
+│   └── Oragon.ElasticPool.csproj
 ├── Oragon.ElasticPool.RabbitMQ/
 │   ├── ElasticConnectionPoolBuilder.cs  # ergonomic wrapper over Core builder
 │   ├── ElasticChannelPoolBuilder.cs     # layered: Factory hook acquires from connection pool
@@ -156,8 +156,8 @@ src/
 │   ├── PublicAPI.Unshipped.txt
 │   └── Oragon.ElasticPool.RabbitMQ.csproj
 tests/
-├── Oragon.ElasticPool.Core.Tests/
-├── Oragon.ElasticPool.Core.IntegrationTests/      # stress, concurrency
+├── Oragon.ElasticPool.Tests/
+├── Oragon.ElasticPool.IntegrationTests/      # stress, concurrency
 ├── Oragon.ElasticPool.RabbitMQ.Tests/
 └── Oragon.ElasticPool.RabbitMQ.IntegrationTests/   # Testcontainers
 bench/

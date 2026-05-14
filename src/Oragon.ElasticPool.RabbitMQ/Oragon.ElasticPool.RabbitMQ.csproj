@@ -19,7 +19,7 @@
     <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="all" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Oragon.ElasticPool.Core\Oragon.ElasticPool.Core.csproj" />
+    <ProjectReference Include="..\Oragon.ElasticPool\Oragon.ElasticPool.csproj" />
   </ItemGroup>
   <ItemGroup>
     <AdditionalFiles Include="PublicAPI.Shipped.txt" />

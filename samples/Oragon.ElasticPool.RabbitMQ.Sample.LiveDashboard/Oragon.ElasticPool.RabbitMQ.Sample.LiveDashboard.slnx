@@ -4,7 +4,7 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Project Path="../../src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj" />
+  <Project Path="../../src/Oragon.ElasticPool/Oragon.ElasticPool.csproj" />
   <Project Path="../../src/Oragon.ElasticPool.RabbitMQ/Oragon.ElasticPool.RabbitMQ.csproj" />
   <Project Path="Oragon.ElasticPool.RabbitMQ.Sample.LiveDashboard.AppHost/Oragon.ElasticPool.RabbitMQ.Sample.LiveDashboard.AppHost.csproj" />
   <Project Path="Oragon.ElasticPool.RabbitMQ.Sample.LiveDashboard.ServiceDefaults/Oragon.ElasticPool.RabbitMQ.Sample.LiveDashboard.ServiceDefaults.csproj" />

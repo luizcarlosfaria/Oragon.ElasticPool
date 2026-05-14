@@ -2,7 +2,7 @@
 
 ## README Quickstart Drift (discovered Plan 04-02 Task 4)
 
-**Issue:** Both `src/Oragon.ElasticPool.Core/README.md` and `README.md` (root) quickstarts
+**Issue:** Both `src/Oragon.ElasticPool/README.md` and `README.md` (root) quickstarts
 use property-setter syntax (`pool.MinSize = 1; pool.InitialSize = 2; pool.MaxSize = 16;`)
 that doesn't exist on `ElasticPoolBuilder<T>`. The actual public API (per the now-frozen
 `PublicAPI.Shipped.txt`) requires the fluent method `pool.WithBounds(minSize, maxSize, initialSize)`.
@@ -22,7 +22,7 @@ because `AddElasticPool` registers a keyed singleton.
 **Action item for maintainer (PRE-RELEASE):** Before pushing `v1.0.0-rc.1`, fix the README
 quickstarts in:
 - `README.md` (root)
-- `src/Oragon.ElasticPool.Core/README.md`
+- `src/Oragon.ElasticPool/README.md`
 - (verify) `src/Oragon.ElasticPool.RabbitMQ/README.md`
 
 Replace the property-setter snippets with the validated working pattern from

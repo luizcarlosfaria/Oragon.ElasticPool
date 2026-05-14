@@ -190,7 +190,7 @@ Data flow primary path: a caller's `AcquireAsync` either succeeds fast (idle ite
 ### Recommended Project Structure (additions)
 
 ```
-src/Oragon.ElasticPool.Core/
+src/Oragon.ElasticPool/
 ├── Internals/
 │   ├── ElasticPool.cs              [MODIFIED — wire new components]
 │   ├── PoolEntry.cs                 [MODIFIED — add LastReturnedAt]
@@ -210,7 +210,7 @@ src/Oragon.ElasticPool.Core/
 └── Hooks/
     └── HookDelegates.cs             [unchanged — Check signature already exists]
 
-tests/Oragon.ElasticPool.Core.Tests/
+tests/Oragon.ElasticPool.Tests/
 └── Pool/
     ├── ElasticGrowTests.cs          [NEW — composite-signal grow]
     ├── HystereticShrinkTests.cs     [NEW — cooldown + IdleTimeout]
@@ -219,7 +219,7 @@ tests/Oragon.ElasticPool.Core.Tests/
     ├── UtilizationSamplerTests.cs   [NEW — ring buffer correctness]
     └── ActivitySourceSpanTests.cs   [NEW — span emission per outcome]
 
-tests/Oragon.ElasticPool.Core.Stress/
+tests/Oragon.ElasticPool.Stress/
 └── BurstIdleBurstStressTest.cs      [NEW — Phase 2 anchor stress test]
 ```
 

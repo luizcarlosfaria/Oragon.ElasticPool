@@ -124,7 +124,7 @@ pipeline {
                 script{
 
                     def projetcs = [
-                        'Oragon.ElasticPool.Core',
+                        'Oragon.ElasticPool',
                         'Oragon.ElasticPool.RabbitMQ',
                     ]
 

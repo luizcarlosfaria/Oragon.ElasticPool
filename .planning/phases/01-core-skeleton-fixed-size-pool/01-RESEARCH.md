@@ -27,7 +27,7 @@ Three changes since project-level research need explicit Phase 1 attention:
 
 **Repository Layout & Solution Structure:**
 - Estrutura: `src/` (projetos publicáveis) + `tests/` (unit + integration) + `samples/` + `.github/workflows/`
-- Nomes de projetos: `Oragon.ElasticPool.Core`, `Oragon.ElasticPool.RabbitMQ` (Phase 3), `Oragon.ElasticPool.Core.Tests`, `Oragon.ElasticPool.Core.Stress` (projeto separado, fora da CI default), `Oragon.ElasticPool.Core.Benchmarks` (Phase 4)
+- Nomes de projetos: `Oragon.ElasticPool`, `Oragon.ElasticPool.RabbitMQ` (Phase 3), `Oragon.ElasticPool.Tests`, `Oragon.ElasticPool.Stress` (projeto separado, fora da CI default), `Oragon.ElasticPool.Benchmarks` (Phase 4)
 - `PublicAPI.Shipped.txt` / `PublicAPI.Unshipped.txt` por projeto (cada `.csproj` mantém os seus)
 - `README.md` único na raiz do repositório com seções por pacote
 
@@ -39,14 +39,14 @@ Three changes since project-level research need explicit Phase 1 attention:
 
 **Test & Tooling Infrastructure:**
 - Test framework: **xUnit v3 + Microsoft.Testing.Platform + Awesome Assertions + NSubstitute** (Awesome Assertions = fork OSS recente do FluentAssertions com mesma sintaxe, mantido após mudança de licença Xceed)
-- Stress tests: projeto separado `Oragon.ElasticPool.Core.Stress` excluído da CI default (job dedicado nightly em Phase 4)
+- Stress tests: projeto separado `Oragon.ElasticPool.Stress` excluído da CI default (job dedicado nightly em Phase 4)
 - Time mocking: `Microsoft.Extensions.TimeProvider.Testing.FakeTimeProvider` para todo teste sensível a tempo
 - Code coverage: gate de **90% no Core** na CI; sem gate em adapters/samples; ferramentas: coverlet + ReportGenerator → Codecov
 
 ### Claude's Discretion
 
 - Escolha exata de quais counters expor em TELEM-01 (mínimo: `pool.acquire.count`, `pool.factory.failures`; resto fica para Phase 2 quando grow/shrink/health surgem)
-- Política de naming interno (private/internal classes) e estrutura de namespaces dentro de `Oragon.ElasticPool.Core`
+- Política de naming interno (private/internal classes) e estrutura de namespaces dentro de `Oragon.ElasticPool`
 - Detalhes do `PoolState` enum (incluir `Quarantined`? por ora apenas `Healthy`/`Unhealthy`, com espaço para extensão em v2)
 - Forma exata da exception `PoolExhaustedException` (mensagem, properties como `MaxSize`, `WaitTime`)
 - Estratégia exata de double-dispose detection (Interlocked flag, Disposed property pública?)
@@ -226,7 +226,7 @@ Three changes since project-level research need explicit Phase 1 attention:
 
 ```
 src/
-└── Oragon.ElasticPool.Core/
+└── Oragon.ElasticPool/
     ├── Abstractions/
     │   ├── IElasticPool.cs           # public contract
     │   ├── IPoolItem.cs               # public disposable wrapper
@@ -256,10 +256,10 @@ src/
     │   └── PoolExhaustedException.cs
     ├── PublicAPI.Shipped.txt
     ├── PublicAPI.Unshipped.txt
-    └── Oragon.ElasticPool.Core.csproj
+    └── Oragon.ElasticPool.csproj
 tests/
-├── Oragon.ElasticPool.Core.Tests/      # unit tests, runs in default CI
-└── Oragon.ElasticPool.Core.Stress/     # MaxSize=1 ping-pong, factory-fault property tests; nightly only
+├── Oragon.ElasticPool.Tests/      # unit tests, runs in default CI
+└── Oragon.ElasticPool.Stress/     # MaxSize=1 ping-pong, factory-fault property tests; nightly only
 ```
 
 ### Pattern 1: Public API Patterns — Hook Delegate Signatures (HOOK-01..05)
@@ -269,7 +269,7 @@ All delegates accept `CancellationToken` from day one. All return `ValueTask<T>`
 ```csharp
 // Source: synthesized from project ARCHITECTURE.md + ValueTask docs
 // [CITED: learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.valuetask-1]
-namespace Oragon.ElasticPool.Core.Hooks;
+namespace Oragon.ElasticPool.Hooks;
 
 /// <summary>
 /// Creates a new pooled instance. Required hook — must be configured via .Factory(...).
@@ -309,7 +309,7 @@ Sealed class with both `IDisposable` and `IAsyncDisposable`, idempotent via Inte
 ```csharp
 // Source: synthesized from learn.microsoft.com/en-us/dotnet/standard/garbage-collection/implementing-disposeasync
 // + project PITFALLS.md (Pitfall 2 — leak detection)
-namespace Oragon.ElasticPool.Core.Abstractions;
+namespace Oragon.ElasticPool.Abstractions;
 
 public interface IPoolItem<out T> : IDisposable, IAsyncDisposable
 {
@@ -317,7 +317,7 @@ public interface IPoolItem<out T> : IDisposable, IAsyncDisposable
     T Value { get; }
 }
 
-namespace Oragon.ElasticPool.Core.Internals;
+namespace Oragon.ElasticPool.Internals;
 
 internal sealed class PoolItem<T> : IPoolItem<T>
 {
@@ -386,7 +386,7 @@ internal sealed class PoolItem<T> : IPoolItem<T>
 
 ```csharp
 // Source: project ARCHITECTURE.md Builder Pattern Shape; refined for Phase 1 scope
-namespace Oragon.ElasticPool.Core.Builder;
+namespace Oragon.ElasticPool.Builder;
 
 public static class ElasticObjectPoolFactory
 {
@@ -492,7 +492,7 @@ public enum WaitBehavior { Wait, Throw }
 ### Pattern 4: Failure Policy Contract (FAIL-01, FAIL-02)
 
 ```csharp
-namespace Oragon.ElasticPool.Core.Abstractions;
+namespace Oragon.ElasticPool.Abstractions;
 
 public enum PoolState { Healthy, Unhealthy }
 
@@ -517,7 +517,7 @@ public enum FailureKind { FactoryThrew, BeforeUseUnhealthy, AfterUseUnhealthy }
 
 public enum FailureDecision { Discard /* default in Phase 1 */, /* Quarantine reserved for v2 */ }
 
-namespace Oragon.ElasticPool.Core.Policies;
+namespace Oragon.ElasticPool.Policies;
 
 public sealed class DiscardAndReplaceFailurePolicy<T> : IItemFailurePolicy<T>
 {
@@ -588,7 +588,7 @@ Phase 1 recommendation: expose `Task ReadyAsync()` on `IElasticPool<T>`. Documen
 ```csharp
 // Source: learn.microsoft.com/en-us/dotnet/core/diagnostics/metrics-instrumentation
 // "Get a Meter via dependency injection" + "Test custom metrics"
-namespace Oragon.ElasticPool.Core.Telemetry;
+namespace Oragon.ElasticPool.Telemetry;
 
 internal static class PoolMeterNames
 {
@@ -672,7 +672,7 @@ public async Task Acquire_IncrementsAcquireCounter()
 
 ```csharp
 // Source: synthesized from learn.microsoft.com/en-us/dotnet/core/extensions/options Named options + AddKeyedSingleton
-namespace Oragon.ElasticPool.Core.DependencyInjection;
+namespace Oragon.ElasticPool.DependencyInjection;
 
 public static class ServiceCollectionExtensions
 {
@@ -904,7 +904,7 @@ internal sealed class ElasticPool<T> : IElasticPool<T>, IAsyncDisposable, IDispo
 
 **What goes wrong:** A 10,000-iteration ping-pong test takes 30+ seconds, dominates CI time, can flake under load. Devs disable it locally.
 
-**How to avoid:** Per CONTEXT.md, separate `Oragon.ElasticPool.Core.Stress` project. CI default runs `dotnet test tests/Oragon.ElasticPool.Core.Tests`. Nightly job (Phase 4) runs `dotnet test tests/Oragon.ElasticPool.Core.Stress`. Document in README how to run stress tests locally: `dotnet test tests/Oragon.ElasticPool.Core.Stress --logger console;verbosity=detailed`.
+**How to avoid:** Per CONTEXT.md, separate `Oragon.ElasticPool.Stress` project. CI default runs `dotnet test tests/Oragon.ElasticPool.Tests`. Nightly job (Phase 4) runs `dotnet test tests/Oragon.ElasticPool.Stress`. Document in README how to run stress tests locally: `dotnet test tests/Oragon.ElasticPool.Stress --logger console;verbosity=detailed`.
 
 ### Pitfall 7: Coverage gate breaks because xUnit MTP runner reports differently
 
@@ -925,7 +925,7 @@ internal sealed class ElasticPool<T> : IElasticPool<T>, IAsyncDisposable, IDispo
 ### Example 1: Minimal Phase 1 .csproj for Core
 
 ```xml
-<!-- src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj -->
+<!-- src/Oragon.ElasticPool/Oragon.ElasticPool.csproj -->
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>net10.0;net9.0;net8.0</TargetFrameworks>
@@ -933,7 +933,7 @@ internal sealed class ElasticPool<T> : IElasticPool<T>, IAsyncDisposable, IDispo
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <IsPackable>true</IsPackable>
-    <PackageId>Oragon.ElasticPool.Core</PackageId>
+    <PackageId>Oragon.ElasticPool</PackageId>
     <Description>Generic, elastic in-process object pool for .NET with health auto-healing and built-in observability.</Description>
     <PackageTags>pool;objectpool;adaptive;elastic;async;observability;opentelemetry</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -960,7 +960,7 @@ internal sealed class ElasticPool<T> : IElasticPool<T>, IAsyncDisposable, IDispo
 ### Example 2: Phase 1 Test .csproj with xUnit v3 + MTP + AwesomeAssertions
 
 ```xml
-<!-- tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj -->
+<!-- tests/Oragon.ElasticPool.Tests/Oragon.ElasticPool.Tests.csproj -->
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>net10.0;net9.0;net8.0</TargetFrameworks>
@@ -986,7 +986,7 @@ internal sealed class ElasticPool<T> : IElasticPool<T>, IAsyncDisposable, IDispo
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Oragon.ElasticPool.Core\Oragon.ElasticPool.Core.csproj" />
+    <ProjectReference Include="..\..\src\Oragon.ElasticPool\Oragon.ElasticPool.csproj" />
   </ItemGroup>
 </Project>
 ```
@@ -1007,7 +1007,7 @@ For .NET 10 SDK, also add at solution root:
 
 ```csharp
 // Source: learn.microsoft.com/en-us/dotnet/core/extensions/logging-library-authors
-namespace Oragon.ElasticPool.Core.Telemetry;
+namespace Oragon.ElasticPool.Telemetry;
 
 internal static partial class PoolDiagnosticsLog
 {
@@ -1032,10 +1032,10 @@ internal static partial class PoolDiagnosticsLog
 ### Example 4: Stress test sketch — `MaxSize=1` ping-pong (Phase 1 anchor test)
 
 ```csharp
-// tests/Oragon.ElasticPool.Core.Stress/PingPongStressTest.cs
+// tests/Oragon.ElasticPool.Stress/PingPongStressTest.cs
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using Oragon.ElasticPool.Core.DependencyInjection;
+using Oragon.ElasticPool.DependencyInjection;
 using Xunit;
 
 public class PingPongStressTest
@@ -1193,7 +1193,7 @@ public class TimeProviderInjectionTests
 |----------|-------|
 | Framework | xUnit v3 3.2.2 + Microsoft.Testing.Platform |
 | Config file | `global.json` (test runner selector for net10), `.csproj` props (`UseMicrosoftTestingPlatformRunner`, `TestingPlatformDotnetTestSupport`) |
-| Quick run command | `dotnet test tests/Oragon.ElasticPool.Core.Tests --no-restore --logger console;verbosity=quiet` |
+| Quick run command | `dotnet test tests/Oragon.ElasticPool.Tests --no-restore --logger console;verbosity=quiet` |
 | Full suite command | `dotnet test --collect:"XPlat Code Coverage" /p:Threshold=90 /p:ThresholdType=line` (excludes Stress project, which lives in separate solution filter) |
 
 ### Phase 1 Requirements → Test Map
@@ -1212,20 +1212,20 @@ public class TimeProviderInjectionTests
 | DI-01 | `services.AddElasticPool<T>(name, configure)` registers keyed singleton | unit | `dotnet test --filter "FullyQualifiedName~DependencyInjectionTests"` | ❌ Wave 0 |
 | QUAL-01 | `CancellationToken` cancels `AcquireAsync` waiters cleanly | unit | `dotnet test --filter "FullyQualifiedName~CancellationTests"` | ❌ Wave 0 |
 | QUAL-02 | `DisposeAsync` drains pool, calls `Release` on each idle item | unit | `dotnet test --filter "FullyQualifiedName~DisposeDrainTests"` | ❌ Wave 0 |
-| (Anchor) | `MaxSize=1` ping-pong, 256 threads × 40 iterations, no deadlock | stress | `dotnet test tests/Oragon.ElasticPool.Core.Stress` | ❌ Wave 0 |
+| (Anchor) | `MaxSize=1` ping-pong, 256 threads × 40 iterations, no deadlock | stress | `dotnet test tests/Oragon.ElasticPool.Stress` | ❌ Wave 0 |
 
 ### Sampling Rate
-- **Per task commit:** `dotnet test tests/Oragon.ElasticPool.Core.Tests --no-restore` (~few seconds)
+- **Per task commit:** `dotnet test tests/Oragon.ElasticPool.Tests --no-restore` (~few seconds)
 - **Per wave merge:** `dotnet test --collect:"XPlat Code Coverage" /p:Threshold=90` (full suite + coverage gate)
-- **Phase gate:** Above + `dotnet test tests/Oragon.ElasticPool.Core.Stress` (stress runs until green)
+- **Phase gate:** Above + `dotnet test tests/Oragon.ElasticPool.Stress` (stress runs until green)
 
 ### Wave 0 Gaps
-- [ ] `tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj` — base test project per Example 2
-- [ ] `tests/Oragon.ElasticPool.Core.Stress/Oragon.ElasticPool.Core.Stress.csproj` — stress test project (separate)
-- [ ] `tests/Oragon.ElasticPool.Core.Tests/GlobalUsings.cs` — `global using AwesomeAssertions;` `global using Xunit;` `global using NSubstitute;`
+- [ ] `tests/Oragon.ElasticPool.Tests/Oragon.ElasticPool.Tests.csproj` — base test project per Example 2
+- [ ] `tests/Oragon.ElasticPool.Stress/Oragon.ElasticPool.Stress.csproj` — stress test project (separate)
+- [ ] `tests/Oragon.ElasticPool.Tests/GlobalUsings.cs` — `global using AwesomeAssertions;` `global using Xunit;` `global using NSubstitute;`
 - [ ] `global.json` at repo root with `"test": { "runner": "Microsoft.Testing.Platform" }`
 - [ ] `Directory.Packages.props` updated with all Phase 1 package versions
-- [ ] `src/Oragon.ElasticPool.Core/PublicAPI.Shipped.txt` (empty initially) and `PublicAPI.Unshipped.txt` (filled by analyzer codefix as types are added)
+- [ ] `src/Oragon.ElasticPool/PublicAPI.Shipped.txt` (empty initially) and `PublicAPI.Unshipped.txt` (filled by analyzer codefix as types are added)
 - [ ] CI workflow that runs `dotnet test` matrix on `[ubuntu-latest, windows-latest] × [net8.0, net9.0, net10.0]` (Phase 4 finalizes; Phase 1 needs at least a draft)
 
 ---

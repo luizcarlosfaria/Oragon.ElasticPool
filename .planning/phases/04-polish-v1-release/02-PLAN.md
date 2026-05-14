@@ -7,8 +7,8 @@ depends_on: [01]
 files_modified:
   - .github/workflows/build.yml
   - .github/workflows/release.yml
-  - src/Oragon.ElasticPool.Core/PublicAPI.Shipped.txt
-  - src/Oragon.ElasticPool.Core/PublicAPI.Unshipped.txt
+  - src/Oragon.ElasticPool/PublicAPI.Shipped.txt
+  - src/Oragon.ElasticPool/PublicAPI.Unshipped.txt
   - src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Shipped.txt
   - src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Unshipped.txt
   - CHANGELOG.md
@@ -21,7 +21,7 @@ must_haves:
     - "build.yml matrix runs RabbitMQ.Tests (unit, no Docker dependency) on every TFM in addition to Core.Tests, and is green on main"
     - "build.yml runs RabbitMQ.IntegrationTests (Testcontainers — requires Docker; ubuntu-latest runners include Docker) on every TFM with `--filter-trait Category=Integration`-equivalent gating, green on main"
     - "release.yml is triggered by pushing a git tag matching `v*` (e.g., `v1.0.0`, `v1.0.0-rc.1`) and runs the full build + test matrix as a gate before pack/push"
-    - "release.yml authenticates to NuGet.org via `secrets.NUGET_API_KEY` and pushes both `Oragon.ElasticPool.Core.{ver}.nupkg` + `.snupkg` and `Oragon.ElasticPool.RabbitMQ.{ver}.nupkg` + `.snupkg`"
+    - "release.yml authenticates to NuGet.org via `secrets.NUGET_API_KEY` and pushes both `Oragon.ElasticPool.{ver}.nupkg` + `.snupkg` and `Oragon.ElasticPool.RabbitMQ.{ver}.nupkg` + `.snupkg`"
     - "PublicAPI.Shipped.txt for both Core (102 lines) and RabbitMQ (39 lines) contains the v1.0 surface; PublicAPI.Unshipped.txt for both reduces to the canonical empty baseline (`#nullable enable` only)"
     - "After PublicAPI promotion, `dotnet build` succeeds with no `RS0016` (declared API not shipped) or `RS0017` (shipped API not declared) errors"
     - "CHANGELOG.md v1.0.0 entry has the placeholder date `2026-05-XX` finalized to a concrete date by this plan (committer's choice — see action)"
@@ -33,10 +33,10 @@ must_haves:
     - path: ".github/workflows/release.yml"
       provides: "Tag-triggered release pipeline: gate (build+test on matrix) → pack → push to NuGet.org with .snupkg"
       contains: "tags:"
-    - path: "src/Oragon.ElasticPool.Core/PublicAPI.Shipped.txt"
+    - path: "src/Oragon.ElasticPool/PublicAPI.Shipped.txt"
       provides: "Frozen v1.0 Core public surface (102 lines from Unshipped + #nullable enable header)"
       min_lines: 100
-    - path: "src/Oragon.ElasticPool.Core/PublicAPI.Unshipped.txt"
+    - path: "src/Oragon.ElasticPool/PublicAPI.Unshipped.txt"
       provides: "Empty baseline (#nullable enable only)"
       contains: "#nullable enable"
     - path: "src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Shipped.txt"
@@ -58,7 +58,7 @@ must_haves:
       to: "tests/Oragon.ElasticPool.RabbitMQ.IntegrationTests/"
       via: "dotnet test step — Testcontainers spins broker via Docker on ubuntu runner"
       pattern: "RabbitMQ.IntegrationTests"
-    - from: "src/Oragon.ElasticPool.Core/PublicAPI.Shipped.txt"
+    - from: "src/Oragon.ElasticPool/PublicAPI.Shipped.txt"
       to: "Microsoft.CodeAnalysis.PublicApiAnalyzers"
       via: "AdditionalFiles ItemGroup in Core csproj (Phase 1 wiring)"
       pattern: "PublicAPI.Shipped"
@@ -130,8 +130,8 @@ and obscure analyzer errors).
 @.github/workflows/build.yml
 @Directory.Build.props
 @Directory.Packages.props
-@src/Oragon.ElasticPool.Core/PublicAPI.Shipped.txt
-@src/Oragon.ElasticPool.Core/PublicAPI.Unshipped.txt
+@src/Oragon.ElasticPool/PublicAPI.Shipped.txt
+@src/Oragon.ElasticPool/PublicAPI.Unshipped.txt
 @src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Shipped.txt
 @src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Unshipped.txt
 
@@ -308,7 +308,7 @@ jobs:
 
       - name: dotnet test (Core.Tests)
         run: >
-          dotnet test --project tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj
+          dotnet test --project tests/Oragon.ElasticPool.Tests/Oragon.ElasticPool.Tests.csproj
           --configuration Release --no-build -f ${{ matrix.tfm }}
 
       - name: dotnet test (RabbitMQ.Tests)
@@ -355,7 +355,7 @@ jobs:
       # work but explicit per-project is faster and clearer in the log.
       - name: dotnet pack — Core
         run: >
-          dotnet pack src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj
+          dotnet pack src/Oragon.ElasticPool/Oragon.ElasticPool.csproj
           --configuration Release --no-build
           --output ./artifacts
 
@@ -405,7 +405,7 @@ jobs:
       # exact version is already on NuGet.org, the push fails with HTTP 409. We
       # treat that as a fatal error here (NOT --skip-duplicate'd) because re-tagging
       # the same version is a workflow error that should be loud, not silent.
-      - name: dotnet nuget push (Oragon.ElasticPool.Core + RabbitMQ to NuGet.org)
+      - name: dotnet nuget push (Oragon.ElasticPool + RabbitMQ to NuGet.org)
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
         run: >
@@ -440,7 +440,7 @@ test -f .github/workflows/release.yml \
   && grep -q 'dotnet nuget push' .github/workflows/release.yml \
   && grep -q '\.snupkg' .github/workflows/release.yml \
   && grep -q 'fetch-depth: 0' .github/workflows/release.yml \
-  && grep -q 'dotnet pack src/Oragon.ElasticPool.Core' .github/workflows/release.yml \
+  && grep -q 'dotnet pack src/Oragon.ElasticPool' .github/workflows/release.yml \
   && grep -q 'dotnet pack src/Oragon.ElasticPool.RabbitMQ' .github/workflows/release.yml \
   && ! grep -q '^  branches:' .github/workflows/release.yml \
   && echo OK
@@ -459,8 +459,8 @@ test -f .github/workflows/release.yml \
 <task type="auto">
   <name>Task 3: Promote PublicAPI Unshipped → Shipped for both packable projects + finalize CHANGELOG date</name>
   <files>
-    src/Oragon.ElasticPool.Core/PublicAPI.Shipped.txt,
-    src/Oragon.ElasticPool.Core/PublicAPI.Unshipped.txt,
+    src/Oragon.ElasticPool/PublicAPI.Shipped.txt,
+    src/Oragon.ElasticPool/PublicAPI.Unshipped.txt,
     src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Shipped.txt,
     src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Unshipped.txt,
     CHANGELOG.md
@@ -481,8 +481,8 @@ The v1.0 freeze ceremony. After this task, any future change to the public API s
 
 ```bash
 # --- Core ---
-SHIP_CORE=src/Oragon.ElasticPool.Core/PublicAPI.Shipped.txt
-UNSHIP_CORE=src/Oragon.ElasticPool.Core/PublicAPI.Unshipped.txt
+SHIP_CORE=src/Oragon.ElasticPool/PublicAPI.Shipped.txt
+UNSHIP_CORE=src/Oragon.ElasticPool/PublicAPI.Unshipped.txt
 
 # Sanity: count current Unshipped (must be ~102 per Phase 3 SUMMARY)
 LC_ALL=C wc -l "$UNSHIP_CORE"
@@ -563,17 +563,17 @@ This date represents "the day the v1.0 release was prepared" — the actual NuGe
   <verify>
     <automated>
 # Shipped contents
-test "$(LC_ALL=C wc -l < src/Oragon.ElasticPool.Core/PublicAPI.Shipped.txt)" -ge 100 \
+test "$(LC_ALL=C wc -l < src/Oragon.ElasticPool/PublicAPI.Shipped.txt)" -ge 100 \
   && test "$(LC_ALL=C wc -l < src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Shipped.txt)" -ge 35 \
-  && head -1 src/Oragon.ElasticPool.Core/PublicAPI.Shipped.txt | grep -q '^#nullable enable$' \
+  && head -1 src/Oragon.ElasticPool/PublicAPI.Shipped.txt | grep -q '^#nullable enable$' \
   && head -1 src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Shipped.txt | grep -q '^#nullable enable$' \
-  && grep -q 'IElasticPool' src/Oragon.ElasticPool.Core/PublicAPI.Shipped.txt \
+  && grep -q 'IElasticPool' src/Oragon.ElasticPool/PublicAPI.Shipped.txt \
   && grep -q 'AddElasticConnectionPool' src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Shipped.txt \
   && grep -q 'AddElasticChannelPool' src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Shipped.txt \
 # Unshipped is exactly the empty baseline (1 line, #nullable enable)
-  && test "$(wc -l < src/Oragon.ElasticPool.Core/PublicAPI.Unshipped.txt)" -eq 1 \
+  && test "$(wc -l < src/Oragon.ElasticPool/PublicAPI.Unshipped.txt)" -eq 1 \
   && test "$(wc -l < src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Unshipped.txt)" -eq 1 \
-  && grep -qx '#nullable enable' src/Oragon.ElasticPool.Core/PublicAPI.Unshipped.txt \
+  && grep -qx '#nullable enable' src/Oragon.ElasticPool/PublicAPI.Unshipped.txt \
   && grep -qx '#nullable enable' src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Unshipped.txt \
 # CHANGELOG date finalized (no longer placeholder)
   && ! grep -q '2026-05-XX' CHANGELOG.md \
@@ -621,7 +621,7 @@ and approves once they observe the expected behavior.
 # From repo root
 rm -rf /tmp/local-nuget-feed && mkdir -p /tmp/local-nuget-feed
 dotnet build Oragon.ElasticPool.sln -c Release
-dotnet pack src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj \
+dotnet pack src/Oragon.ElasticPool/Oragon.ElasticPool.csproj \
   -c Release --no-build -o /tmp/local-nuget-feed
 dotnet pack src/Oragon.ElasticPool.RabbitMQ/Oragon.ElasticPool.RabbitMQ.csproj \
   -c Release --no-build -o /tmp/local-nuget-feed
@@ -639,11 +639,11 @@ done
 
 ```bash
 # Pick one DLL from one TFM
-DLL=$(find src/Oragon.ElasticPool.Core/bin/Release/net10.0 -name 'Oragon.ElasticPool.Core.dll' | head -1)
+DLL=$(find src/Oragon.ElasticPool/bin/Release/net10.0 -name 'Oragon.ElasticPool.dll' | head -1)
 # SourceLink section in PE/COFF debug info — verified via dotnet-symbol or by
 # extracting the .snupkg PDB and running dotnet-pdb2pdb / sourcelink test.
 # Quick smoke: nuspec includes <repository ... commit="..." />:
-unzip -p /tmp/local-nuget-feed/Oragon.ElasticPool.Core.*.nupkg '*.nuspec' | \
+unzip -p /tmp/local-nuget-feed/Oragon.ElasticPool.*.nupkg '*.nuspec' | \
   grep -E '(repository|projectUrl|readme|icon|license)'
 ```
 
@@ -665,14 +665,14 @@ cd PoolDemo
 # Add the local feed
 dotnet nuget add source /tmp/local-nuget-feed -n local-elastic-pool || \
   dotnet nuget update source local-elastic-pool --source /tmp/local-nuget-feed
-dotnet add package Oragon.ElasticPool.Core --source /tmp/local-nuget-feed --prerelease
+dotnet add package Oragon.ElasticPool --source /tmp/local-nuget-feed --prerelease
 dotnet add package Oragon.ElasticPool.RabbitMQ --source /tmp/local-nuget-feed --prerelease
 
 # Replace Program.cs with the README quickstart (Core variant — lowest barrier)
 cat > Program.cs <<'EOF'
 using Microsoft.Extensions.DependencyInjection;
-using Oragon.ElasticPool.Core.Abstractions;
-using Oragon.ElasticPool.Core.DependencyInjection;
+using Oragon.ElasticPool.Abstractions;
+using Oragon.ElasticPool.DependencyInjection;
 
 var services = new ServiceCollection();
 services.AddElasticPool<MyClient>("demo", pool =>
@@ -793,7 +793,7 @@ After all 4 tasks (3 auto + 1 checkpoint) complete:
 
 After Plan 02 lands and the human checkpoint approves:
 - **OSS-01 SATISFIED**: full `ubuntu-latest × {net8.0, net9.0, net10.0}` matrix runs unit + stress (Phase 1 carry-forward as separate nightly per CONTEXT.md note in build.yml comments) + integration tests, green on main.
-- **OSS-03 SATISFIED**: MinVer + tag-driven SemVer + CHANGELOG (Keep-a-Changelog) + release.yml all wired. Pushing `v1.0.0` produces exactly `Oragon.ElasticPool.Core.1.0.0.nupkg` + `.snupkg` (and same for RabbitMQ).
+- **OSS-03 SATISFIED**: MinVer + tag-driven SemVer + CHANGELOG (Keep-a-Changelog) + release.yml all wired. Pushing `v1.0.0` produces exactly `Oragon.ElasticPool.1.0.0.nupkg` + `.snupkg` (and same for RabbitMQ).
 - **OSS-04 SATISFIED**: `.snupkg` companion verified per pack; SourceLink wiring already from Phase 1; `dotnet nuget push` ships both `.nupkg` and `.snupkg` via the wildcard glob.
 - **OSS-05 SATISFIED**: PublicApiAnalyzers freeze ceremony complete; v1.0 surface locked.
 - **OSS-02 SATISFIED** (cross-plan): per-package + root READMEs from Plan 01 + sample link + OTel example + comparison table + ship via NuGet metadata wired in this plan's release.yml.
@@ -806,12 +806,12 @@ strategy) starts when the maintainer pushes `v1.0.0-rc.1`.
 <success_criteria>
 1. `.github/workflows/build.yml` contains the two new RabbitMQ test steps in the right order; YAML is valid.
 2. `.github/workflows/release.yml` exists; triggers on `tags: ['v*']` ONLY (no branches); has `test` (matrix) and `publish` (needs: test) jobs; references `secrets.NUGET_API_KEY`; verifies `.snupkg` companions; runs `dotnet nuget push`. YAML is valid.
-3. `src/Oragon.ElasticPool.Core/PublicAPI.Shipped.txt`: ≥100 lines, sorted, headed by `#nullable enable`. Unshipped: exactly `#nullable enable\n`.
+3. `src/Oragon.ElasticPool/PublicAPI.Shipped.txt`: ≥100 lines, sorted, headed by `#nullable enable`. Unshipped: exactly `#nullable enable\n`.
 4. `src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Shipped.txt`: ≥35 lines, sorted, headed by `#nullable enable`. Unshipped: exactly `#nullable enable\n`.
 5. `dotnet build Oragon.ElasticPool.sln -c Release` is GREEN with no RS0016/RS0017 errors.
 6. `CHANGELOG.md` has `## [1.0.0] - YYYY-MM-DD` with a real date (no `2026-05-XX` placeholder remaining).
 7. `dotnet pack` produces .nupkg containing README.md + icon.png + valid nuspec; `.snupkg` companion exists for each .nupkg.
-8. (Checkpoint-approved) Consumer simulation: `dotnet add package Oragon.ElasticPool.Core` from local feed → `dotnet run` of README quickstart produces expected output without errors.
+8. (Checkpoint-approved) Consumer simulation: `dotnet add package Oragon.ElasticPool` from local feed → `dotnet run` of README quickstart produces expected output without errors.
 </success_criteria>
 
 <output>

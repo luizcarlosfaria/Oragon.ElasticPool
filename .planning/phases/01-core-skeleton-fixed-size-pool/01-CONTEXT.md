@@ -6,7 +6,7 @@
 <domain>
 ## Phase Boundary
 
-Entregar um pool de tamanho fixo (`MinSize == MaxSize == InitialSize`) totalmente funcional e testado em `Oragon.ElasticPool.Core`, com toda a superfície pública e decisões arquiteturais não-retrofitáveis travadas corretamente: assinaturas dos 5 hooks, contrato `ValueTask<IPoolItem<T>>`, dispose síncrono+assíncrono com idempotência, builder fluente, integração DI, contagem de itens com rollback em falha de Factory, política de falha plugável (com `DiscardAndReplace` default), telemetria base via `IMeterFactory`. **Fora desta fase:** crescimento elástico (Phase 2), sweeper em background (Phase 2), adapter RabbitMQ (Phase 3), pipeline de release OSS (Phase 4).
+Entregar um pool de tamanho fixo (`MinSize == MaxSize == InitialSize`) totalmente funcional e testado em `Oragon.ElasticPool`, com toda a superfície pública e decisões arquiteturais não-retrofitáveis travadas corretamente: assinaturas dos 5 hooks, contrato `ValueTask<IPoolItem<T>>`, dispose síncrono+assíncrono com idempotência, builder fluente, integração DI, contagem de itens com rollback em falha de Factory, política de falha plugável (com `DiscardAndReplace` default), telemetria base via `IMeterFactory`. **Fora desta fase:** crescimento elástico (Phase 2), sweeper em background (Phase 2), adapter RabbitMQ (Phase 3), pipeline de release OSS (Phase 4).
 
 </domain>
 
@@ -15,7 +15,7 @@ Entregar um pool de tamanho fixo (`MinSize == MaxSize == InitialSize`) totalment
 
 ### Repository Layout & Solution Structure
 - Estrutura: `src/` (projetos publicáveis) + `tests/` (unit + integration) + `samples/` + `.github/workflows/`
-- Nomes de projetos: `Oragon.ElasticPool.Core`, `Oragon.ElasticPool.RabbitMQ` (Phase 3), `Oragon.ElasticPool.Core.Tests`, `Oragon.ElasticPool.Core.Stress` (projeto separado, fora da CI default), `Oragon.ElasticPool.Core.Benchmarks` (Phase 4)
+- Nomes de projetos: `Oragon.ElasticPool`, `Oragon.ElasticPool.RabbitMQ` (Phase 3), `Oragon.ElasticPool.Tests`, `Oragon.ElasticPool.Stress` (projeto separado, fora da CI default), `Oragon.ElasticPool.Benchmarks` (Phase 4)
 - `PublicAPI.Shipped.txt` / `PublicAPI.Unshipped.txt` por projeto (cada `.csproj` mantém os seus)
 - `README.md` único na raiz do repositório com seções por pacote
 
@@ -27,13 +27,13 @@ Entregar um pool de tamanho fixo (`MinSize == MaxSize == InitialSize`) totalment
 
 ### Test & Tooling Infrastructure
 - Test framework: **xUnit v3 + Microsoft.Testing.Platform + Awesome Assertions + NSubstitute** (Awesome Assertions = fork OSS recente do FluentAssertions com mesma sintaxe, mantido após mudança de licença Xceed)
-- Stress tests: projeto separado `Oragon.ElasticPool.Core.Stress` excluído da CI default (job dedicado nightly em Phase 4)
+- Stress tests: projeto separado `Oragon.ElasticPool.Stress` excluído da CI default (job dedicado nightly em Phase 4)
 - Time mocking: `Microsoft.Extensions.TimeProvider.Testing.FakeTimeProvider` para todo teste sensível a tempo (per PITFALLS.md recommendation)
 - Code coverage: gate de **90% no Core** na CI; sem gate em adapters/samples (apenas relatório); ferramentas: coverlet + ReportGenerator → Codecov
 
 ### Claude's Discretion
 - Escolha exata de quais counters expor em TELEM-01 (mínimo: `pool.acquire.count`, `pool.factory.failures`; resto fica para Phase 2 quando grow/shrink/health surgem)
-- Política de naming interno (private/internal classes) e estrutura de namespaces dentro de `Oragon.ElasticPool.Core`
+- Política de naming interno (private/internal classes) e estrutura de namespaces dentro de `Oragon.ElasticPool`
 - Detalhes do `PoolState` enum (incluir `Quarantined`? por ora apenas `Healthy`/`Unhealthy`, com espaço para extensão em v2)
 - Forma exata da exception `PoolExhaustedException` (mensagem, properties como `MaxSize`, `WaitTime`)
 - Estratégia exata de double-dispose detection (Interlocked flag, Disposed property pública?)

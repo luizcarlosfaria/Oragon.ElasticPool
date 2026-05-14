@@ -55,7 +55,7 @@ progress:
 ### Key Decisions (from PROJECT.md)
 
 - Multi-target `net10.0;net9.0;net8.0` — covers active LTS + STS, zero polyfills required
-- Two NuGet packages: `Oragon.ElasticPool.Core` + `Oragon.ElasticPool.RabbitMQ`
+- Two NuGet packages: `Oragon.ElasticPool` + `Oragon.ElasticPool.RabbitMQ`
 - Five-stage lifecycle hooks: `Factory` / `BeforeUse` / `Check` / `AfterUse` / `Release`
 - Built-in telemetry trio: `Meter` + `ActivitySource` + `ILogger<T>` (OTel-native)
 - Pluggable `IItemFailurePolicy<T>` (vs. fixed strategy)
@@ -79,7 +79,7 @@ These cannot be changed without breaking API:
 
 - [Phase 1 Plan 01]: Repository scaffolding green-baseline (CPM, SourceLink deterministic, PublicApiAnalyzers wired, xUnit v3+MTP test/stress projects, multi-TFM CI workflow)
 - [Phase 1 Plan 02]: 12 public types + sealed ElasticPool<T> engine (Channel direct-handoff waiter, Interlocked counter rollback, dual IDisposable+IAsyncDisposable drain, eager warm-up via ReadyAsync(), IMeterFactory telemetry with Meter fallback, source-gen [LoggerMessage] logging) + DI extension `services.AddElasticPool<T>(name, configure)` with named-options + keyed singleton + non-keyed default-name fallback. PublicAPI.Unshipped.txt now has 75 declarations; full solution build green on net8/9/10.
-- [Phase 1 Plan 03]: 70 unit tests across 13 files + 1 stress test (`MaxSize=1` 256-thread × 40-iter ping-pong, ~300 ms runtime) + CI coverage gate at 90 % line coverage on `Oragon.ElasticPool.Core` (achieved 92.8 %). Coverage gate uses coverlet.console wrapped over `dotnet <testdll>` (MTP runner does not honor `dotnet test --collect:"XPlat Code Coverage"` — Plan-sanctioned alternative path). xUnit1051 NoWarn at test-csproj level. Stress project remains EXCLUDED from CI default per CONTEXT.md.
+- [Phase 1 Plan 03]: 70 unit tests across 13 files + 1 stress test (`MaxSize=1` 256-thread × 40-iter ping-pong, ~300 ms runtime) + CI coverage gate at 90 % line coverage on `Oragon.ElasticPool` (achieved 92.8 %). Coverage gate uses coverlet.console wrapped over `dotnet <testdll>` (MTP runner does not honor `dotnet test --collect:"XPlat Code Coverage"` — Plan-sanctioned alternative path). xUnit1051 NoWarn at test-csproj level. Stress project remains EXCLUDED from CI default per CONTEXT.md.
 - [Phase ?]: Pass waiters+1 (caller as if parked) to PressureSampler.Evaluate to preserve Phase 1 grow-on-demand with default GrowOnWaiterCount=1
 - [Phase ?]: WaitBehavior.Throw fires when pressure says no-grow even below MaxSize; intentional Phase 2 elastic contract change
 - [Phase ?]: Sweep span uses HasListeners() guard explicitly; per-item HealthCheck spans use cheap StartActivity null-return path

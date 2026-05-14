@@ -11,15 +11,15 @@ requires:
 provides:
   - ".github/workflows/build.yml: matrix CI now covers Core.Tests + RabbitMQ.Tests + RabbitMQ.IntegrationTests across {net8.0,net9.0,net10.0}"
   - ".github/workflows/release.yml: tag-driven (v*) NuGet.org publish pipeline with .snupkg companion verification"
-  - "src/Oragon.ElasticPool.Core/PublicAPI.Shipped.txt: frozen v1.0 surface (102 lines)"
+  - "src/Oragon.ElasticPool/PublicAPI.Shipped.txt: frozen v1.0 surface (102 lines)"
   - "src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Shipped.txt: frozen v1.0 surface (39 lines)"
   - "Both PublicAPI.Unshipped.txt: canonical empty baseline (#nullable enable only)"
   - "CHANGELOG.md: v1.0.0 date finalized to 2026-05-03"
 affects:
   - ".github/workflows/build.yml (+17 lines)"
   - ".github/workflows/release.yml (NEW, 162 lines)"
-  - "src/Oragon.ElasticPool.Core/PublicAPI.Shipped.txt (+101 lines)"
-  - "src/Oragon.ElasticPool.Core/PublicAPI.Unshipped.txt (-101 lines)"
+  - "src/Oragon.ElasticPool/PublicAPI.Shipped.txt (+101 lines)"
+  - "src/Oragon.ElasticPool/PublicAPI.Unshipped.txt (-101 lines)"
   - "src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Shipped.txt (+39 lines)"
   - "src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Unshipped.txt (-38 lines)"
   - "CHANGELOG.md (1 line — date)"
@@ -36,8 +36,8 @@ key-files:
     - ".planning/phases/04-polish-v1-release/deferred-items.md (README quickstart drift carry-forward)"
   modified:
     - ".github/workflows/build.yml (+17)"
-    - "src/Oragon.ElasticPool.Core/PublicAPI.Shipped.txt (1 -> 102 lines)"
-    - "src/Oragon.ElasticPool.Core/PublicAPI.Unshipped.txt (102 -> 1 line)"
+    - "src/Oragon.ElasticPool/PublicAPI.Shipped.txt (1 -> 102 lines)"
+    - "src/Oragon.ElasticPool/PublicAPI.Unshipped.txt (102 -> 1 line)"
     - "src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Shipped.txt (0 -> 39 lines)"
     - "src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Unshipped.txt (39 -> 1 line)"
     - "CHANGELOG.md (date finalize)"
@@ -103,7 +103,7 @@ contents: read                            # narrow permissions
 fetch-depth: 0                            # MinVer needs full history
 NUGET_API_KEY referenced 2x               # in env: of push step
 .snupkg referenced 7x                     # companion verification + push glob
-dotnet pack src/Oragon.ElasticPool.Core   # explicit per-project pack
+dotnet pack src/Oragon.ElasticPool   # explicit per-project pack
 dotnet pack src/Oragon.ElasticPool.RabbitMQ
 ```
 
@@ -149,8 +149,8 @@ remaining anywhere in the file.
 
 | Artifact | Bytes |
 |----------|-------|
-| `Oragon.ElasticPool.Core.0.0.0-alpha.0.84.nupkg` | 100,838 |
-| `Oragon.ElasticPool.Core.0.0.0-alpha.0.84.snupkg` | 53,932 |
+| `Oragon.ElasticPool.0.0.0-alpha.0.84.nupkg` | 100,838 |
+| `Oragon.ElasticPool.0.0.0-alpha.0.84.snupkg` | 53,932 |
 | `Oragon.ElasticPool.RabbitMQ.0.0.0-alpha.0.84.nupkg` | 44,000 |
 | `Oragon.ElasticPool.RabbitMQ.0.0.0-alpha.0.84.snupkg` | 37,050 |
 
@@ -287,7 +287,7 @@ register (T-04-06..T-04-13 in PLAN.md) is fully addressed by the implementation:
    CONTEXT.md pre-release strategy. If no blocker surfaces:
 
 7. **Push final tag**: `git tag v1.0.0 && git push origin v1.0.0`. The same
-   `release.yml` workflow produces and publishes `Oragon.ElasticPool.Core.1.0.0.nupkg`
+   `release.yml` workflow produces and publishes `Oragon.ElasticPool.1.0.0.nupkg`
    + `.snupkg` and `Oragon.ElasticPool.RabbitMQ.1.0.0.nupkg` + `.snupkg`.
 
 These steps are OUTSIDE the GSD execution surface — only the maintainer can perform them.
@@ -312,8 +312,8 @@ fixed pre-tag.
 Files claimed:
 - `.github/workflows/release.yml` — FOUND (162 lines) ✓
 - `.github/workflows/build.yml` — MODIFIED (+17 lines, 11 steps total) ✓
-- `src/Oragon.ElasticPool.Core/PublicAPI.Shipped.txt` — 102 lines ✓
-- `src/Oragon.ElasticPool.Core/PublicAPI.Unshipped.txt` — 1 line baseline ✓
+- `src/Oragon.ElasticPool/PublicAPI.Shipped.txt` — 102 lines ✓
+- `src/Oragon.ElasticPool/PublicAPI.Unshipped.txt` — 1 line baseline ✓
 - `src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Shipped.txt` — 39 lines ✓
 - `src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Unshipped.txt` — 1 line baseline ✓
 - `CHANGELOG.md` — `## [1.0.0] - 2026-05-03` ✓ (no `2026-05-XX` placeholder remains)
@@ -326,6 +326,6 @@ Commits claimed:
 
 Build/pack outputs (ephemeral):
 - `/tmp/freeze-build.log`: `0 errors, 0 warnings, 0 RS0016, 0 RS0017` ✓
-- `/tmp/local-nuget-feed/Oragon.ElasticPool.Core.0.0.0-alpha.0.84.{nupkg,snupkg}` ✓
+- `/tmp/local-nuget-feed/Oragon.ElasticPool.0.0.0-alpha.0.84.{nupkg,snupkg}` ✓
 - `/tmp/local-nuget-feed/Oragon.ElasticPool.RabbitMQ.0.0.0-alpha.0.84.{nupkg,snupkg}` ✓
 - `/tmp/consumer-smoke/PoolDemo`: builds + runs end-to-end against local feed ✓

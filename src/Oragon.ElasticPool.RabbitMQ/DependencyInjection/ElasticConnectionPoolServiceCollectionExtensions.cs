@@ -1,8 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Oragon.ElasticPool.Core.Abstractions;
-using Oragon.ElasticPool.Core.DependencyInjection;
+using Oragon.ElasticPool.Abstractions;
+using Oragon.ElasticPool.DependencyInjection;
 using Oragon.ElasticPool.RabbitMQ.Builder;
 using Oragon.ElasticPool.RabbitMQ.Internals;
 using RabbitMQ.Client;
@@ -18,7 +18,7 @@ public static class ElasticConnectionPoolServiceCollectionExtensions
     /// Registers an <see cref="IElasticPool{IConnection}"/> in DI under the given
     /// <paramref name="name"/>. The pool produces and recycles RabbitMQ
     /// <see cref="IConnection"/> instances under load using
-    /// <see cref="Oragon.ElasticPool.Core"/>'s elastic engine.
+    /// <see cref="Oragon.ElasticPool"/>'s elastic engine.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <param name="name">

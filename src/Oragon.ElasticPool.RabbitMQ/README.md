@@ -3,7 +3,7 @@
 [![NuGet](https://img.shields.io/nuget/v/Oragon.ElasticPool.RabbitMQ.svg)](https://www.nuget.org/packages/Oragon.ElasticPool.RabbitMQ)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/oragon/Oragon.ElasticPool/blob/main/LICENSE)
 
-> RabbitMQ.Client v7+ adapter for [`Oragon.ElasticPool.Core`](https://www.nuget.org/packages/Oragon.ElasticPool.Core).
+> RabbitMQ.Client v7+ adapter for [`Oragon.ElasticPool`](https://www.nuget.org/packages/Oragon.ElasticPool).
 > Layered, lifecycle-managed pools for `IConnection` and `IChannel`. Async-first.
 
 ## Install
@@ -12,7 +12,7 @@
 dotnet add package Oragon.ElasticPool.RabbitMQ
 ```
 
-(`Oragon.ElasticPool.Core` is pulled transitively.)
+(`Oragon.ElasticPool` is pulled transitively.)
 
 ## What it gives you
 
@@ -25,7 +25,7 @@ dotnet add package Oragon.ElasticPool.RabbitMQ
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Oragon.ElasticPool.Core.Abstractions;
+using Oragon.ElasticPool.Abstractions;
 using Oragon.ElasticPool.RabbitMQ.DependencyInjection;
 using RabbitMQ.Client;
 
@@ -119,7 +119,7 @@ This is intentional. To suppress, set `AutomaticRecoveryEnabled = false` yoursel
 
 Inherits the Core `Meter` and `ActivitySource` (both named `"Oragon.ElasticPool"`).
 The connection and channel pools are independently named (`pool.name` tag) so you
-can chart them separately. See [the Core README](https://www.nuget.org/packages/Oragon.ElasticPool.Core)
+can chart them separately. See [the Core README](https://www.nuget.org/packages/Oragon.ElasticPool)
 for the full instrument inventory.
 
 ## Sample: end-to-end bursty publisher

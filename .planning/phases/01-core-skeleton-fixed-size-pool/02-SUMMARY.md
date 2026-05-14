@@ -6,7 +6,7 @@ tags: [core-api, engine, di, telemetry, source-gen-logging, public-api-analyzers
 requires:
   - Plan 01 scaffolding (Directory.Build.props, Directory.Packages.props, Core.csproj skeleton, PublicApiAnalyzers wired with empty baselines, multi-TFM net8/9/10)
 provides:
-  - 12 public types under Oragon.ElasticPool.Core (IElasticPool<T>, IPoolItem<T>, IItemFailurePolicy<T>, FactoryDelegate<T>/BeforeUseDelegate<T>/CheckDelegate<T>/AfterUseDelegate<T>/ReleaseDelegate<T>, ElasticPoolBuilder<T>, ElasticPoolOptions<T>, ElasticObjectPoolFactory, WaitBehavior, PoolState, FailureKind, FailureDecision, DiscardAndReplaceFailurePolicy<T>, PoolExhaustedException, ServiceCollectionExtensions.AddElasticPool<T>)
+  - 12 public types under Oragon.ElasticPool (IElasticPool<T>, IPoolItem<T>, IItemFailurePolicy<T>, FactoryDelegate<T>/BeforeUseDelegate<T>/CheckDelegate<T>/AfterUseDelegate<T>/ReleaseDelegate<T>, ElasticPoolBuilder<T>, ElasticPoolOptions<T>, ElasticObjectPoolFactory, WaitBehavior, PoolState, FailureKind, FailureDecision, DiscardAndReplaceFailurePolicy<T>, PoolExhaustedException, ServiceCollectionExtensions.AddElasticPool<T>)
   - sealed internal ElasticPool<T> engine implementing direct-handoff Channel<TaskCompletionSource<PoolEntry<T>>> waiter, Interlocked counter rollback, dual IDisposable+IAsyncDisposable with drain semantics, eager warm-up via ReadyAsync()
   - DI extension `services.AddElasticPool<T>(name, configure)` registering keyed singletons + non-keyed fallback for the default (string.Empty) name
   - Telemetry: Meter "Oragon.ElasticPool" via IMeterFactory (with `new Meter` fallback) + counters `pool.acquire.count` & `pool.factory.failures` tagged by `pool.name`
@@ -32,29 +32,29 @@ tech-stack:
     - LoggerMessage source-gen partial class for allocation-free structured logging
 key-files:
   created:
-    - src/Oragon.ElasticPool.Core/Abstractions/IElasticPool.cs
-    - src/Oragon.ElasticPool.Core/Abstractions/IPoolItem.cs
-    - src/Oragon.ElasticPool.Core/Abstractions/IItemFailurePolicy.cs
-    - src/Oragon.ElasticPool.Core/Abstractions/PoolState.cs
-    - src/Oragon.ElasticPool.Core/Abstractions/FailureKind.cs
-    - src/Oragon.ElasticPool.Core/Abstractions/FailureDecision.cs
-    - src/Oragon.ElasticPool.Core/Hooks/HookDelegates.cs
-    - src/Oragon.ElasticPool.Core/Builder/WaitBehavior.cs
-    - src/Oragon.ElasticPool.Core/Builder/ElasticPoolOptions.cs
-    - src/Oragon.ElasticPool.Core/Builder/ElasticPoolBuilder.cs
-    - src/Oragon.ElasticPool.Core/Builder/ElasticObjectPoolFactory.cs
-    - src/Oragon.ElasticPool.Core/Policies/DiscardAndReplaceFailurePolicy.cs
-    - src/Oragon.ElasticPool.Core/Exceptions/PoolExhaustedException.cs
-    - src/Oragon.ElasticPool.Core/Internals/PoolLifecycle.cs
-    - src/Oragon.ElasticPool.Core/Internals/PoolEntry.cs
-    - src/Oragon.ElasticPool.Core/Internals/PoolItem.cs
-    - src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs
-    - src/Oragon.ElasticPool.Core/Telemetry/PoolMeterNames.cs
-    - src/Oragon.ElasticPool.Core/Telemetry/TelemetryEmitter.cs
-    - src/Oragon.ElasticPool.Core/Telemetry/PoolDiagnosticsLog.cs
-    - src/Oragon.ElasticPool.Core/DependencyInjection/ServiceCollectionExtensions.cs
+    - src/Oragon.ElasticPool/Abstractions/IElasticPool.cs
+    - src/Oragon.ElasticPool/Abstractions/IPoolItem.cs
+    - src/Oragon.ElasticPool/Abstractions/IItemFailurePolicy.cs
+    - src/Oragon.ElasticPool/Abstractions/PoolState.cs
+    - src/Oragon.ElasticPool/Abstractions/FailureKind.cs
+    - src/Oragon.ElasticPool/Abstractions/FailureDecision.cs
+    - src/Oragon.ElasticPool/Hooks/HookDelegates.cs
+    - src/Oragon.ElasticPool/Builder/WaitBehavior.cs
+    - src/Oragon.ElasticPool/Builder/ElasticPoolOptions.cs
+    - src/Oragon.ElasticPool/Builder/ElasticPoolBuilder.cs
+    - src/Oragon.ElasticPool/Builder/ElasticObjectPoolFactory.cs
+    - src/Oragon.ElasticPool/Policies/DiscardAndReplaceFailurePolicy.cs
+    - src/Oragon.ElasticPool/Exceptions/PoolExhaustedException.cs
+    - src/Oragon.ElasticPool/Internals/PoolLifecycle.cs
+    - src/Oragon.ElasticPool/Internals/PoolEntry.cs
+    - src/Oragon.ElasticPool/Internals/PoolItem.cs
+    - src/Oragon.ElasticPool/Internals/ElasticPool.cs
+    - src/Oragon.ElasticPool/Telemetry/PoolMeterNames.cs
+    - src/Oragon.ElasticPool/Telemetry/TelemetryEmitter.cs
+    - src/Oragon.ElasticPool/Telemetry/PoolDiagnosticsLog.cs
+    - src/Oragon.ElasticPool/DependencyInjection/ServiceCollectionExtensions.cs
   modified:
-    - src/Oragon.ElasticPool.Core/PublicAPI.Unshipped.txt
+    - src/Oragon.ElasticPool/PublicAPI.Unshipped.txt
 decisions:
   - Sync Acquire() throws PoolExhaustedException immediately when no idle item exists (never blocks). Locked by CONTEXT.md decision matrix; aligns with RESEARCH.md Open Question 3 recommendation.
   - WaitBehavior.Wait is the AcquireAsync default; WaitBehavior.Throw is opt-in via .WhenExhausted(WaitBehavior.Throw).
@@ -78,7 +78,7 @@ metrics:
 
 # Phase 1 Plan 02: Core Skeleton — Public API + Sealed Engine Summary
 
-**One-liner:** Implemented the entire Phase 1 surface for `Oragon.ElasticPool.Core` — 12 public types (interfaces, hook delegates, builder, options, default failure policy, exception, enums, DI extension) plus the sealed internal `ElasticPool<T>` engine using `Channel<TaskCompletionSource<PoolEntry<T>>>` direct-handoff waiter, Interlocked counter rollback, dual `IDisposable`+`IAsyncDisposable` drain, eager warm-up via `ReadyAsync()`, telemetry through `IMeterFactory` (with `new Meter` fallback), source-gen logging via `[LoggerMessage]`, and a DI extension that registers keyed singletons with named-options + non-keyed fallback for the default name. `dotnet build Oragon.ElasticPool.sln -c Release` is fully green with `TreatWarningsAsErrors=true`; `dotnet test` runs the Plan 01 placeholder smoke test on net8/net9/net10 — all 3 pass.
+**One-liner:** Implemented the entire Phase 1 surface for `Oragon.ElasticPool` — 12 public types (interfaces, hook delegates, builder, options, default failure policy, exception, enums, DI extension) plus the sealed internal `ElasticPool<T>` engine using `Channel<TaskCompletionSource<PoolEntry<T>>>` direct-handoff waiter, Interlocked counter rollback, dual `IDisposable`+`IAsyncDisposable` drain, eager warm-up via `ReadyAsync()`, telemetry through `IMeterFactory` (with `new Meter` fallback), source-gen logging via `[LoggerMessage]`, and a DI extension that registers keyed singletons with named-options + non-keyed fallback for the default name. `dotnet build Oragon.ElasticPool.sln -c Release` is fully green with `TreatWarningsAsErrors=true`; `dotnet test` runs the Plan 01 placeholder smoke test on net8/net9/net10 — all 3 pass.
 
 ## What Was Built
 
@@ -131,7 +131,7 @@ dotnet build Oragon.ElasticPool.sln -c Release
    → 4 projects, 0 errors, 6 warnings (all SourceLink "no remote" — expected locally;
      disappear in CI per Plan 01 SUMMARY)
 
-dotnet test --project tests/Oragon.ElasticPool.Core.Tests --no-build -c Release
+dotnet test --project tests/Oragon.ElasticPool.Tests --no-build -c Release
    → total: 3, failed: 0, succeeded: 3, skipped: 0
    → (1 placeholder smoke test × 3 TFMs)
 ```
@@ -153,8 +153,8 @@ Spot-checks confirmed:
 **1. [Rule 1 — Bug] PublicAPI.Unshipped.txt extra declaration `ElasticPoolOptions<T>.ElasticPoolOptions() -> void`**
 - **Found during:** Task 3 build with PublicApiAnalyzers.
 - **Issue:** The plan's expected-entries snippet listed an explicit parameterless constructor entry for the sealed record. With C# 12 `sealed record ElasticPoolOptions<T>` defined as `{ }` body (no positional record parameters; only `init`-style properties), the analyzer does NOT surface a separate "implicit constructor" symbol that needs to be declared. Including the line caused `RS0017: Symbol ... is part of the declared API, but is either not public or could not be found` (× 3 TFMs).
-- **Fix:** Removed the line `Oragon.ElasticPool.Core.Builder.ElasticPoolOptions<T>.ElasticPoolOptions() -> void` from PublicAPI.Unshipped.txt. All other 75 entries match what the analyzer expects.
-- **Files modified:** `src/Oragon.ElasticPool.Core/PublicAPI.Unshipped.txt`.
+- **Fix:** Removed the line `Oragon.ElasticPool.Builder.ElasticPoolOptions<T>.ElasticPoolOptions() -> void` from PublicAPI.Unshipped.txt. All other 75 entries match what the analyzer expects.
+- **Files modified:** `src/Oragon.ElasticPool/PublicAPI.Unshipped.txt`.
 - **Commit:** db7ae8a (squashed into Task 3 since fix happened during the same build cycle).
 
 ### Simplification taken (preferred path documented in plan)
@@ -235,7 +235,7 @@ If a future Phase 2 / Phase 4 requires guaranteed host integration, we can switc
 
 **Every must_have truth in this plan's frontmatter is testable.** Plan 03 must convert each of those 16 truths into at least one xUnit test. The non-negotiable additions are:
 
-1. **MaxSize=1 ping-pong stress test in `Oragon.ElasticPool.Core.Stress`** (success criterion #2 from Phase 1 ROADMAP). This is the test-anchor for waiter-queue + counter rollback + cancellation correctness.
+1. **MaxSize=1 ping-pong stress test in `Oragon.ElasticPool.Stress`** (success criterion #2 from Phase 1 ROADMAP). This is the test-anchor for waiter-queue + counter rollback + cancellation correctness.
 2. **MetricCollector counter assertions** for `pool.acquire.count` and `pool.factory.failures`, tagged with `pool.name`.
 3. **Coverage gate of 90% on Core in CI.** Tooling: coverlet.collector + ReportGenerator → Codecov per CONTEXT.md.
 4. **Time-sensitive tests must use `FakeTimeProvider`** (already pinned in `Directory.Packages.props` at 10.5.0 from Plan 01) — pass it into the builder via `.WithTimeProvider(fakeTimeProvider)`.
@@ -264,5 +264,5 @@ If a future Phase 2 / Phase 4 requires guaranteed host integration, we can switc
 - `PublicAPI.Unshipped.txt` modified with 75 new declarations (line count verified via `wc -l`).
 - All 3 task commits exist in `git log` (`3c0e25f`, `fdb29d9`, `db7ae8a`).
 - `dotnet build Oragon.ElasticPool.sln -c Release` exits 0; only the 6 SourceLink "no remote" warnings present (out-of-scope per Plan 01 SUMMARY).
-- `dotnet test --project tests/Oragon.ElasticPool.Core.Tests --no-build -c Release` → 3 passed, 0 failed (Plan 01 placeholder smoke test still green across net8/net9/net10).
+- `dotnet test --project tests/Oragon.ElasticPool.Tests --no-build -c Release` → 3 passed, 0 failed (Plan 01 placeholder smoke test still green across net8/net9/net10).
 - PublicApiAnalyzers reports neither RS0016 nor RS0017 — surface and baseline are in lock-step.

@@ -49,7 +49,7 @@ Construir o pacote `Oragon.ElasticPool.RabbitMQ` (segundo NuGet) que adapta o Co
 ## Existing Code Insights
 
 ### Reusable Assets (from Phases 1+2)
-- `Oragon.ElasticPool.Core` (já publicado em local feed) — todo o engine com elasticidade, healthcheck, telemetria
+- `Oragon.ElasticPool` (já publicado em local feed) — todo o engine com elasticidade, healthcheck, telemetria
 - Builder fluent + DI extension `services.AddElasticPool<T>(name, configure)` — adapter constrói em cima
 - `IItemFailurePolicy<T>` + `DiscardAndReplaceFailurePolicy<T>` — funcionam para `IConnection` e `IChannel`
 - `Telemetry/TelemetryEmitter` exporta Meter "Oragon.ElasticPool" — adapter herda automaticamente; pool.name tag distingue connection vs channel pool ("rabbitmq-conn-default", "rabbitmq-channel-default")

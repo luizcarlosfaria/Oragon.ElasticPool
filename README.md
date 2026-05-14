@@ -2,11 +2,42 @@
 
 > Generic, elastic, self-healing object pool for .NET — with built-in OpenTelemetry.
 
-[![build](https://github.com/oragon/Oragon.ElasticPool/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/oragon/Oragon.ElasticPool/actions/workflows/build.yml)
-[![NuGet Core](https://img.shields.io/nuget/v/Oragon.ElasticPool.Core.svg?label=Core)](https://www.nuget.org/packages/Oragon.ElasticPool.Core)
-[![NuGet RabbitMQ](https://img.shields.io/nuget/v/Oragon.ElasticPool.RabbitMQ.svg?label=RabbitMQ)](https://www.nuget.org/packages/Oragon.ElasticPool.RabbitMQ)
-[![Downloads](https://img.shields.io/nuget/dt/Oragon.ElasticPool.Core.svg)](https://www.nuget.org/packages/Oragon.ElasticPool.Core)
+---
+
+**Quality**
+
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Oragon.ElasticPool&metric=alert_status)](https://sonarcloud.io/summary/overall?id=Oragon.ElasticPool)
+[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=Oragon.ElasticPool&metric=bugs)](https://sonarcloud.io/summary/overall?id=Oragon.ElasticPool)
+[![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=Oragon.ElasticPool&metric=code_smells)](https://sonarcloud.io/summary/overall?id=Oragon.ElasticPool)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=Oragon.ElasticPool&metric=coverage)](https://sonarcloud.io/summary/overall?id=Oragon.ElasticPool)
+[![Duplicated Lines (%)](https://sonarcloud.io/api/project_badges/measure?project=Oragon.ElasticPool&metric=duplicated_lines_density)](https://sonarcloud.io/summary/overall?id=Oragon.ElasticPool)
+[![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=Oragon.ElasticPool&metric=reliability_rating)](https://sonarcloud.io/summary/overall?id=Oragon.ElasticPool)
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=Oragon.ElasticPool&metric=security_rating)](https://sonarcloud.io/summary/overall?id=Oragon.ElasticPool)
+[![Technical Debt](https://sonarcloud.io/api/project_badges/measure?project=Oragon.ElasticPool&metric=sqale_index)](https://sonarcloud.io/summary/overall?id=Oragon.ElasticPool)
+[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=Oragon.ElasticPool&metric=sqale_rating)](https://sonarcloud.io/summary/overall?id=Oragon.ElasticPool)
+[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=Oragon.ElasticPool&metric=vulnerabilities)](https://sonarcloud.io/summary/overall?id=Oragon.ElasticPool)
+
+**Releases**
+
+[![NuGet Version](https://img.shields.io/nuget/v/Oragon.ElasticPool?logo=nuget&label=nuget)](https://www.nuget.org/packages?q=Oragon.ElasticPool&includeComputedFrameworks=true&prerel=true&sortby=created-desc)
+[![NuGet Downloads](https://img.shields.io/nuget/dt/Oragon.ElasticPool)](https://www.nuget.org/packages/Oragon.ElasticPool/)
+[![GitHub Tag](https://img.shields.io/github/v/tag/luizcarlosfaria/Oragon.ElasticPool)](https://github.com/luizcarlosfaria/Oragon.ElasticPool/tags)
+[![GitHub Release](https://img.shields.io/github/v/release/luizcarlosfaria/Oragon.ElasticPool)](https://github.com/luizcarlosfaria/Oragon.ElasticPool/releases)
+[![MyGet Version](https://img.shields.io/myget/oragon/vpre/Oragon.ElasticPool?logo=myget&label=myget)](https://www.myget.org/feed/Packages/oragon)
+
+**Project**
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![GitHub Repo stars](https://img.shields.io/github/stars/luizcarlosfaria/Oragon.ElasticPool)](https://github.com/luizcarlosfaria/Oragon.ElasticPool)
+[![GitHub last commit](https://img.shields.io/github/last-commit/luizcarlosfaria/Oragon.ElasticPool)](https://github.com/luizcarlosfaria/Oragon.ElasticPool/commits/)
+[![Roadmap](https://img.shields.io/badge/Roadmap-%23ff6600?logo=github&logoColor=%23000000&label=GitHub&labelColor=%23f0f0f0)](https://github.com/users/luizcarlosfaria/projects/3/views/3)
+![.NET 8](https://img.shields.io/badge/.NET_8-5C2D91?style=flat&logo=dotnet&label=target)
+![.NET 9](https://img.shields.io/badge/.NET_9-5C2D91?style=flat&logo=dotnet&label=target)
+![.NET 10](https://img.shields.io/badge/.NET_10-5C2D91?style=flat&logo=dotnet&label=target)
+
+
+
+---
 
 ## What this is
 
@@ -19,7 +50,7 @@ replaced), and **fluent DX** (async-first, DI-first, builder pattern). Multi-tar
 
 | Package | NuGet | Purpose |
 |---------|-------|---------|
-| [`Oragon.ElasticPool.Core`](src/Oragon.ElasticPool.Core/README.md) | [![nuget](https://img.shields.io/nuget/v/Oragon.ElasticPool.Core.svg)](https://www.nuget.org/packages/Oragon.ElasticPool.Core) | Generic pool engine, hooks, telemetry, DI |
+| [`Oragon.ElasticPool`](src/Oragon.ElasticPool/README.md) | [![nuget](https://img.shields.io/nuget/v/Oragon.ElasticPool.svg)](https://www.nuget.org/packages/Oragon.ElasticPool) | Generic pool engine, hooks, telemetry, DI |
 | [`Oragon.ElasticPool.RabbitMQ`](src/Oragon.ElasticPool.RabbitMQ/README.md) | [![nuget](https://img.shields.io/nuget/v/Oragon.ElasticPool.RabbitMQ.svg)](https://www.nuget.org/packages/Oragon.ElasticPool.RabbitMQ) | `IConnection` + layered `IChannel` pools for RabbitMQ.Client v7+ |
 
 ## 30-second quickstart
@@ -34,8 +65,8 @@ across hooks in the same pool.
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Oragon.ElasticPool.Core.Abstractions;
-using Oragon.ElasticPool.Core.DependencyInjection;
+using Oragon.ElasticPool.Abstractions;
+using Oragon.ElasticPool.DependencyInjection;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -76,7 +107,7 @@ Sync and async overloads coexist — e.g., a sync `BeforeUse` paired with an asy
 
 ## Why not `Microsoft.Extensions.ObjectPool`?
 
-| Feature                            | `Microsoft.Extensions.ObjectPool` | `Oragon.ElasticPool.Core` |
+| Feature                            | `Microsoft.Extensions.ObjectPool` | `Oragon.ElasticPool` |
 |------------------------------------|-----------------------------------|----------------------------|
 | `Min` / `Max` bounds               | ❌ (only `MaximumRetained`)        | ✅                          |
 | Elastic grow under pressure        | ❌                                 | ✅ (composite signal: waiters + utilization + p95 wait) |
@@ -90,7 +121,7 @@ Sync and async overloads coexist — e.g., a sync `BeforeUse` paired with an asy
 | Layered pools (e.g., channel→conn) | N/A                               | ✅ (see `Oragon.ElasticPool.RabbitMQ`) |
 
 `Microsoft.Extensions.ObjectPool` is great for cheap, stateless, allocation-only
-pooling (e.g., `StringBuilder`). `Oragon.ElasticPool.Core` is for expensive,
+pooling (e.g., `StringBuilder`). `Oragon.ElasticPool` is for expensive,
 stateful, lifecycle-sensitive resources where elasticity and health matter.
 
 ## Elasticity benchmark
@@ -101,7 +132,7 @@ elasticity visible, not just raw throughput. Each instance costs 10 MB, takes
 `1 -> 10 -> 100 -> 1k -> 10k -> 20k -> 30k -> 20k -> 10k -> 1k -> 100 -> 10 -> 1 req/s`.
 
 ```bash
-dotnet run --project tests/Oragon.ElasticPool.Core.Benchmarks -c Release -f net10.0 -- elasticity --profile readme
+dotnet run --project tests/Oragon.ElasticPool.Benchmarks -c Release -f net10.0 -- elasticity --profile readme
 ```
 
 Latest local run with `MinSize=0` and `MaxSize=256`:
@@ -166,7 +197,7 @@ and channel pool state at 10 Hz in a Web UI.
 
 ## Documentation
 
-- Core API + telemetry: [`src/Oragon.ElasticPool.Core/README.md`](src/Oragon.ElasticPool.Core/README.md)
+- Core API + telemetry: [`src/Oragon.ElasticPool/README.md`](src/Oragon.ElasticPool/README.md)
 - RabbitMQ adapter (layered IConnection+IChannel): [`src/Oragon.ElasticPool.RabbitMQ/README.md`](src/Oragon.ElasticPool.RabbitMQ/README.md)
 - Sample bursty publisher: [`samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/README.md`](samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher/README.md)
 - Sample live dashboard: [`samples/Oragon.ElasticPool.RabbitMQ.Sample.LiveDashboard/README.md`](samples/Oragon.ElasticPool.RabbitMQ.Sample.LiveDashboard/README.md)
@@ -182,7 +213,6 @@ version bumps. Public surface enforced via
 Versions are produced by [MinVer](https://github.com/adamralph/minver) from git
 tags: pushing `v1.0.0` produces `1.0.0.nupkg`; commits between tags receive
 prerelease versions like `1.0.1-alpha.0.5+abc1234`.
-
 ## Contributing
 
 Issues and PRs welcome at https://github.com/oragon/Oragon.ElasticPool. Run

@@ -48,7 +48,7 @@ must_haves:
       contains: "RabbitMQ.Client"
   key_links:
     - from: "ElasticConnectionPoolServiceCollectionExtensions.AddElasticConnectionPool"
-      to: "Oragon.ElasticPool.Core ServiceCollectionExtensions.AddElasticPool<IConnection>"
+      to: "Oragon.ElasticPool ServiceCollectionExtensions.AddElasticPool<IConnection>"
       via: "delegated registration with builder.Factory/.BeforeUse/.Check/.Release"
       pattern: "AddElasticPool<IConnection>"
     - from: "Factory hook"
@@ -87,14 +87,14 @@ Output:
 @.planning/phases/03-rabbitmq-adapter/03-CONTEXT.md
 @.planning/phases/03-rabbitmq-adapter/03-RESEARCH.md
 @.planning/phases/02-elasticity-health/03-SUMMARY.md
-@src/Oragon.ElasticPool.Core/Abstractions/IElasticPool.cs
-@src/Oragon.ElasticPool.Core/Abstractions/IPoolItem.cs
-@src/Oragon.ElasticPool.Core/Abstractions/PoolState.cs
-@src/Oragon.ElasticPool.Core/Hooks/HookDelegates.cs
-@src/Oragon.ElasticPool.Core/Builder/ElasticPoolBuilder.cs
-@src/Oragon.ElasticPool.Core/Builder/ElasticObjectPoolFactory.cs
-@src/Oragon.ElasticPool.Core/DependencyInjection/ServiceCollectionExtensions.cs
-@src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj
+@src/Oragon.ElasticPool/Abstractions/IElasticPool.cs
+@src/Oragon.ElasticPool/Abstractions/IPoolItem.cs
+@src/Oragon.ElasticPool/Abstractions/PoolState.cs
+@src/Oragon.ElasticPool/Hooks/HookDelegates.cs
+@src/Oragon.ElasticPool/Builder/ElasticPoolBuilder.cs
+@src/Oragon.ElasticPool/Builder/ElasticObjectPoolFactory.cs
+@src/Oragon.ElasticPool/DependencyInjection/ServiceCollectionExtensions.cs
+@src/Oragon.ElasticPool/Oragon.ElasticPool.csproj
 @Directory.Build.props
 @Directory.Packages.props
 @Oragon.ElasticPool.sln
@@ -197,7 +197,7 @@ public interface IConnection : IAsyncDisposable, IDisposable
   <action>
     1. Edit `Directory.Packages.props`: add `<PackageVersion Include="RabbitMQ.Client" Version="7.2.1" />` to the existing `<ItemGroup>`. Add a comment marking this as a Phase 3 addition. Do not touch existing pins.
 
-    2. Create `src/Oragon.ElasticPool.RabbitMQ/Oragon.ElasticPool.RabbitMQ.csproj` modeled on `src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj`:
+    2. Create `src/Oragon.ElasticPool.RabbitMQ/Oragon.ElasticPool.RabbitMQ.csproj` modeled on `src/Oragon.ElasticPool/Oragon.ElasticPool.csproj`:
        - `<TargetFrameworks>net10.0;net9.0;net8.0</TargetFrameworks>`
        - `<IsPackable>true</IsPackable>`
        - `<PackageId>Oragon.ElasticPool.RabbitMQ</PackageId>`
@@ -205,13 +205,13 @@ public interface IConnection : IAsyncDisposable, IDisposable
        - `<PackageTags>pool;objectpool;adaptive;elastic;rabbitmq;async;observability;opentelemetry</PackageTags>`
        - `<PackageLicenseExpression>MIT</PackageLicenseExpression>`
        - PackageReferences: `RabbitMQ.Client`, `Microsoft.Extensions.Logging.Abstractions`, `Microsoft.Extensions.DependencyInjection.Abstractions`, `Microsoft.Extensions.Options`, `Microsoft.CodeAnalysis.PublicApiAnalyzers` (PrivateAssets="all"), `MinVer` (PrivateAssets="all"), `Microsoft.SourceLink.GitHub` (PrivateAssets="all").
-       - `ProjectReference` to `..\Oragon.ElasticPool.Core\Oragon.ElasticPool.Core.csproj`.
+       - `ProjectReference` to `..\Oragon.ElasticPool\Oragon.ElasticPool.csproj`.
        - `<AdditionalFiles Include="PublicAPI.Shipped.txt" />` and `<AdditionalFiles Include="PublicAPI.Unshipped.txt" />`.
        - `<InternalsVisibleTo Include="Oragon.ElasticPool.RabbitMQ.Tests" />` and `<InternalsVisibleTo Include="Oragon.ElasticPool.RabbitMQ.IntegrationTests" />` (Plan 03 needs them; declare ahead).
 
     3. Create empty `src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Shipped.txt` and `src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Unshipped.txt` (literally empty — analyzer fills as types are added).
 
-    4. Add the new project to `Oragon.ElasticPool.sln` under the existing `src` solution folder (`{827E0CD3-B72D-47B6-A68D-7590B98EB39B}`). Generate a new GUID for the project. Replicate the Debug/Release × Any CPU/x64/x86 configuration block already present for `Oragon.ElasticPool.Core`.
+    4. Add the new project to `Oragon.ElasticPool.sln` under the existing `src` solution folder (`{827E0CD3-B72D-47B6-A68D-7590B98EB39B}`). Generate a new GUID for the project. Replicate the Debug/Release × Any CPU/x64/x86 configuration block already present for `Oragon.ElasticPool`.
 
     5. Verify: `dotnet restore Oragon.ElasticPool.sln` succeeds and `dotnet build Oragon.ElasticPool.sln -c Release` exits 0 (RabbitMQ project will be empty of code at this point — that's fine; build should still succeed).
   </action>
@@ -416,7 +416,7 @@ public interface IConnection : IAsyncDisposable, IDisposable
 - Solution contains 5 projects (Core, Core.Tests, Core.Stress, Core.Benchmarks, RabbitMQ).
 - `Directory.Packages.props` pins `RabbitMQ.Client 7.2.1`.
 - `src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Unshipped.txt` lists every public type/member; PublicApiAnalyzers RS0016/RS0017 do not fire.
-- All Phase 1+2 tests still pass (no Core regression): run `dotnet test tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj -c Release --no-build` after the build.
+- All Phase 1+2 tests still pass (no Core regression): run `dotnet test tests/Oragon.ElasticPool.Tests/Oragon.ElasticPool.Tests.csproj -c Release --no-build` after the build.
 - IF a Core API gap surfaces (e.g., the `AddElasticPool<T>` signature is insufficient to wire the Factory delegate this way, or a hook can't accept the closure capture pattern): STOP and return PLANNING BLOCKED to the orchestrator with the specific gap. Per phase success criterion #5, Core gets refactored before continuing.
 </verification>
 

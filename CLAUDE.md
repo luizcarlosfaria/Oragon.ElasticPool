@@ -42,7 +42,7 @@ juntos são o produto e nenhum pode ser sacrificado.
 | `System.Diagnostics.ActivitySource` | BCL (in-box) | Tracing on Acquire/Release/HealthCheck | OTel reads ActivitySource directly — no extra package needed |
 | `System.Threading.Channels` | BCL (in-box) | Bounded waiter queue for `AcquireAsync` under pressure | Lock-free, async-aware producer/consumer; ideal for waiter queue with cancellation |
 | `IAsyncDisposable` / `ValueTask` | BCL (in-box) | Async disposal of `IPoolItem<T>`, allocation-free hot paths | Both are in-box on net8+; no `System.Threading.Tasks.Extensions` needed |
-### Core Package Dependencies (Oragon.ElasticPool.Core)
+### Core Package Dependencies (Oragon.ElasticPool)
 | Package | Version | Purpose | Why minimal-cost |
 |---------|---------|---------|------------------|
 | `Microsoft.Extensions.Logging.Abstractions` | **10.0.x** (latest 10.0.5+) | `ILogger<T>` for state-transition logs | Only pulls `M.E.DependencyInjection.Abstractions`; no implementations |
@@ -52,7 +52,7 @@ juntos são o produto e nenhum pode ser sacrificado.
 ### RabbitMQ Adapter Dependencies (Oragon.ElasticPool.RabbitMQ)
 | Package | Version | Purpose | Why |
 |---------|---------|---------|-----|
-| `Oragon.ElasticPool.Core` | (matching) | Project reference / NuGet | The pool primitive |
+| `Oragon.ElasticPool` | (matching) | Project reference / NuGet | The pool primitive |
 | `RabbitMQ.Client` | **7.2.1** (or `[7.0.0,8.0.0)`) | `IConnection`/`IChannel` to be pooled | v7.x is async-first; `IModel` was renamed `IChannel`; `BasicProperties` is now a value type you `new` — old samples will mislead |
 | `Microsoft.Extensions.DependencyInjection.Abstractions` | 10.0.x | `services.AddElasticConnectionPool(...)` extensions | Same minimalist DI surface as Core |
 | `Microsoft.Extensions.Logging.Abstractions` | 10.0.x | Adapter-level logging | Same as Core |
@@ -218,7 +218,7 @@ xUnit v3 + Microsoft.Testing.Platform. **Zero VSTest dependencies.**
 - `Microsoft.NET.Test.Sdk` (VSTest SDK)
 - `NSubstitute` (replaced by `Moq` for community familiarity)
 
-**Coverage gate:** 90% line on `Oragon.ElasticPool.Core` only, enforced via `coverlet.msbuild` `/p:Threshold=90 /p:ThresholdType=line`.
+**Coverage gate:** 90% line on `Oragon.ElasticPool` only, enforced via `coverlet.msbuild` `/p:Threshold=90 /p:ThresholdType=line`.
 
 **Critical config:** `global.json` MUST have `"test": { "runner": "Microsoft.Testing.Platform" }` to force MTP mode on `dotnet test`. Project root has `NuGet.Config` that clears inherited `<fallbackPackageFolders>` for OS-agnostic restore.
 

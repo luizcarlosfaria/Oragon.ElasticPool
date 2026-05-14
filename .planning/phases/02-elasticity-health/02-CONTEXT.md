@@ -66,7 +66,7 @@ Adicionar sobre o engine fixed-size do Phase 1 a camada de **elasticidade adapta
 - `[LoggerMessage]` source-gen para logging allocation-free — extender
 - `Meter` via `IMeterFactory` com fallback `new Meter` — pattern já estabelecido
 - xUnit v3 + AwesomeAssertions + NSubstitute + `FakeTimeProvider` — o stack de testes
-- Stress tests separados em `Oragon.ElasticPool.Core.Stress` excluídos da CI default
+- Stress tests separados em `Oragon.ElasticPool.Stress` excluídos da CI default
 
 ### Integration Points
 - `PeriodicTimer.WaitForNextTickAsync(ct)` para sweep loop (BCL net6+, drift-free)

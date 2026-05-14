@@ -10,11 +10,11 @@ provides:
   - "65 new unit tests across 11 test files (Pool/* + Telemetry/*) covering every Phase 2 must-have"
   - "3 reusable TestSupport helpers: CapturedActivities, CapturedLogEntries, SweepDeterminism"
   - "BurstIdleBurstStressTest — Phase 2 anchor stress test (200 threads × 10 cycles, FakeTimeProvider-driven; ROADMAP success criterion 4)"
-  - "Benchmark project (Oragon.ElasticPool.Core.Benchmarks) with PoolDiagnosticsLogBenchmarks for the 6 Phase 2 [LoggerMessage] entries"
+  - "Benchmark project (Oragon.ElasticPool.Benchmarks) with PoolDiagnosticsLogBenchmarks for the 6 Phase 2 [LoggerMessage] entries"
   - "Verified 0-allocation-per-call across all 6 Phase 2 [LoggerMessage] entries via BenchmarkDotNet 0.15.4 (ROADMAP success criterion 5)"
-  - "Coverage: 92.7% line / 86.2% branch / 93.4% method on Oragon.ElasticPool.Core (above the 90% gate)"
+  - "Coverage: 92.7% line / 86.2% branch / 93.4% method on Oragon.ElasticPool (above the 90% gate)"
 affects:
-  - "[InternalsVisibleTo] in Oragon.ElasticPool.Core.csproj extended to include Stress + Benchmarks projects (was Tests-only)."
+  - "[InternalsVisibleTo] in Oragon.ElasticPool.csproj extended to include Stress + Benchmarks projects (was Tests-only)."
   - "Stress.csproj gained 3 package refs (TimeProvider.Testing, Diagnostics, Diagnostics.Testing) for the new anchor stress test."
   - "Directory.Packages.props gained BenchmarkDotNet 0.15.4 pin."
   - "Solution file (Oragon.ElasticPool.sln) gained the Benchmarks project entry; build now produces 5 projects vs 4."
@@ -31,26 +31,26 @@ tech-stack:
     - "BenchmarkDotNet [MemoryDiagnoser] + EnabledNullProvider (cheapest logger that still runs the source-gen dispatch path; IsEnabled=false would short-circuit and trivially produce 0 allocations)"
 key-files:
   created:
-    - tests/Oragon.ElasticPool.Core.Tests/TestSupport/CapturedActivities.cs
-    - tests/Oragon.ElasticPool.Core.Tests/TestSupport/CapturedLogEntries.cs
-    - tests/Oragon.ElasticPool.Core.Tests/TestSupport/SweepDeterminism.cs
-    - tests/Oragon.ElasticPool.Core.Tests/Pool/UtilizationSamplerTests.cs
-    - tests/Oragon.ElasticPool.Core.Tests/Pool/WaitDurationHistogramTests.cs
-    - tests/Oragon.ElasticPool.Core.Tests/Pool/PressureSamplerTests.cs
-    - tests/Oragon.ElasticPool.Core.Tests/Pool/SweepBackoffStateTests.cs
-    - tests/Oragon.ElasticPool.Core.Tests/Pool/BackgroundSweepTests.cs
-    - tests/Oragon.ElasticPool.Core.Tests/Pool/ElasticGrowTests.cs
-    - tests/Oragon.ElasticPool.Core.Tests/Pool/HystereticShrinkTests.cs
-    - tests/Oragon.ElasticPool.Core.Tests/Pool/SweepBackoffIntegrationTests.cs
-    - tests/Oragon.ElasticPool.Core.Tests/Telemetry/ActivitySourceSpanTests.cs
-    - tests/Oragon.ElasticPool.Core.Tests/Telemetry/Phase2CountersAndHistogramsTests.cs
-    - tests/Oragon.ElasticPool.Core.Tests/Telemetry/LoggerMessageEventTests.cs
-    - tests/Oragon.ElasticPool.Core.Stress/BurstIdleBurstStressTest.cs
-    - tests/Oragon.ElasticPool.Core.Benchmarks/Oragon.ElasticPool.Core.Benchmarks.csproj
-    - tests/Oragon.ElasticPool.Core.Benchmarks/PoolDiagnosticsLogBenchmarks.cs
+    - tests/Oragon.ElasticPool.Tests/TestSupport/CapturedActivities.cs
+    - tests/Oragon.ElasticPool.Tests/TestSupport/CapturedLogEntries.cs
+    - tests/Oragon.ElasticPool.Tests/TestSupport/SweepDeterminism.cs
+    - tests/Oragon.ElasticPool.Tests/Pool/UtilizationSamplerTests.cs
+    - tests/Oragon.ElasticPool.Tests/Pool/WaitDurationHistogramTests.cs
+    - tests/Oragon.ElasticPool.Tests/Pool/PressureSamplerTests.cs
+    - tests/Oragon.ElasticPool.Tests/Pool/SweepBackoffStateTests.cs
+    - tests/Oragon.ElasticPool.Tests/Pool/BackgroundSweepTests.cs
+    - tests/Oragon.ElasticPool.Tests/Pool/ElasticGrowTests.cs
+    - tests/Oragon.ElasticPool.Tests/Pool/HystereticShrinkTests.cs
+    - tests/Oragon.ElasticPool.Tests/Pool/SweepBackoffIntegrationTests.cs
+    - tests/Oragon.ElasticPool.Tests/Telemetry/ActivitySourceSpanTests.cs
+    - tests/Oragon.ElasticPool.Tests/Telemetry/Phase2CountersAndHistogramsTests.cs
+    - tests/Oragon.ElasticPool.Tests/Telemetry/LoggerMessageEventTests.cs
+    - tests/Oragon.ElasticPool.Stress/BurstIdleBurstStressTest.cs
+    - tests/Oragon.ElasticPool.Benchmarks/Oragon.ElasticPool.Benchmarks.csproj
+    - tests/Oragon.ElasticPool.Benchmarks/PoolDiagnosticsLogBenchmarks.cs
   modified:
-    - src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj
-    - tests/Oragon.ElasticPool.Core.Stress/Oragon.ElasticPool.Core.Stress.csproj
+    - src/Oragon.ElasticPool/Oragon.ElasticPool.csproj
+    - tests/Oragon.ElasticPool.Stress/Oragon.ElasticPool.Stress.csproj
     - Directory.Packages.props
     - Oragon.ElasticPool.sln
 decisions:
@@ -85,7 +85,7 @@ metrics:
 
 # Phase 2 Plan 03: Tests, Anchor Stress, and Benchmark Summary
 
-**One-liner:** Locked down every Phase 2 must-have with 65 new deterministic tests (per-component + integration + telemetry), the BurstIdleBurst anchor stress test (200 threads × 10 cycles burst → idle → burst, FakeTimeProvider-driven, passes in ~380 ms), and a BenchmarkDotNet baseline proving all 6 Phase 2 `[LoggerMessage]` entries are 0-bytes-per-call. Coverage on `Oragon.ElasticPool.Core` rose to 92.7% line / 86.2% branch / 93.4% method — above the 90% gate.
+**One-liner:** Locked down every Phase 2 must-have with 65 new deterministic tests (per-component + integration + telemetry), the BurstIdleBurst anchor stress test (200 threads × 10 cycles burst → idle → burst, FakeTimeProvider-driven, passes in ~380 ms), and a BenchmarkDotNet baseline proving all 6 Phase 2 `[LoggerMessage]` entries are 0-bytes-per-call. Coverage on `Oragon.ElasticPool` rose to 92.7% line / 86.2% branch / 93.4% method — above the 90% gate.
 
 ## What Was Built
 
@@ -166,14 +166,14 @@ Watchdog: 45 s logical (`CancellationTokenSource`) + xUnit `Timeout = 60_000` ou
 
 **Plumbing:**
 - `Stress.csproj` gained `Microsoft.Extensions.TimeProvider.Testing`, `Microsoft.Extensions.Diagnostics`, `Microsoft.Extensions.Diagnostics.Testing` package refs.
-- `Oragon.ElasticPool.Core.csproj` gained `<InternalsVisibleTo Include="Oragon.ElasticPool.Core.Stress" />` (needs `ElasticPool<T>.Sweeper.TickCompleted` probe).
+- `Oragon.ElasticPool.csproj` gained `<InternalsVisibleTo Include="Oragon.ElasticPool.Stress" />` (needs `ElasticPool<T>.Sweeper.TickCompleted` probe).
 - Stress project still NOT in CI workflow; runs manually only.
 
 **Verify:** 2/2 pass × 3 TFMs (BurstIdleBurst + PingPong, both ≤ ~380 ms wall-clock).
 
 ### Task 5 — Benchmark project + coverage gate (commit `d14d232`)
 
-**`tests/Oragon.ElasticPool.Core.Benchmarks/Oragon.ElasticPool.Core.Benchmarks.csproj`** — multi-target net10/9/8, `OutputType=Exe` (BenchmarkDotNet requirement), pkg refs to BenchmarkDotNet 0.15.4 + Microsoft.Extensions.Logging.Abstractions, project ref to Core.
+**`tests/Oragon.ElasticPool.Benchmarks/Oragon.ElasticPool.Benchmarks.csproj`** — multi-target net10/9/8, `OutputType=Exe` (BenchmarkDotNet requirement), pkg refs to BenchmarkDotNet 0.15.4 + Microsoft.Extensions.Logging.Abstractions, project ref to Core.
 
 **`PoolDiagnosticsLogBenchmarks.cs`** — `[MemoryDiagnoser]` benchmarks for the 6 Phase 2 [LoggerMessage] entries via an `EnabledNullProvider` (cheapest logger that still runs the source-gen dispatch path; an `IsEnabled=false` logger would short-circuit and trivially measure 0 allocations). Output (BenchmarkDotNet ShortJob, .NET 10.0.7, x64 RyuJIT):
 
@@ -186,7 +186,7 @@ Watchdog: 45 s logical (`CancellationTokenSource`) + xUnit `Timeout = 60_000` ou
 | SweepFailureBackoff   | 18.883 ns  | **0 B**   |
 | CheckUnhealthy        | 14.004 ns  | **0 B**   |
 
-**ROADMAP success criterion 5 (allocation-free observability) verified empirically.** No CI gate on this benchmark — it's a documented baseline artifact (manual `dotnet run --project tests/Oragon.ElasticPool.Core.Benchmarks --configuration Release`).
+**ROADMAP success criterion 5 (allocation-free observability) verified empirically.** No CI gate on this benchmark — it's a documented baseline artifact (manual `dotnet run --project tests/Oragon.ElasticPool.Benchmarks --configuration Release`).
 
 **Coverage gate**
 
@@ -195,7 +195,7 @@ Reproduced the CI commands locally (`coverlet` + `reportgenerator`) on the Relea
 ```
 | Module                   | Line   | Branch | Method |
 +--------------------------+--------+--------+--------+
-| Oragon.ElasticPool.Core | 92.71% | 86.36% | 93.54% |
+| Oragon.ElasticPool | 92.71% | 86.36% | 93.54% |
 ```
 
 **Above the 90% line gate.** Per-class breakdown (lowest first):
@@ -253,7 +253,7 @@ Benchmark allocations              ->  6/6 entries: 0 B/op
 - **Found during:** Task 1 build of `WaitDurationHistogramTests.Record_DoesNotThrow_UnderConcurrency`.
 - **Issue:** `xUnit1031` analyzer error: blocking task ops (`Task.WaitAll`) inside test methods.
 - **Fix:** Changed signature to `async Task` + `await Task.WhenAll(tasks)`.
-- **Files modified:** `tests/Oragon.ElasticPool.Core.Tests/Pool/WaitDurationHistogramTests.cs`
+- **Files modified:** `tests/Oragon.ElasticPool.Tests/Pool/WaitDurationHistogramTests.cs`
 - **Commit:** `30bbab1` (within Task 1).
 
 **2. [Rule 1 — Bug] `WithBounds(min: ..., max: ..., initial: ...)` named args don't match the API**
@@ -306,7 +306,7 @@ Benchmark allocations              ->  6/6 entries: 0 B/op
 
 - **Found during:** Task 4 build of `BurstIdleBurstStressTest`, Task 5 build of `PoolDiagnosticsLogBenchmarks`.
 - **Issue:** Stress test needs `ElasticPool<T>.Sweeper.TickCompleted` (internal); Benchmarks need `PoolDiagnosticsLog` static class (internal).
-- **Fix:** Added two new `<InternalsVisibleTo>` entries to `Oragon.ElasticPool.Core.csproj` for `Oragon.ElasticPool.Core.Stress` and `Oragon.ElasticPool.Core.Benchmarks`. Both projects are CI-excluded — no public API impact.
+- **Fix:** Added two new `<InternalsVisibleTo>` entries to `Oragon.ElasticPool.csproj` for `Oragon.ElasticPool.Stress` and `Oragon.ElasticPool.Benchmarks`. Both projects are CI-excluded — no public API impact.
 - **Commits:** `ccb273a` (Stress), `d14d232` (Benchmarks).
 
 **9. [Rule 3 — Blocking] EventId 1099 SweepFailed not test-induceable through normal code paths**
@@ -351,14 +351,14 @@ Phase 3 (RabbitMQ adapter) inherits a fully verified Phase 2 engine. Reusable te
 ## Self-Check: PASSED
 
 - All 16 created files exist in the working tree (verified):
-  - `tests/Oragon.ElasticPool.Core.Tests/TestSupport/{CapturedActivities,CapturedLogEntries,SweepDeterminism}.cs` ✓
-  - `tests/Oragon.ElasticPool.Core.Tests/Pool/{UtilizationSampler,WaitDurationHistogram,PressureSampler,SweepBackoffState,BackgroundSweep,ElasticGrow,HystereticShrink,SweepBackoffIntegration}Tests.cs` ✓
-  - `tests/Oragon.ElasticPool.Core.Tests/Telemetry/{ActivitySourceSpan,Phase2CountersAndHistograms,LoggerMessageEvent}Tests.cs` ✓
-  - `tests/Oragon.ElasticPool.Core.Stress/BurstIdleBurstStressTest.cs` ✓
-  - `tests/Oragon.ElasticPool.Core.Benchmarks/{Oragon.ElasticPool.Core.Benchmarks.csproj,PoolDiagnosticsLogBenchmarks.cs}` ✓
+  - `tests/Oragon.ElasticPool.Tests/TestSupport/{CapturedActivities,CapturedLogEntries,SweepDeterminism}.cs` ✓
+  - `tests/Oragon.ElasticPool.Tests/Pool/{UtilizationSampler,WaitDurationHistogram,PressureSampler,SweepBackoffState,BackgroundSweep,ElasticGrow,HystereticShrink,SweepBackoffIntegration}Tests.cs` ✓
+  - `tests/Oragon.ElasticPool.Tests/Telemetry/{ActivitySourceSpan,Phase2CountersAndHistograms,LoggerMessageEvent}Tests.cs` ✓
+  - `tests/Oragon.ElasticPool.Stress/BurstIdleBurstStressTest.cs` ✓
+  - `tests/Oragon.ElasticPool.Benchmarks/{Oragon.ElasticPool.Benchmarks.csproj,PoolDiagnosticsLogBenchmarks.cs}` ✓
 - All 4 modified files reflect documented changes (`git diff` clean):
-  - `src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj` — 2 new InternalsVisibleTo entries ✓
-  - `tests/Oragon.ElasticPool.Core.Stress/Oragon.ElasticPool.Core.Stress.csproj` — 3 new pkg refs ✓
+  - `src/Oragon.ElasticPool/Oragon.ElasticPool.csproj` — 2 new InternalsVisibleTo entries ✓
+  - `tests/Oragon.ElasticPool.Stress/Oragon.ElasticPool.Stress.csproj` — 3 new pkg refs ✓
   - `Directory.Packages.props` — BenchmarkDotNet pin ✓
   - `Oragon.ElasticPool.sln` — Benchmarks project entry ✓
 - All 5 task commits exist in `git log` (`30bbab1`, `657f52a`, `74a76f4`, `ccb273a`, `d14d232`) — verified.
@@ -366,5 +366,5 @@ Phase 3 (RabbitMQ adapter) inherits a fully verified Phase 2 engine. Reusable te
 - 141 tests × 3 TFMs (423 invocations, 0 failures); 2 stress tests × 3 TFMs (6 invocations, 0 failures).
 - BenchmarkDotNet ShortJob: 6/6 [LoggerMessage] entries report 0 B/op (allocation-free baseline confirmed).
 - Coverage on Core: 92.7% line / 86.2% branch / 93.4% method — above the 90% gate.
-- `grep -c "Oragon.ElasticPool.Core.Stress\|Oragon.ElasticPool.Core.Benchmarks" .github/workflows/build.yml` = 0 (both projects excluded from CI default build).
-- `grep -rn "Thread.Sleep\|Task.Delay" tests/Oragon.ElasticPool.Core.Tests/Pool/ tests/Oragon.ElasticPool.Core.Tests/Telemetry/` returns only the SweepDeterminism helper's documented 100 ms prime delay — no per-test wall-clock dependencies in the test bodies themselves.
+- `grep -c "Oragon.ElasticPool.Stress\|Oragon.ElasticPool.Benchmarks" .github/workflows/build.yml` = 0 (both projects excluded from CI default build).
+- `grep -rn "Thread.Sleep\|Task.Delay" tests/Oragon.ElasticPool.Tests/Pool/ tests/Oragon.ElasticPool.Tests/Telemetry/` returns only the SweepDeterminism helper's documented 100 ms prime delay — no per-test wall-clock dependencies in the test bodies themselves.

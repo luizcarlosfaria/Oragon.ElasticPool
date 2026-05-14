@@ -21,5 +21,5 @@ Add a Core-level backpressure guard so `AcquireAsync` can reject excess parked w
 
 ## Verification
 
-- `dotnet test --project tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj -f net10.0 --no-restore -p:SuppressNETCoreSdkPreviewMessage=true`
+- `dotnet test --project tests/Oragon.ElasticPool.Tests/Oragon.ElasticPool.Tests.csproj -f net10.0 --no-restore -p:SuppressNETCoreSdkPreviewMessage=true`
 - Broader solution test if the local SDK/test runner is healthy.

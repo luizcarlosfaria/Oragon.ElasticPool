@@ -1,7 +1,7 @@
 # Phase 3: RabbitMQ Adapter — Research
 
 **Researched:** 2026-05-02
-**Domain:** RabbitMQ.Client v7.2.1 adapter on top of Oragon.ElasticPool.Core (layered IConnection + IChannel pools, Testcontainers integration, bursty publisher sample)
+**Domain:** RabbitMQ.Client v7.2.1 adapter on top of Oragon.ElasticPool (layered IConnection + IChannel pools, Testcontainers integration, bursty publisher sample)
 **Confidence:** HIGH (RabbitMQ v7 API and Testcontainers v4 verified live; Core API surface verified directly from Phase 1+2 source)
 
 ## Summary
@@ -115,7 +115,7 @@ failure modes in the integration test. This is flagged as Open Question Q1.
                     │                              │
                     ▼                              ▼
         ┌──────────────────────────────────────────────────┐
-        │  Oragon.ElasticPool.Core                        │
+        │  Oragon.ElasticPool                        │
         │  ElasticObjectPoolFactory.Build<T>(...)         │
         │  Builder: .Factory/.BeforeUse/.Check/.Release    │
         │  AddElasticPool<T>(name, configure)             │
@@ -143,7 +143,7 @@ failure modes in the integration test. This is flagged as Open Question Q1.
 
 ```
 src/
-├── Oragon.ElasticPool.Core/                      # existing (Phase 1+2)
+├── Oragon.ElasticPool/                      # existing (Phase 1+2)
 └── Oragon.ElasticPool.RabbitMQ/                  # NEW
     ├── Builder/
     │   ├── ElasticConnectionPoolBuilder.cs       # connection-specific options + factory probe
@@ -276,7 +276,7 @@ private static void ForceAutomaticRecoveryDisabled(IConnectionFactory factory, I
 
 [VERIFIED: ConnectionFactory.CreateConnectionAsync signature has overload `CreateConnectionAsync(CancellationToken cancellationToken = default)` — confirmed via rabbitmq.github.io/rabbitmq-dotnet-client/api/RabbitMQ.Client.ConnectionFactory.html]
 [VERIFIED: AutomaticRecoveryEnabled is a settable `bool` property defaulting to `true` — confirmed via same source]
-[VERIFIED: Phase 1 `AddElasticPool<T>(name, configure)` accepts `Action<ElasticPoolBuilder<T>>` — confirmed via src/Oragon.ElasticPool.Core/DependencyInjection/ServiceCollectionExtensions.cs:16]
+[VERIFIED: Phase 1 `AddElasticPool<T>(name, configure)` accepts `Action<ElasticPoolBuilder<T>>` — confirmed via src/Oragon.ElasticPool/DependencyInjection/ServiceCollectionExtensions.cs:16]
 
 ### Pattern 2: ChannelPool registration (LAYERED — Factory acquires from connection pool)
 
@@ -352,8 +352,8 @@ public static IServiceCollection AddElasticChannelPool(
 ```
 
 [VERIFIED: `IConnection.CreateChannelAsync(CreateChannelOptions? options = null, CancellationToken cancellationToken = default)` — confirmed via WebSearch on rabbitmq.github.io API docs]
-[VERIFIED: Core's `IElasticPool<T>.AcquireAsync(CancellationToken)` returns `ValueTask<IPoolItem<T>>` — src/Oragon.ElasticPool.Core/Abstractions/IElasticPool.cs:32]
-[VERIFIED: Core's `IPoolItem<T>` exposes `.Value` (NOT `.Object` as ARCHITECTURE.md draft showed) — src/Oragon.ElasticPool.Core/Abstractions/IPoolItem.cs:9. The ARCHITECTURE.md sample is stale on this naming.]
+[VERIFIED: Core's `IElasticPool<T>.AcquireAsync(CancellationToken)` returns `ValueTask<IPoolItem<T>>` — src/Oragon.ElasticPool/Abstractions/IElasticPool.cs:32]
+[VERIFIED: Core's `IPoolItem<T>` exposes `.Value` (NOT `.Object` as ARCHITECTURE.md draft showed) — src/Oragon.ElasticPool/Abstractions/IPoolItem.cs:9. The ARCHITECTURE.md sample is stale on this naming.]
 [VERIFIED: Core's `name`-based DI uses `services.GetRequiredKeyedService<IElasticPool<T>>(name)` — confirmed via ServiceCollectionExtensions.cs:39]
 
 ### Pattern 3: `CreateChannelOptions` defaults (per CONTEXT and Pitfall 13)
@@ -714,12 +714,12 @@ These are extracted from `.planning/research/PITFALLS.md` (Pitfalls 9–13 are R
 ### Primary (HIGH confidence)
 
 - **Core source code (verified directly):**
-  - `src/Oragon.ElasticPool.Core/Abstractions/IElasticPool.cs` — `IElasticPool<T>` surface (Acquire, AcquireAsync, MaxSize/MinSize/Available/InUse, ReadyAsync)
-  - `src/Oragon.ElasticPool.Core/Abstractions/IPoolItem.cs` — `.Value` property (NOT `.Object`)
-  - `src/Oragon.ElasticPool.Core/Abstractions/PoolState.cs` — `Healthy` / `Unhealthy` enum
-  - `src/Oragon.ElasticPool.Core/Hooks/HookDelegates.cs` — exact delegate signatures (all `ValueTask`-returning, `CancellationToken`-accepting, `BeforeUse` returns `PoolState`)
-  - `src/Oragon.ElasticPool.Core/DependencyInjection/ServiceCollectionExtensions.cs` — keyed-singleton + non-keyed fallback for empty name
-  - `src/Oragon.ElasticPool.Core/Builder/ElasticPoolBuilder.cs` — fluent surface (Factory, BeforeUse, Check, AfterUse, Release, WithBounds, IdleTimeout, etc.)
+  - `src/Oragon.ElasticPool/Abstractions/IElasticPool.cs` — `IElasticPool<T>` surface (Acquire, AcquireAsync, MaxSize/MinSize/Available/InUse, ReadyAsync)
+  - `src/Oragon.ElasticPool/Abstractions/IPoolItem.cs` — `.Value` property (NOT `.Object`)
+  - `src/Oragon.ElasticPool/Abstractions/PoolState.cs` — `Healthy` / `Unhealthy` enum
+  - `src/Oragon.ElasticPool/Hooks/HookDelegates.cs` — exact delegate signatures (all `ValueTask`-returning, `CancellationToken`-accepting, `BeforeUse` returns `PoolState`)
+  - `src/Oragon.ElasticPool/DependencyInjection/ServiceCollectionExtensions.cs` — keyed-singleton + non-keyed fallback for empty name
+  - `src/Oragon.ElasticPool/Builder/ElasticPoolBuilder.cs` — fluent surface (Factory, BeforeUse, Check, AfterUse, Release, WithBounds, IdleTimeout, etc.)
   - `Directory.Packages.props` — actual versions (xunit.v3 3.2.2, AwesomeAssertions 9.4.0, M.E.* 10.0.6, Hosting present)
 - **CONTEXT.md** (`.planning/phases/03-rabbitmq-adapter/03-CONTEXT.md`) — locked decisions
 - **ARCHITECTURE.md** (`.planning/research/ARCHITECTURE.md` lines 368–488) — adapter composition pattern (note: uses outdated `.Object` naming — corrected to `.Value` in this research)

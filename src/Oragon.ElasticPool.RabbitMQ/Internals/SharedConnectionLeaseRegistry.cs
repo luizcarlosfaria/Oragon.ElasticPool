@@ -1,4 +1,4 @@
-using Oragon.ElasticPool.Core.Abstractions;
+using Oragon.ElasticPool.Abstractions;
 using RabbitMQ.Client;
 
 namespace Oragon.ElasticPool.RabbitMQ.Internals;

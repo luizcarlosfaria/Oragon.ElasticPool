@@ -2,7 +2,7 @@ using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
-using Oragon.ElasticPool.Core.Abstractions;
+using Oragon.ElasticPool.Abstractions;
 using Oragon.ElasticPool.RabbitMQ.DependencyInjection;
 using Oragon.ElasticPool.RabbitMQ.Tests.TestSupport;
 using RabbitMQ.Client;

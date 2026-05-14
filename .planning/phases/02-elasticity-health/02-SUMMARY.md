@@ -32,11 +32,11 @@ tech-stack:
 key-files:
   created: []
   modified:
-    - src/Oragon.ElasticPool.Core/Telemetry/PoolMeterNames.cs
-    - src/Oragon.ElasticPool.Core/Telemetry/TelemetryEmitter.cs
-    - src/Oragon.ElasticPool.Core/Telemetry/PoolDiagnosticsLog.cs
-    - src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs
-    - src/Oragon.ElasticPool.Core/Internals/BackgroundSweeper.cs
+    - src/Oragon.ElasticPool/Telemetry/PoolMeterNames.cs
+    - src/Oragon.ElasticPool/Telemetry/TelemetryEmitter.cs
+    - src/Oragon.ElasticPool/Telemetry/PoolDiagnosticsLog.cs
+    - src/Oragon.ElasticPool/Internals/ElasticPool.cs
+    - src/Oragon.ElasticPool/Internals/BackgroundSweeper.cs
 decisions:
   - "Pass `waiters + 1` (caller counted as if parked) to PressureSampler.Evaluate. With default GrowOnWaiterCount=1, this preserves Phase 1's grow-on-demand semantics: any caller hitting the slow path triggers grow. Higher GrowOnWaiterCount values delay grow until a real queue forms (CONTEXT D-01: tolerance to spikes). Without this adjustment, single-thread acquire on an empty pool with MinSize=0 would deadlock — Phase 1 tests covering WithBounds(0,N,0) would all break."
   - "MinSize-respecting warmup grow clause (`total < MinSize`) is OR'd into the grow gate. Cold-start with InitialSize=0 + MinSize>0 still climbs to MinSize on first acquire even when pressure says no-grow. Critical for Phase 1 BeforeUseUnhealthy-replacement tests."
@@ -252,7 +252,7 @@ net8.0   Stress dll (PingPong)     ->  total: 1,  failed: 0, succeeded: 1,  dura
 - **Found during:** Task 2 design (writing AcquireAsyncCore composite-signal gate).
 - **Issue:** The plan's snippet read `decision.ShouldGrow || Volatile.Read(ref _total) < _options.MinSize` to gate grow. With Phase 1 tests that use `WithBounds(0, N, 0)` (MinSize=0), single-thread acquire on an empty pool would: (a) fail fast-path (no idle), (b) `_pressure.Evaluate(0, waitersCount=0)` → `byWaiters = (0 >= 1) = false` → `ShouldGrow=false`, (c) `0 < 0` → false → fall through to wait branch, (d) park forever (nobody to grow on its behalf). All Phase 1 BeforeUseUnhealthy + DI + AfterUse tests would deadlock.
 - **Fix:** Pass `waiters + 1` (caller counted as if parked) to PressureSampler.Evaluate. Default GrowOnWaiterCount=1 then makes ANY slow-path caller trip byWaiters=true → grow. Higher values delay grow until queue depth ≥ threshold (CONTEXT D-01: tolerance to spikes). Net effect: Phase 1 tests pass identically; Phase 2 callers can opt into latency-tolerant behavior by raising the threshold.
-- **Files modified:** `src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs` only.
+- **Files modified:** `src/Oragon.ElasticPool/Internals/ElasticPool.cs` only.
 - **Commit:** `d638ea1` (the same Task 2 commit; this was a design refinement during the task, not a separate fix).
 
 **2. [Rule 2 — Missing critical functionality] WaitBehavior.Throw must throw immediately when pressure says no-grow**
@@ -267,7 +267,7 @@ net8.0   Stress dll (PingPong)     ->  total: 1,  failed: 0, succeeded: 1,  dura
 
 - **Found during:** Task 2/3 verify steps.
 - **Issue:** MTP `--report-trx` injection bug (Phase 1 deviation #5).
-- **Fix:** Direct DLL execution: `dotnet tests/Oragon.ElasticPool.Core.Tests/bin/Debug/<tfm>/Oragon.ElasticPool.Core.Tests.dll`. Same workaround as prior plans.
+- **Fix:** Direct DLL execution: `dotnet tests/Oragon.ElasticPool.Tests/bin/Debug/<tfm>/Oragon.ElasticPool.Tests.dll`. Same workaround as prior plans.
 - **Files modified:** none.
 - **Commit:** N/A.
 
@@ -319,11 +319,11 @@ Plan 03 inherits a fully-wired engine. Specific probes available:
 ## Self-Check: PASSED
 
 - All 5 modified files reflect documented changes (verified via `git diff`):
-  - `src/Oragon.ElasticPool.Core/Telemetry/PoolMeterNames.cs` ✓
-  - `src/Oragon.ElasticPool.Core/Telemetry/TelemetryEmitter.cs` ✓
-  - `src/Oragon.ElasticPool.Core/Telemetry/PoolDiagnosticsLog.cs` ✓
-  - `src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs` ✓
-  - `src/Oragon.ElasticPool.Core/Internals/BackgroundSweeper.cs` ✓
+  - `src/Oragon.ElasticPool/Telemetry/PoolMeterNames.cs` ✓
+  - `src/Oragon.ElasticPool/Telemetry/TelemetryEmitter.cs` ✓
+  - `src/Oragon.ElasticPool/Telemetry/PoolDiagnosticsLog.cs` ✓
+  - `src/Oragon.ElasticPool/Internals/ElasticPool.cs` ✓
+  - `src/Oragon.ElasticPool/Internals/BackgroundSweeper.cs` ✓
 - All 3 task commits exist in `git log` (`d9deac5`, `d638ea1`, `26aebab`) — verified.
 - `dotnet build` exits 0 (4 projects, 0 errors, 6 carry-forward Phase 1 SourceLink warnings).
 - 76 tests × 3 TFMs (228 invocations, 0 failures).

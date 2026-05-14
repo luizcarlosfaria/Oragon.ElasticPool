@@ -1,4 +1,4 @@
-// Forward-copied from tests/Oragon.ElasticPool.Core.Tests/TestSupport/CapturedLogEntries.cs.
+// Forward-copied from tests/Oragon.ElasticPool.Tests/TestSupport/CapturedLogEntries.cs.
 // Phase 2 SUMMARY documented this duplication as intentional (avoids pulling FakeLogger).
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;

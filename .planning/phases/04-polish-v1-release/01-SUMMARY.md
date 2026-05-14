@@ -13,13 +13,13 @@ provides:
   - "CHANGELOG.md (Keep-a-Changelog 1.1.0; v1.0.0 entry; date placeholder 2026-05-XX for Plan 02)"
   - "icon.png (128x128 RGB PNG; embedded in both .nupkg)"
   - "README.md (root orchestrator)"
-  - "src/Oragon.ElasticPool.Core/README.md (embedded in Core .nupkg; 30s quickstart, M.E.OP comparison table, OTel snippet, instrument inventory)"
+  - "src/Oragon.ElasticPool/README.md (embedded in Core .nupkg; 30s quickstart, M.E.OP comparison table, OTel snippet, instrument inventory)"
   - "src/Oragon.ElasticPool.RabbitMQ/README.md (embedded in RabbitMQ .nupkg; layered example + 3 callouts: channel-per-publisher, connection sizing, AutomaticRecoveryEnabled override)"
   - "Directory.Build.props: PackageProjectUrl, PackageReadmeFile, PackageIcon, PackageLicenseExpression=MIT, PackageRequireLicenseAcceptance=false, Authors=Luiz Carlos Faria + repo-wide icon.png pack ItemGroup"
   - "Per-csproj refinement: Description (expanded), PackageTags (refined for evaluator search), <None Include='README.md' Pack='true'>; per-csproj PackageLicenseExpression stripped (DRY)"
 affects:
   - "Directory.Build.props (+15 lines net; PackageLicenseExpression centralised)"
-  - "src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj (+4 / -1 lines)"
+  - "src/Oragon.ElasticPool/Oragon.ElasticPool.csproj (+4 / -1 lines)"
   - "src/Oragon.ElasticPool.RabbitMQ/Oragon.ElasticPool.RabbitMQ.csproj (+4 / -1 lines)"
 tech-stack:
   added: []
@@ -33,11 +33,11 @@ key-files:
     - "CHANGELOG.md (35 lines, Keep-a-Changelog 1.1.0)"
     - "icon.png (258 bytes, 128x128 RGB navy placeholder)"
     - "README.md (139 lines, root orchestrator)"
-    - "src/Oragon.ElasticPool.Core/README.md (170 lines)"
+    - "src/Oragon.ElasticPool/README.md (170 lines)"
     - "src/Oragon.ElasticPool.RabbitMQ/README.md (134 lines)"
   modified:
     - "Directory.Build.props (centralised package metadata)"
-    - "src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj (Description / PackageTags refined; README pack item; PackageLicenseExpression removed)"
+    - "src/Oragon.ElasticPool/Oragon.ElasticPool.csproj (Description / PackageTags refined; README pack item; PackageLicenseExpression removed)"
     - "src/Oragon.ElasticPool.RabbitMQ/Oragon.ElasticPool.RabbitMQ.csproj (Description / PackageTags refined; README pack item; PackageLicenseExpression removed)"
 decisions:
   - "icon.png generated via stdlib zlib/struct PNG (ImageMagick `convert` unavailable in WSL; Python PIL not installed). 128x128 solid navy 0x1E3A5F RGB; 258 bytes; placeholder per CONTEXT.md D-04 — replaceable pre-tag without affecting pipeline"
@@ -58,7 +58,7 @@ metrics:
 
 # Phase 4 Plan 01: OSS Documentation, Licensing & NuGet Metadata Polish Summary
 
-Landed all OSS-quality documentation, licensing, and NuGet packaging metadata required to ship `Oragon.ElasticPool.Core` and `Oragon.ElasticPool.RabbitMQ` to NuGet.org. After this plan, `dotnet pack -c Release` produces well-formed `.nupkg` files containing per-package README, embedded icon, MIT license expression, refined description/tags/authors/project URLs — and the repo presents a polished GitHub-recognizable face (root README, LICENSE, CHANGELOG). No code changes; metadata + docs only.
+Landed all OSS-quality documentation, licensing, and NuGet packaging metadata required to ship `Oragon.ElasticPool` and `Oragon.ElasticPool.RabbitMQ` to NuGet.org. After this plan, `dotnet pack -c Release` produces well-formed `.nupkg` files containing per-package README, embedded icon, MIT license expression, refined description/tags/authors/project URLs — and the repo presents a polished GitHub-recognizable face (root README, LICENSE, CHANGELOG). No code changes; metadata + docs only.
 
 ## Tasks Executed
 
@@ -79,9 +79,9 @@ ok dotnet build: 9 projects, 0 errors, 0 warnings (00:00:12.41)
 ### Pack (Release) — both packable projects
 
 ```
-dotnet pack src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj -c Release
-ok Successfully created package '/tmp/pack-core/Oragon.ElasticPool.Core.0.0.0-alpha.0.79.nupkg' (98.5 KB)
-ok Successfully created package '/tmp/pack-core/Oragon.ElasticPool.Core.0.0.0-alpha.0.79.snupkg' (52.7 KB)
+dotnet pack src/Oragon.ElasticPool/Oragon.ElasticPool.csproj -c Release
+ok Successfully created package '/tmp/pack-core/Oragon.ElasticPool.0.0.0-alpha.0.79.nupkg' (98.5 KB)
+ok Successfully created package '/tmp/pack-core/Oragon.ElasticPool.0.0.0-alpha.0.79.snupkg' (52.7 KB)
 
 dotnet pack src/Oragon.ElasticPool.RabbitMQ/Oragon.ElasticPool.RabbitMQ.csproj -c Release
 ok Successfully created package '/tmp/pack-rmq/Oragon.ElasticPool.RabbitMQ.0.0.0-alpha.0.79.nupkg' (43.0 KB)
@@ -91,9 +91,9 @@ ok Successfully created package '/tmp/pack-rmq/Oragon.ElasticPool.RabbitMQ.0.0.0
 ### Package contents (unzip -l)
 
 **Core .nupkg** contains:
-- `lib/net8.0/Oragon.ElasticPool.Core.dll` (75776 bytes)
-- `lib/net9.0/Oragon.ElasticPool.Core.dll` (75776 bytes)
-- `lib/net10.0/Oragon.ElasticPool.Core.dll` (75776 bytes)
+- `lib/net8.0/Oragon.ElasticPool.dll` (75776 bytes)
+- `lib/net9.0/Oragon.ElasticPool.dll` (75776 bytes)
+- `lib/net10.0/Oragon.ElasticPool.dll` (75776 bytes)
 - `icon.png` (258 bytes)
 - `README.md` (8263 bytes — the per-package one)
 
@@ -141,7 +141,7 @@ All gates green:
 - icon.png is a `PNG image data, 128 x 128, 8-bit/color RGB, non-interlaced` ✓
 - README.md (root) starts with `# Oragon.ElasticPool` and references `samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher` ✓
 - Directory.Build.props contains PackageReadmeFile=README.md, PackageIcon=icon.png, PackageLicenseExpression>MIT, and the icon.png repo-wide pack ItemGroup ✓
-- Core README contains `^# Oragon.ElasticPool.Core`, `AddElasticPool<`, `Why not \`Microsoft.Extensions.ObjectPool`, `AddMeter("Oragon.ElasticPool")`, `AddSource("Oragon.ElasticPool")`, sample link ✓
+- Core README contains `^# Oragon.ElasticPool`, `AddElasticPool<`, `Why not \`Microsoft.Extensions.ObjectPool`, `AddMeter("Oragon.ElasticPool")`, `AddSource("Oragon.ElasticPool")`, sample link ✓
 - RabbitMQ README contains `^# Oragon.ElasticPool.RabbitMQ`, `AddElasticConnectionPool`, `AddElasticChannelPool`, `AutomaticRecoveryEnabled`, the connection-pool sizing callout ("connection pool's `MaxSize`"), sample link ✓
 - Both csproj contain `<None Include="README.md" Pack="true"`; neither contains `PackageLicenseExpression` (centralised); Core tags include `self-healing`; RabbitMQ tags include `connection-pool` ✓
 
@@ -178,10 +178,10 @@ Files claimed:
 - `CHANGELOG.md` ✓ FOUND
 - `icon.png` ✓ FOUND (PNG 128x128)
 - `README.md` ✓ FOUND
-- `src/Oragon.ElasticPool.Core/README.md` ✓ FOUND
+- `src/Oragon.ElasticPool/README.md` ✓ FOUND
 - `src/Oragon.ElasticPool.RabbitMQ/README.md` ✓ FOUND
 - `Directory.Build.props` ✓ MODIFIED (Task 1)
-- `src/Oragon.ElasticPool.Core/Oragon.ElasticPool.Core.csproj` ✓ MODIFIED (Task 2)
+- `src/Oragon.ElasticPool/Oragon.ElasticPool.csproj` ✓ MODIFIED (Task 2)
 - `src/Oragon.ElasticPool.RabbitMQ/Oragon.ElasticPool.RabbitMQ.csproj` ✓ MODIFIED (Task 2)
 
 Commits claimed:
@@ -189,7 +189,7 @@ Commits claimed:
 - `d085db8` (Task 2) ✓ FOUND in `git log`
 
 Verification artefacts (out-of-tree, ephemeral):
-- `/tmp/pack-core/Oragon.ElasticPool.Core.0.0.0-alpha.0.79.nupkg` ✓ produced
-- `/tmp/pack-core/Oragon.ElasticPool.Core.0.0.0-alpha.0.79.snupkg` ✓ produced
+- `/tmp/pack-core/Oragon.ElasticPool.0.0.0-alpha.0.79.nupkg` ✓ produced
+- `/tmp/pack-core/Oragon.ElasticPool.0.0.0-alpha.0.79.snupkg` ✓ produced
 - `/tmp/pack-rmq/Oragon.ElasticPool.RabbitMQ.0.0.0-alpha.0.79.nupkg` ✓ produced
 - `/tmp/pack-rmq/Oragon.ElasticPool.RabbitMQ.0.0.0-alpha.0.79.snupkg` ✓ produced

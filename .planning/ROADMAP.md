@@ -65,7 +65,7 @@
 **Success Criteria** (what must be TRUE):
   1. GitHub Actions CI runs the full unit + stress + integration (Testcontainers.RabbitMq) test suite across the matrix `ubuntu-latest × {net8.0, net9.0, net10.0}` and is green on `main`
   2. README contains a working quickstart copy-pastable into a fresh `dotnet new console` project, an OpenTelemetry exporter integration example wiring `Meter` and `ActivitySource` to console/OTLP, a link to the bursty publisher sample, and a comparison table vs `Microsoft.Extensions.ObjectPool`
-  3. Tagging `v1.0.0` on `main` triggers MinVer-driven SemVer 2.0 build producing `Oragon.ElasticPool.Core.1.0.0.nupkg` + `.snupkg` and `Oragon.ElasticPool.RabbitMQ.1.0.0.nupkg` + `.snupkg` published to NuGet.org with SourceLink metadata enabling step-into to GitHub source
+  3. Tagging `v1.0.0` on `main` triggers MinVer-driven SemVer 2.0 build producing `Oragon.ElasticPool.1.0.0.nupkg` + `.snupkg` and `Oragon.ElasticPool.RabbitMQ.1.0.0.nupkg` + `.snupkg` published to NuGet.org with SourceLink metadata enabling step-into to GitHub source
   4. `Microsoft.CodeAnalysis.PublicApiAnalyzers` is active on both packages with `PublicAPI.Shipped.txt` baselined for v1.0 surface; any future public API change requires explicit `PublicAPI.Unshipped.txt` update or build fails
   5. Consumer following the README quickstart can install both packages from NuGet.org, write a 20-line bursty publisher, and observe pool metrics in Aspire Dashboard or any OTel collector without additional configuration
 **Plans**: 2 plans

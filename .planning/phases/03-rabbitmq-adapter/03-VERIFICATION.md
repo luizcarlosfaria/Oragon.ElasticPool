@@ -27,7 +27,7 @@ human_verification: []
 | 2 | `AddElasticChannelPool` registers layered `IElasticPool<IChannel>` with `ConditionalWeakTable<IChannel, IPoolItem<IConnection>>` pairing and `channel_max=10` spread test | VERIFIED | `ChannelLeasePairing.cs` wraps `ConditionalWeakTable<IChannel, IPoolItem<IConnection>>`, `ConnectionChannelTracker` enforces eager spread; `ChannelSpreadIntegrationTests` passes with ≥5 connections under `channel_max=10` |
 | 3 | Testcontainers integration test reproduces bursty cycle without leaks | VERIFIED | `BurstyPublisherIntegrationTests.BurstIdleBurst_NoLeakedChannelsOrConnections` passes (200×3 cycles, 16-parallelism) — `chPool.InUse == 0` after all cycles; 10/10 integration tests pass on all 3 TFMs |
 | 4 | Sample project runnable end-to-end with sister-library conventions | VERIFIED | `samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher` builds clean (net10.0); uses `AddElasticConnectionPool` + `AddElasticChannelPool` + `AddHostedService<BurstyPublisherWorker>`; `[FromKeyedServices]` injection; `Parallel.ForEachAsync` per-iteration acquire (Pitfall 10); smoke-run documented in SUMMARY with output including EventId 2001 warning and grow events |
-| 5 | No Core API change pushed by adapter | VERIFIED | Zero commits touch `src/Oragon.ElasticPool.Core/` during Phase 3 (git log confirms last Core commit is Phase 2 `fix(02-WR-03/WR-04)` at `e4d97f5`); both Q1 (lazy invalidation) and Q2 (eager spread) empirically validated without requiring new Core abstractions |
+| 5 | No Core API change pushed by adapter | VERIFIED | Zero commits touch `src/Oragon.ElasticPool/` during Phase 3 (git log confirms last Core commit is Phase 2 `fix(02-WR-03/WR-04)` at `e4d97f5`); both Q1 (lazy invalidation) and Q2 (eager spread) empirically validated without requiring new Core abstractions |
 
 **Score:** 5/5 roadmap success criteria verified
 
@@ -118,7 +118,7 @@ human_verification: []
 | Solution builds clean (9 projects) | `dotnet build Oragon.ElasticPool.sln -c Release --no-restore` | 9 projects, 0 errors, 12 warnings (SourceLink no-remote, pre-existing) | PASS |
 | Core unit tests no regression | `dotnet tests/Core.Tests/bin/Release/net10.0/...dll` | 144/144 passed (up from 432 aggregate — latest run shows 144 per TFM reflecting Phase 2+3 additions) | PASS |
 | RabbitMQ.Client 7.2.1 pinned | `grep "RabbitMQ.Client" Directory.Packages.props` | `Version="7.2.1"` present | PASS |
-| `IPoolItem<T>.Value` in Core interface | `cat src/Oragon.ElasticPool.Core/Abstractions/IPoolItem.cs` | `T Value { get; }` — no `.Object` | PASS |
+| `IPoolItem<T>.Value` in Core interface | `cat src/Oragon.ElasticPool/Abstractions/IPoolItem.cs` | `T Value { get; }` — no `.Object` | PASS |
 
 ---
 

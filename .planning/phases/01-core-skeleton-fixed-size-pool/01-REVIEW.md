@@ -4,43 +4,43 @@ reviewed: 2026-05-02T00:00:00Z
 depth: standard
 files_reviewed: 36
 files_reviewed_list:
-  - src/Oragon.ElasticPool.Core/Abstractions/FailureDecision.cs
-  - src/Oragon.ElasticPool.Core/Abstractions/FailureKind.cs
-  - src/Oragon.ElasticPool.Core/Abstractions/IElasticPool.cs
-  - src/Oragon.ElasticPool.Core/Abstractions/IItemFailurePolicy.cs
-  - src/Oragon.ElasticPool.Core/Abstractions/IPoolItem.cs
-  - src/Oragon.ElasticPool.Core/Abstractions/PoolState.cs
-  - src/Oragon.ElasticPool.Core/Builder/ElasticObjectPoolFactory.cs
-  - src/Oragon.ElasticPool.Core/Builder/ElasticPoolBuilder.cs
-  - src/Oragon.ElasticPool.Core/Builder/ElasticPoolOptions.cs
-  - src/Oragon.ElasticPool.Core/Builder/WaitBehavior.cs
-  - src/Oragon.ElasticPool.Core/DependencyInjection/ServiceCollectionExtensions.cs
-  - src/Oragon.ElasticPool.Core/Exceptions/PoolExhaustedException.cs
-  - src/Oragon.ElasticPool.Core/Hooks/HookDelegates.cs
-  - src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs
-  - src/Oragon.ElasticPool.Core/Internals/PoolEntry.cs
-  - src/Oragon.ElasticPool.Core/Internals/PoolItem.cs
-  - src/Oragon.ElasticPool.Core/Internals/PoolLifecycle.cs
-  - src/Oragon.ElasticPool.Core/Policies/DiscardAndReplaceFailurePolicy.cs
-  - src/Oragon.ElasticPool.Core/Telemetry/PoolDiagnosticsLog.cs
-  - src/Oragon.ElasticPool.Core/Telemetry/PoolMeterNames.cs
-  - src/Oragon.ElasticPool.Core/Telemetry/TelemetryEmitter.cs
-  - tests/Oragon.ElasticPool.Core.Tests/Builder/BuilderValidationTests.cs
-  - tests/Oragon.ElasticPool.Core.Tests/DependencyInjection/ServiceCollectionExtensionsTests.cs
-  - tests/Oragon.ElasticPool.Core.Tests/PlaceholderSmokeTest.cs
-  - tests/Oragon.ElasticPool.Core.Tests/Pool/AcquireAndReturnTests.cs
-  - tests/Oragon.ElasticPool.Core.Tests/Pool/AfterUseAndExceptionTests.cs
-  - tests/Oragon.ElasticPool.Core.Tests/Pool/BeforeUseUnhealthyTests.cs
-  - tests/Oragon.ElasticPool.Core.Tests/Pool/DisposeDrainTests.cs
-  - tests/Oragon.ElasticPool.Core.Tests/Pool/FactoryFailureTests.cs
-  - tests/Oragon.ElasticPool.Core.Tests/Pool/FinalizerTests.cs
-  - tests/Oragon.ElasticPool.Core.Tests/Pool/PoolItemDisposeTests.cs
-  - tests/Oragon.ElasticPool.Core.Tests/Pool/WaitBehaviorTests.cs
-  - tests/Oragon.ElasticPool.Core.Tests/Pool/WarmupAndBoundsTests.cs
-  - tests/Oragon.ElasticPool.Core.Tests/Telemetry/MeterAndCounterTests.cs
-  - tests/Oragon.ElasticPool.Core.Tests/TestSupport/Resource.cs
-  - tests/Oragon.ElasticPool.Core.Tests/TimeProvider/TimeProviderInjectionTests.cs
-  - tests/Oragon.ElasticPool.Core.Stress/PingPongStressTest.cs
+  - src/Oragon.ElasticPool/Abstractions/FailureDecision.cs
+  - src/Oragon.ElasticPool/Abstractions/FailureKind.cs
+  - src/Oragon.ElasticPool/Abstractions/IElasticPool.cs
+  - src/Oragon.ElasticPool/Abstractions/IItemFailurePolicy.cs
+  - src/Oragon.ElasticPool/Abstractions/IPoolItem.cs
+  - src/Oragon.ElasticPool/Abstractions/PoolState.cs
+  - src/Oragon.ElasticPool/Builder/ElasticObjectPoolFactory.cs
+  - src/Oragon.ElasticPool/Builder/ElasticPoolBuilder.cs
+  - src/Oragon.ElasticPool/Builder/ElasticPoolOptions.cs
+  - src/Oragon.ElasticPool/Builder/WaitBehavior.cs
+  - src/Oragon.ElasticPool/DependencyInjection/ServiceCollectionExtensions.cs
+  - src/Oragon.ElasticPool/Exceptions/PoolExhaustedException.cs
+  - src/Oragon.ElasticPool/Hooks/HookDelegates.cs
+  - src/Oragon.ElasticPool/Internals/ElasticPool.cs
+  - src/Oragon.ElasticPool/Internals/PoolEntry.cs
+  - src/Oragon.ElasticPool/Internals/PoolItem.cs
+  - src/Oragon.ElasticPool/Internals/PoolLifecycle.cs
+  - src/Oragon.ElasticPool/Policies/DiscardAndReplaceFailurePolicy.cs
+  - src/Oragon.ElasticPool/Telemetry/PoolDiagnosticsLog.cs
+  - src/Oragon.ElasticPool/Telemetry/PoolMeterNames.cs
+  - src/Oragon.ElasticPool/Telemetry/TelemetryEmitter.cs
+  - tests/Oragon.ElasticPool.Tests/Builder/BuilderValidationTests.cs
+  - tests/Oragon.ElasticPool.Tests/DependencyInjection/ServiceCollectionExtensionsTests.cs
+  - tests/Oragon.ElasticPool.Tests/PlaceholderSmokeTest.cs
+  - tests/Oragon.ElasticPool.Tests/Pool/AcquireAndReturnTests.cs
+  - tests/Oragon.ElasticPool.Tests/Pool/AfterUseAndExceptionTests.cs
+  - tests/Oragon.ElasticPool.Tests/Pool/BeforeUseUnhealthyTests.cs
+  - tests/Oragon.ElasticPool.Tests/Pool/DisposeDrainTests.cs
+  - tests/Oragon.ElasticPool.Tests/Pool/FactoryFailureTests.cs
+  - tests/Oragon.ElasticPool.Tests/Pool/FinalizerTests.cs
+  - tests/Oragon.ElasticPool.Tests/Pool/PoolItemDisposeTests.cs
+  - tests/Oragon.ElasticPool.Tests/Pool/WaitBehaviorTests.cs
+  - tests/Oragon.ElasticPool.Tests/Pool/WarmupAndBoundsTests.cs
+  - tests/Oragon.ElasticPool.Tests/Telemetry/MeterAndCounterTests.cs
+  - tests/Oragon.ElasticPool.Tests/TestSupport/Resource.cs
+  - tests/Oragon.ElasticPool.Tests/TimeProvider/TimeProviderInjectionTests.cs
+  - tests/Oragon.ElasticPool.Stress/PingPongStressTest.cs
 findings:
   critical: 4
   warning: 5
@@ -73,7 +73,7 @@ Additionally, the `Check` hook is wired through the builder and options but is n
 
 ### CR-01: Lost wake-up when AfterUse returns Unhealthy
 
-**File:** `src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs:228-236`
+**File:** `src/Oragon.ElasticPool/Internals/ElasticPool.cs:228-236`
 
 **Issue:** When `AfterUse` returns `PoolState.Unhealthy`, `ReturnAsync` decrements `_total` and `_inUse`, calls `Release`, then returns early (line 236). It does NOT call `TryHandoff` or `ReturnSync`. Any waiter parked in the `_waiters` Channel will remain blocked indefinitely — even though a slot in the pool just became available via the discard.
 
@@ -123,7 +123,7 @@ if (state == PoolState.Unhealthy)
 
 ### CR-02: ObjectDisposedException contract violated when BeforeUse is configured and pool is disposed concurrently
 
-**File:** `src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs:198`
+**File:** `src/Oragon.ElasticPool/Internals/ElasticPool.cs:198`
 
 **Issue:** When `PrepareForUseAsync` calls `AcquireAsync(ct)` recursively (line 198), it passes `ct` — a linked token already composed from the original caller's `cancellationToken` and `_lifetimeCts.Token`. The recursive `AcquireAsync` creates another linked CTS from this already-composite token. Inside that recursive call, if pool disposal fires (`_lifetimeCts` cancels), the check at line 168:
 
@@ -155,7 +155,7 @@ And update the three call sites to pass both `ct` (for hook invocations) and `ca
 
 ### CR-03: `TryGetHostApplicationStoppingToken` is permanently broken — pool never hooks into host shutdown
 
-**File:** `src/Oragon.ElasticPool.Core/DependencyInjection/ServiceCollectionExtensions.cs:53-54`
+**File:** `src/Oragon.ElasticPool/DependencyInjection/ServiceCollectionExtensions.cs:53-54`
 
 **Issue:** The reflection probe uses `sp.GetServices<object>()`. In the .NET DI container, `GetServices<object>()` returns only services explicitly registered under the type `object` — there are none in standard ASP.NET Core. `IHostApplicationLifetime` is registered under its own interface, not under `object`. The method always returns an empty sequence; the `FirstOrDefault` returns `null`; the early return fires; `CancellationToken.None` is always returned.
 
@@ -206,7 +206,7 @@ Even better: add a soft reference to `Microsoft.Extensions.Hosting.Abstractions`
 
 ### CR-04: Sync `Acquire()` bypasses `BeforeUse` health check
 
-**File:** `src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs:88-99`
+**File:** `src/Oragon.ElasticPool/Internals/ElasticPool.cs:88-99`
 
 **Issue:** The synchronous `Acquire()` method dequeues an item, increments `_inUse`, and returns it — without calling `BeforeUse`. The async `AcquireAsync` path calls `PrepareForUseAsync` which invokes `BeforeUse`. This asymmetry means:
 
@@ -242,7 +242,7 @@ public IPoolItem<T> Acquire()
 
 ### WR-01: `TrySetCanceled()` called without passing the CancellationToken — wrong token on the exception
 
-**File:** `src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs:156-158`
+**File:** `src/Oragon.ElasticPool/Internals/ElasticPool.cs:156-158`
 
 **Issue:** The cancellation registration calls `t.TrySetCanceled()` without arguments. This sets the TCS to cancelled state with `CancellationToken.None` on the resulting exception, not the token that triggered the cancellation. The re-throw logic at line 169 (`throw new OperationCanceledException(cancellationToken)`) does set the correct token on the re-thrown exception, so the caller sees the right token. However, any code that awaits `tcs.Task` directly (not via the outer catch) would see `OperationCanceledException.CancellationToken == CancellationToken.None`.
 
@@ -261,7 +261,7 @@ Or use a closure (minor allocation) to capture `ct` directly.
 
 ### WR-02: `GC.SuppressFinalize(this)` in `DisposeAsync` on a class with no finalizer
 
-**File:** `src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs:309`
+**File:** `src/Oragon.ElasticPool/Internals/ElasticPool.cs:309`
 
 **Issue:** `ElasticPool<T>` has no finalizer, yet `DisposeAsync` calls `GC.SuppressFinalize(this)`. The call is harmless but indicates either a code pattern copied from a finalizer-bearing class, or a future finalizer that was planned but not implemented. It will confuse readers who look for the matching finalizer.
 
@@ -271,7 +271,7 @@ Or use a closure (minor allocation) to capture `ct` directly.
 
 ### WR-03: `Check` hook silently ignored — registered in public API but never consumed by the engine
 
-**File:** `src/Oragon.ElasticPool.Core/Builder/ElasticPoolBuilder.cs:31`, `src/Oragon.ElasticPool.Core/Builder/ElasticPoolOptions.cs:12`
+**File:** `src/Oragon.ElasticPool/Builder/ElasticPoolBuilder.cs:31`, `src/Oragon.ElasticPool/Builder/ElasticPoolOptions.cs:12`
 
 **Issue:** `ElasticPoolBuilder<T>.Check(CheckDelegate<T>)` is a public method, `ElasticPoolOptions<T>.Check` is a public property, and `CheckDelegate<T>` is a public delegate — all tracked in `PublicAPI.Unshipped.txt`. However, `ElasticPool<T>` never reads `_options.Check`. Configuring the `Check` hook has zero effect. There is no warning, no exception, and no documentation stating it is a Phase 2 placeholder.
 
@@ -283,7 +283,7 @@ Or use a closure (minor allocation) to capture `ct` directly.
 
 ### WR-04: Infinite recursion risk when `BeforeUse` always returns Unhealthy and pool can still grow
 
-**File:** `src/Oragon.ElasticPool.Core/Internals/ElasticPool.cs:198`
+**File:** `src/Oragon.ElasticPool/Internals/ElasticPool.cs:198`
 
 **Issue:** `PrepareForUseAsync` calls `AcquireAsync(ct)` recursively when `BeforeUse` returns `Unhealthy`. Each recursive call decrements `_total` and attempts to create a replacement. If the factory always succeeds but `BeforeUse` always returns `Unhealthy`, the recursion continues indefinitely: grow pool → check → discard → grow pool → check → discard → ... with no bound on recursion depth. Under such a pathological configuration, a `StackOverflowException` is possible, or under high `MaxSize`, a very deep call stack.
 
@@ -311,7 +311,7 @@ private async ValueTask<IPoolItem<T>> PrepareForUseAsync(
 
 ### WR-05: `ElasticPoolOptions<T>` is unnecessarily public and exposes internal configuration surface
 
-**File:** `src/Oragon.ElasticPool.Core/Builder/ElasticPoolOptions.cs:7`
+**File:** `src/Oragon.ElasticPool/Builder/ElasticPoolOptions.cs:7`
 
 **Issue:** `ElasticPoolOptions<T>` is `public sealed record`, tracked in `PublicAPI.Unshipped.txt` with all 12 properties. This type is a frozen configuration bag consumed only by `ElasticPool<T>` (which is `internal`). External callers cannot construct an `ElasticPool<T>` directly, making the ability to construct an `ElasticPoolOptions<T>` externally useless. Exposing it:
 
@@ -333,7 +333,7 @@ Remove it from `PublicAPI.Unshipped.txt`. The builder's fluent API is the stable
 
 ### IR-01: `PoolLifecycle.Draining` state is dead code
 
-**File:** `src/Oragon.ElasticPool.Core/Internals/PoolLifecycle.cs:3`
+**File:** `src/Oragon.ElasticPool/Internals/PoolLifecycle.cs:3`
 
 **Issue:** `PoolLifecycle` defines three states: `Open`, `Draining`, and `Closed`. The engine only uses `Open` and `Closed`. `Draining` is never set, never tested, and never transitioned to. The `DisposeAsync` method transitions directly from `Open` to `Closed`.
 
@@ -343,7 +343,7 @@ Remove it from `PublicAPI.Unshipped.txt`. The builder's fluent API is the stable
 
 ### IR-02: `TryGetHostApplicationStoppingToken` leaks all registered `object` services into memory temporarily
 
-**File:** `src/Oragon.ElasticPool.Core/DependencyInjection/ServiceCollectionExtensions.cs:53`
+**File:** `src/Oragon.ElasticPool/DependencyInjection/ServiceCollectionExtensions.cs:53`
 
 **Issue:** Even though the method always returns `CancellationToken.None` (see CR-03), the call to `sp.GetServices<object>()` enumerates all services registered under type `object`. In typical applications this is an empty collection, so the cost is low. However, if any library registers services under `object`, the collection grows. This is an unnecessary allocation on every pool construction in addition to being broken.
 
@@ -353,7 +353,7 @@ Remove it from `PublicAPI.Unshipped.txt`. The builder's fluent API is the stable
 
 ### IR-03: `PoolExhaustedException` does not inherit from a standard base that signals "transient" vs "permanent" failure
 
-**File:** `src/Oragon.ElasticPool.Core/Exceptions/PoolExhaustedException.cs`
+**File:** `src/Oragon.ElasticPool/Exceptions/PoolExhaustedException.cs`
 
 **Issue:** `PoolExhaustedException` extends `Exception` directly. It carries a `WaitTime` property used when wait behavior is Throw after a timeout (currently set only externally and optional). There is no standard marker (e.g., `InvalidOperationException`) to indicate this is a recoverable/transient condition. Library consumers building retry logic cannot distinguish this from programming errors without catching by exact type.
 

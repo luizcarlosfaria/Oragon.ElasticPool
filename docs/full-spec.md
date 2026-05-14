@@ -26,7 +26,7 @@ The repository ships two packages:
 
 | Package | Purpose |
 | --- | --- |
-| `Oragon.ElasticPool.Core` | Generic elastic pool engine, hooks, policies, DI, metrics, tracing, logging. |
+| `Oragon.ElasticPool` | Generic elastic pool engine, hooks, policies, DI, metrics, tracing, logging. |
 | `Oragon.ElasticPool.RabbitMQ` | RabbitMQ.Client v7 adapter with layered `IConnection` and `IChannel` pools. |
 
 Both packages target `net10.0`, `net9.0`, and `net8.0`.
@@ -685,8 +685,8 @@ The lease returns only when the channel is discarded, swept, or drained.
 | --- | --- |
 | `samples/Oragon.ElasticPool.RabbitMQ.Sample.BurstyPublisher` | Full-scale idle -> burst -> idle RabbitMQ publisher sample. Defaults: 3 cycles, 100k messages per burst, parallelism 256. |
 | `samples/Oragon.ElasticPool.RabbitMQ.Sample.LiveDashboard` | Aspire + Blazor visual dashboard. Shows `Total`, `Available`, `InUse`, and `Waiting` at 10 Hz. |
-| `tests/Oragon.ElasticPool.Core.Stress` | Opt-in stress tests. Excluded from solution-wide default test discovery via `<IsTestProject>false</IsTestProject>`. |
-| `tests/Oragon.ElasticPool.Core.Benchmarks` | BenchmarkDotNet heavy-resource elasticity benchmark. |
+| `tests/Oragon.ElasticPool.Stress` | Opt-in stress tests. Excluded from solution-wide default test discovery via `<IsTestProject>false</IsTestProject>`. |
+| `tests/Oragon.ElasticPool.Benchmarks` | BenchmarkDotNet heavy-resource elasticity benchmark. |
 | `BenchmarkReports/` | Stored benchmark reports for heavy-resource elasticity. |
 
 ## 14. Build, tests, packaging

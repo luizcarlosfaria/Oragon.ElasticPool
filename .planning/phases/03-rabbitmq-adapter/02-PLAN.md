@@ -33,7 +33,7 @@ must_haves:
       provides: "ConcurrentDictionary<IConnection, int> tracking channels-per-connection for eager spread"
   key_links:
     - from: "ElasticChannelPoolServiceCollectionExtensions.AddElasticChannelPool"
-      to: "Oragon.ElasticPool.Core ServiceCollectionExtensions.AddElasticPool<IChannel>"
+      to: "Oragon.ElasticPool ServiceCollectionExtensions.AddElasticPool<IChannel>"
       via: "delegated registration"
       pattern: "AddElasticPool<IChannel>"
     - from: "Channel pool Factory hook"
@@ -73,9 +73,9 @@ Output:
 @.planning/phases/03-rabbitmq-adapter/03-CONTEXT.md
 @.planning/phases/03-rabbitmq-adapter/03-RESEARCH.md
 @.planning/phases/03-rabbitmq-adapter/03-01-PLAN.md
-@src/Oragon.ElasticPool.Core/Abstractions/IElasticPool.cs
-@src/Oragon.ElasticPool.Core/Abstractions/IPoolItem.cs
-@src/Oragon.ElasticPool.Core/Builder/ElasticPoolBuilder.cs
+@src/Oragon.ElasticPool/Abstractions/IElasticPool.cs
+@src/Oragon.ElasticPool/Abstractions/IPoolItem.cs
+@src/Oragon.ElasticPool/Builder/ElasticPoolBuilder.cs
 @src/Oragon.ElasticPool.RabbitMQ/Builder/ElasticConnectionPoolBuilder.cs
 @src/Oragon.ElasticPool.RabbitMQ/DependencyInjection/ElasticConnectionPoolServiceCollectionExtensions.cs
 
@@ -437,7 +437,7 @@ public sealed class ConditionalWeakTable<TKey, TValue>
       grep -v '^#' src/Oragon.ElasticPool.RabbitMQ/DependencyInjection/ElasticChannelPoolServiceCollectionExtensions.cs | grep -c "TryAcquireSlot" && \
       grep -v '^#' src/Oragon.ElasticPool.RabbitMQ/DependencyInjection/ElasticChannelPoolServiceCollectionExtensions.cs | grep -c "ReleaseSlot" && \
       grep -c "AddElasticChannelPool" src/Oragon.ElasticPool.RabbitMQ/PublicAPI.Unshipped.txt && \
-      dotnet test tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj -c Release --no-build
+      dotnet test tests/Oragon.ElasticPool.Tests/Oragon.ElasticPool.Tests.csproj -c Release --no-build
     </automated>
   </verify>
   <done>
@@ -474,7 +474,7 @@ public sealed class ConditionalWeakTable<TKey, TValue>
 
 <verification>
 - `dotnet build Oragon.ElasticPool.sln -c Release` exits 0 across net8/9/10.
-- `dotnet test tests/Oragon.ElasticPool.Core.Tests/Oragon.ElasticPool.Core.Tests.csproj -c Release` reports 141/141 (Phase 1+2 baseline) passing on every TFM — NO REGRESSION.
+- `dotnet test tests/Oragon.ElasticPool.Tests/Oragon.ElasticPool.Tests.csproj -c Release` reports 141/141 (Phase 1+2 baseline) passing on every TFM — NO REGRESSION.
 - Source greps confirm:
   - `AddElasticPool<IChannel>` appears (delegation to Core).
   - `tracker.TryAcquireSlot(...)` is the gate for connection selection.
