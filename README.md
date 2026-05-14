@@ -1,7 +1,7 @@
 # Oragon.ElasticPool
 
 > Generic, elastic, self-healing object pool for .NET — with built-in OpenTelemetry.
-
+> 
 ---
 
 **Quality**
@@ -19,8 +19,6 @@
 
 **Releases**
 
-[![NuGet Version](https://img.shields.io/nuget/v/Oragon.ElasticPool?logo=nuget&label=nuget)](https://www.nuget.org/packages?q=Oragon.ElasticPool&includeComputedFrameworks=true&prerel=true&sortby=created-desc)
-[![NuGet Downloads](https://img.shields.io/nuget/dt/Oragon.ElasticPool)](https://www.nuget.org/packages/Oragon.ElasticPool/)
 [![GitHub Tag](https://img.shields.io/github/v/tag/luizcarlosfaria/Oragon.ElasticPool)](https://github.com/luizcarlosfaria/Oragon.ElasticPool/tags)
 [![GitHub Release](https://img.shields.io/github/v/release/luizcarlosfaria/Oragon.ElasticPool)](https://github.com/luizcarlosfaria/Oragon.ElasticPool/releases)
 [![MyGet Version](https://img.shields.io/myget/oragon/vpre/Oragon.ElasticPool?logo=myget&label=myget)](https://www.myget.org/feed/Packages/oragon)
@@ -48,10 +46,12 @@ replaced), and **fluent DX** (async-first, DI-first, builder pattern). Multi-tar
 
 ## Packages
 
-| Package | NuGet | Purpose |
-|---------|-------|---------|
-| [`Oragon.ElasticPool`](src/Oragon.ElasticPool/README.md) | [![nuget](https://img.shields.io/nuget/v/Oragon.ElasticPool.svg)](https://www.nuget.org/packages/Oragon.ElasticPool) | Generic pool engine, hooks, telemetry, DI |
-| [`Oragon.ElasticPool.RabbitMQ`](src/Oragon.ElasticPool.RabbitMQ/README.md) | [![nuget](https://img.shields.io/nuget/v/Oragon.ElasticPool.RabbitMQ.svg)](https://www.nuget.org/packages/Oragon.ElasticPool.RabbitMQ) | `IConnection` + layered `IChannel` pools for RabbitMQ.Client v7+ |
+| Package | NuGet | Downloads | Purpose |
+|---------|-------|-----------|---------|
+| [`Oragon.ElasticPool`](src/Oragon.ElasticPool/README.md)                      | [![nuget](https://img.shields.io/nuget/v/Oragon.ElasticPool?logo=nuget&label=nuget)](https://www.nuget.org/packages/Oragon.ElasticPool)                       | [![NuGet Downloads](https://img.shields.io/nuget/dt/Oragon.ElasticPool)](https://www.nuget.org/packages/Oragon.ElasticPool/)                    | Generic pool engine, hooks, telemetry, DI                             |
+| [`Oragon.ElasticPool.RabbitMQ`](src/Oragon.ElasticPool.RabbitMQ/README.md)    | [![nuget](https://img.shields.io/nuget/v/Oragon.ElasticPool.RabbitMQ?logo=nuget&label=nuget)](https://www.nuget.org/packages/Oragon.ElasticPool.RabbitMQ)     | [![NuGet Downloads](https://img.shields.io/nuget/dt/Oragon.ElasticPool.RabbitMQ)](https://www.nuget.org/packages/Oragon.ElasticPool.RabbitMQ/)  | `IConnection` + layered `IChannel` pools for RabbitMQ.Client v7+      |
+
+
 
 ## 30-second quickstart
 
