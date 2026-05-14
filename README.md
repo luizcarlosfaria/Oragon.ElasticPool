@@ -215,7 +215,7 @@ tags: pushing `v1.0.0` produces `1.0.0.nupkg`; commits between tags receive
 prerelease versions like `1.0.1-alpha.0.5+abc1234`.
 ## Contributing
 
-Issues and PRs welcome at https://github.com/oragon/Oragon.ElasticPool. Run
+Issues and PRs welcome at https://github.com/luizcarlosfaria/Oragon.ElasticPool. Run
 `dotnet test` before submitting; CI requires green on the
 `ubuntu-latest × {net8.0, net9.0, net10.0}` matrix.
 
@@ -225,5 +225,5 @@ Issues and PRs welcome at https://github.com/oragon/Oragon.ElasticPool. Run
 
 ## Acknowledgments
 
-Sister library [`Oragon.RabbitMQ`](https://github.com/oragon/Oragon.RabbitMQ)
+Sister library [`Oragon.RabbitMQ`](https://github.com/luizcarlosfaria/Oragon.RabbitMQ)
 (consumer side) shares conventions and naming.
