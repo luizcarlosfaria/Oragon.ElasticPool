@@ -16,7 +16,7 @@ namespace Oragon.ElasticPool.RabbitMQ.Internals;
 /// </remarks>
 internal sealed class ChannelLeasePairing
 {
-    private readonly ConditionalWeakTable<IChannel, SharedConnectionLease> _table = new();
+    private readonly ConditionalWeakTable<IChannel, SharedConnectionLease> _table = [];
 
     /// <summary>Registers the pairing. Throws on duplicate keys (CWT contract).</summary>
     public void Add(IChannel channel, SharedConnectionLease lease)

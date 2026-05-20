@@ -38,7 +38,7 @@ internal sealed class SharedConnectionLeaseRegistry
             await _createGate.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
-                await _gate.WaitAsync().ConfigureAwait(false);
+                await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
                 try
                 {
                     if (TryAcquireExisting_NoLock(maxChannelsPerConnection, out var existing))
@@ -51,7 +51,7 @@ internal sealed class SharedConnectionLeaseRegistry
 
                 var lease = await connectionPool.AcquireAsync(cancellationToken).ConfigureAwait(false);
 
-                await _gate.WaitAsync().ConfigureAwait(false);
+                await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
                 try
                 {
                     var newEntry = new Entry(lease) { ChannelCount = 1 };
