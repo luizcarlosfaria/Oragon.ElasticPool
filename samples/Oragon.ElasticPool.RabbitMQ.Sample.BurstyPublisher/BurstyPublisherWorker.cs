@@ -26,7 +26,7 @@ public sealed class BurstyPublisherWorker(
     private const string Queue = "oragon.elasticpool.sample.queue";
     private const string RoutingKey = "bursty.demo";
 
-    protected override async Task ExecuteAsync(CancellationToken ct)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var cycles = ParseInt(Environment.GetEnvironmentVariable("BURSTY_CYCLES"), 3);
         var idleSeconds = ParseInt(Environment.GetEnvironmentVariable("BURSTY_IDLE_SECONDS"), 300);
@@ -35,21 +35,19 @@ public sealed class BurstyPublisherWorker(
 
         try
         {
-            await DeclareTopologyAsync(ct);
+            await DeclareTopologyAsync(stoppingToken);
 
-            for (int cycle = 0; cycle < cycles && !ct.IsCancellationRequested; cycle++)
+            for (var cycle = 0; cycle < cycles && !stoppingToken.IsCancellationRequested; cycle++)
             {
-                logger.LogInformation("Cycle {Cycle}/{Cycles}: idle for {IdleSeconds}s",
-                    cycle + 1, cycles, idleSeconds);
-                await Task.Delay(TimeSpan.FromSeconds(idleSeconds), ct);
+                logger.LogInformation("Cycle {Cycle}/{Cycles}: idle for {IdleSeconds}s", cycle + 1, cycles, idleSeconds);
+                await Task.Delay(TimeSpan.FromSeconds(idleSeconds), stoppingToken);
 
-                logger.LogInformation("Cycle {Cycle}/{Cycles}: burst {Count} publishes (parallelism={Parallelism})",
-                    cycle + 1, cycles, burstCount, parallelism);
+                logger.LogInformation("Cycle {Cycle}/{Cycles}: burst {Count} publishes (parallelism={Parallelism})", cycle + 1, cycles, burstCount, parallelism);
                 var sw = Stopwatch.StartNew();
 
                 await Parallel.ForEachAsync(
                     Enumerable.Range(0, burstCount),
-                    new ParallelOptions { MaxDegreeOfParallelism = parallelism, CancellationToken = ct },
+                    new ParallelOptions { MaxDegreeOfParallelism = parallelism, CancellationToken = stoppingToken },
                     async (i, token) =>
                     {
                         // Pitfall 10: MUST acquire a fresh channel per iteration —
@@ -67,15 +65,14 @@ public sealed class BurstyPublisherWorker(
 
                 sw.Stop();
                 var throughput = burstCount / sw.Elapsed.TotalSeconds;
-                logger.LogInformation("Cycle {Cycle}/{Cycles}: burst complete in {ElapsedMs} ms ({Throughput:F0} msg/s)",
-                    cycle + 1, cycles, sw.ElapsedMilliseconds, throughput);
+                logger.LogInformation("Cycle {Cycle}/{Cycles}: burst complete in {ElapsedMs} ms ({Throughput:F0} msg/s)", cycle + 1, cycles, sw.ElapsedMilliseconds, throughput);
             }
 
             // Final idle window so the user can observe shrink in metrics dashboards.
             logger.LogInformation("All cycles complete; idle for {IdleSeconds}s before shutdown", idleSeconds);
-            await Task.Delay(TimeSpan.FromSeconds(idleSeconds), ct);
+            await Task.Delay(TimeSpan.FromSeconds(idleSeconds), stoppingToken);
         }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
             logger.LogInformation("BurstyPublisherWorker cancelled cleanly");
         }
